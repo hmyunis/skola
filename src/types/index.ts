@@ -10,3 +10,4 @@ export * from "./arena";
 export * from "./lounge";
 export * from "./resources";
 export * from "./auth";
+export * from "./classroom";
