@@ -94,9 +94,6 @@ function UserMenu() {
             <LogOut className="h-3.5 w-3.5" />
             Log Out
           </button>
-            <LogOut className="h-3.5 w-3.5" />
-            Log Out
-          </button>
         </div>
       )}
 
@@ -116,7 +113,6 @@ function UserMenu() {
                 navigate("/login");
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
             >
               Log Out
             </AlertDialogAction>
