@@ -801,13 +801,19 @@ function CustomQuizzesList({
                   <Play className="h-3 w-3" /> Play
                 </Button>
                 {(quiz.createdByUser || IS_ADMIN) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className={cn("h-7 w-7 p-0", quiz.createdByUser ? "text-destructive hover:text-destructive" : "text-amber-500 hover:text-destructive")}
-                    onClick={() => setDeletingId(quiz.id)}
-                    title={quiz.createdByUser ? "Delete quiz" : "Delete quiz (admin)"}
-                  >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={cn("h-7 w-7 p-0", quiz.createdByUser ? "text-destructive hover:text-destructive" : "text-amber-500 hover:text-destructive")}
+                        onClick={() => setDeletingId(quiz.id)}
+                      >
+                        {quiz.createdByUser ? <Trash2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><span>{quiz.createdByUser ? "Delete quiz" : "Delete quiz (admin)"}</span></TooltipContent>
+                  </Tooltip>
                     {quiz.createdByUser ? <Trash2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
                   </Button>
                 )}
