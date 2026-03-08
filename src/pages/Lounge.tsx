@@ -90,22 +90,26 @@ function ReactionButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      title={label}
-      className={cn(
-        "flex items-center gap-1 px-2 py-1 border text-xs tabular-nums transition-all",
-        active
-          ? "bg-primary/10 border-primary/40 text-primary font-bold"
-          : "border-border text-muted-foreground hover:bg-accent"
-      )}
-    >
-      <span>{emoji}</span>
-      <span>{count + (active ? 1 : 0)}</span>
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick();
+          }}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 border text-xs tabular-nums transition-all",
+            active
+              ? "bg-primary/10 border-primary/40 text-primary font-bold"
+              : "border-border text-muted-foreground hover:bg-accent"
+          )}
+        >
+          <span>{emoji}</span>
+          <span>{count + (active ? 1 : 0)}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top"><span>{label}</span></TooltipContent>
+    </Tooltip>
   );
 }
 
