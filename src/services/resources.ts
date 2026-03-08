@@ -142,7 +142,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS303",
       type: "notes",
       category: "reference",
-      uploadedBy: "Ravi M.",
+      uploadedBy: "Mohammed Y.",
       uploadedAt: "2026-03-02",
       size: "120 KB",
       rating: 4.6,
