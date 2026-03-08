@@ -126,6 +126,7 @@ function UserMenu() {
 
 export function AppLayout() {
   const { batchTheme, colorMode, toggleColorMode } = useTheme();
+  const activeSemester = useSemesterStore((s) => s.activeSemester);
 
   return (
     <SidebarProvider>
