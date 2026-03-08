@@ -622,9 +622,32 @@ const Schedule = () => {
           slot={editingSlot.slot}
           day={editingSlot.day}
           onSave={handleSaveEdit}
+          onDelete={handleDeleteSlot}
           onClose={() => setEditingSlot(null)}
         />
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deletingSlot} onOpenChange={() => setDeletingSlot(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase tracking-wider text-sm">Remove Class</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <span className="font-bold">{deletingSlot?.slot.name}</span> ({deletingSlot?.slot.code}) from {deletingSlot?.day}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              <Trash2 className="h-3 w-3" />
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
