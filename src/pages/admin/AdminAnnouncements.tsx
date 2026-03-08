@@ -4,7 +4,7 @@ import {
   saveAnnouncements,
   type Announcement,
 } from "@/services/admin";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/stores/authStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

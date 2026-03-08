@@ -3,8 +3,8 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/stores/themeStore";
+import { useAuth } from "@/stores/authStore";
 import { Sun, Moon, LogOut, Mail, GraduationCap, Shield, Crown, User } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {

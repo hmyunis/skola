@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/stores/authStore";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
