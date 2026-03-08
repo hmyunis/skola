@@ -38,7 +38,7 @@ import {
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Schedule", url: "/schedule", icon: Calendar },
-  { title: "Academics", url: "/academics", icon: BookOpen },
+  { title: "Assessments", url: "/academics", icon: BookOpen },
   { title: "Resources", url: "/resources", icon: FolderOpen },
   { title: "Lounge", url: "/lounge", icon: MessageSquare },
   { title: "Arena", url: "/arena", icon: Swords },

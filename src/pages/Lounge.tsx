@@ -77,6 +77,18 @@ function timeAgo(timestamp: string): string {
   return `${days}d ago`;
 }
 
+function formatExactTime(timestamp: string): string {
+  const d = new Date(timestamp);
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 // ─── Reaction Button ───
 function ReactionButton({
   emoji,
@@ -137,7 +149,12 @@ function ReplyItem({
           <User className="h-2.5 w-2.5" />
           <span className="font-medium">{reply.anonymous_id}</span>
           <span className="opacity-50">·</span>
-          <span>{timeAgo(reply.timestamp)}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">{timeAgo(reply.timestamp)}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top"><span>{formatExactTime(reply.timestamp)}</span></TooltipContent>
+          </Tooltip>
           <div className="flex-1" />
           {/* Owner actions */}
           {isOwner && (
@@ -487,7 +504,12 @@ function PostCard({
           </span>
           <span className="opacity-50">·</span>
           <Clock className="h-3 w-3" />
-          <span>{timeAgo(post.timestamp)}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">{timeAgo(post.timestamp)}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top"><span>{formatExactTime(post.timestamp)}</span></TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
