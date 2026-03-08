@@ -13,6 +13,8 @@ export interface MockAccount {
   year: number;
   semester: number;
   batch: string;
+  anonymous_id: string;
+  telegramUsername: string;
 }
 
 export const MOCK_ACCOUNTS: MockAccount[] = [
