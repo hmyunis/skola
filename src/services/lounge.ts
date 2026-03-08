@@ -21,6 +21,13 @@ export const REACTIONS: { emoji: AcademicReaction; label: string }[] = [
   { emoji: "🤝", label: "Relatable" },
 ];
 
+export interface LoungeReply {
+  id: string;
+  content: string;
+  timestamp: string;
+  anonymous_id: string;
+}
+
 export interface LoungePost {
   id: string;
   content: string;
@@ -31,6 +38,33 @@ export interface LoungePost {
   replies: number;
   anonymous_id: string;
 }
+
+const MOCK_REPLIES: Record<string, LoungeReply[]> = {
+  p1: [
+    { id: "r1-1", content: "Left rotation, right rotation, left-right, right-left. Draw it out on paper, it clicks eventually.", timestamp: "2026-03-08T09:20:00", anonymous_id: "Anon#2156" },
+    { id: "r1-2", content: "I just memorize the patterns tbh. Understanding is overrated when the exam is in 2 days.", timestamp: "2026-03-08T09:35:00", anonymous_id: "Anon#5544" },
+    { id: "r1-3", content: "Watch Abdul Bari's video on YouTube. Changed my life.", timestamp: "2026-03-08T09:50:00", anonymous_id: "Anon#6120" },
+  ],
+  p2: [
+    { id: "r2-1", content: "This is why I switched to Rust. The compiler yells at you BEFORE you waste 4 hours.", timestamp: "2026-03-08T08:50:00", anonymous_id: "Anon#3367" },
+    { id: "r2-2", content: "Semicolons are the silent killers of engineering careers.", timestamp: "2026-03-08T09:00:00", anonymous_id: "Anon#8891" },
+    { id: "r2-3", content: "Use an IDE with better linting? VSCode catches that stuff instantly.", timestamp: "2026-03-08T09:10:00", anonymous_id: "Anon#4821" },
+    { id: "r2-4", content: "4 hours is rookie numbers. I once spent 8 hours on a missing bracket.", timestamp: "2026-03-08T09:25:00", anonymous_id: "Anon#9012" },
+  ],
+  p3: [
+    { id: "r3-1", content: "This actually works. Did it for CN and got a B+. Not proud but not sorry either.", timestamp: "2026-03-08T07:45:00", anonymous_id: "Anon#7733" },
+    { id: "r3-2", content: "Bold of you to assume lectures are recorded.", timestamp: "2026-03-08T08:00:00", anonymous_id: "Anon#9012" },
+  ],
+  p5: [
+    { id: "r5-1", content: "HOW did the prof not notice?? MongoDB syntax looks nothing like SQL 😭", timestamp: "2026-03-07T15:10:00", anonymous_id: "Anon#4821" },
+    { id: "r5-2", content: "Chaotic neutral is the perfect description. Legend.", timestamp: "2026-03-07T15:30:00", anonymous_id: "Anon#2156" },
+  ],
+  p6: [
+    { id: "r6-1", content: "The academic office literally does not care. We've complained 3 times.", timestamp: "2026-03-07T11:30:00", anonymous_id: "Anon#7733" },
+    { id: "r6-2", content: "Same thing happened last sem with DBMS and Math. They never learn.", timestamp: "2026-03-07T11:45:00", anonymous_id: "Anon#5544" },
+    { id: "r6-3", content: "Start a petition. I'll sign.", timestamp: "2026-03-07T12:00:00", anonymous_id: "Anon#8891" },
+  ],
+};
 
 export async function fetchLoungePosts(): Promise<LoungePost[]> {
   await delay(300);
@@ -113,4 +147,9 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       anonymous_id: "Anon#6120",
     },
   ];
+}
+
+export async function fetchPostReplies(postId: string): Promise<LoungeReply[]> {
+  await delay(200);
+  return MOCK_REPLIES[postId] || [];
 }

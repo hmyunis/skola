@@ -2,9 +2,11 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   fetchLoungePosts,
+  fetchPostReplies,
   POST_TAGS,
   REACTIONS,
   type LoungePost,
+  type LoungeReply,
   type PostTag,
   type AcademicReaction,
 } from "@/services/lounge";
@@ -29,6 +31,9 @@ import {
   Clock,
   TrendingUp,
   User,
+  ChevronDown,
+  ChevronUp,
+  CornerDownRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -81,32 +86,144 @@ function ReactionButton({
   );
 }
 
+// ─── Reply Item ───
+function ReplyItem({ reply }: { reply: LoungeReply }) {
+  return (
+    <div className="flex gap-2 py-2">
+      <CornerDownRight className="h-3 w-3 text-muted-foreground mt-1 shrink-0" />
+      <div className="flex-1 space-y-1">
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <User className="h-2.5 w-2.5" />
+          <span className="font-medium">{reply.anonymous_id}</span>
+          <span className="opacity-50">·</span>
+          <span>{timeAgo(reply.timestamp)}</span>
+        </div>
+        <p className="text-xs leading-relaxed">{reply.content}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Replies Section ───
+function RepliesSection({
+  postId,
+  replyCount,
+  localReplies,
+  onAddReply,
+}: {
+  postId: string;
+  replyCount: number;
+  localReplies: LoungeReply[];
+  onAddReply: (postId: string, content: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [replyText, setReplyText] = useState("");
+
+  const { data: fetchedReplies, isLoading } = useQuery({
+    queryKey: ["loungeReplies", postId],
+    queryFn: () => fetchPostReplies(postId),
+    enabled: expanded,
+  });
+
+  const allReplies = useMemo(() => {
+    const fetched = fetchedReplies || [];
+    return [...fetched, ...localReplies];
+  }, [fetchedReplies, localReplies]);
+
+  const handleSubmit = () => {
+    if (!replyText.trim()) return;
+    onAddReply(postId, replyText.trim());
+    setReplyText("");
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Toggle button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded(!expanded);
+        }}
+        className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        <MessageCircle className="h-3 w-3" />
+        <span className="tabular-nums font-medium">
+          {replyCount + localReplies.length} {replyCount + localReplies.length === 1 ? "reply" : "replies"}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="ml-2 border-l-2 border-border pl-3 space-y-1">
+          {isLoading ? (
+            <div className="py-2 space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-8 bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : allReplies.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground py-2">No replies yet. Be the first!</p>
+          ) : (
+            allReplies.map((r) => <ReplyItem key={r.id} reply={r} />)
+          )}
+
+          {/* Reply input */}
+          <div className="flex items-center gap-2 pt-1">
+            <Input
+              placeholder="Write a reply..."
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              className="h-7 text-xs flex-1"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2"
+              onClick={handleSubmit}
+              disabled={!replyText.trim()}
+            >
+              <Send className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Post Card ───
 function PostCard({
   post,
   userReactions,
+  localReplies,
   onReact,
+  onAddReply,
 }: {
   post: LoungePost;
   userReactions: Set<AcademicReaction>;
+  localReplies: LoungeReply[];
   onReact: (postId: string, reaction: AcademicReaction) => void;
+  onAddReply: (postId: string, content: string) => void;
 }) {
   const tagConfig = POST_TAGS.find((t) => t.value === post.tag);
   const courseName = post.course
     ? COURSES.find((c) => c.code === post.course)?.name
     : null;
 
-  // Sort reactions by count, show all
   const sortedReactions = REACTIONS.map((r) => ({
     ...r,
     count: post.reactions[r.emoji] || 0,
   })).sort((a, b) => b.count - a.count);
 
-  const totalReactions = sortedReactions.reduce((s, r) => s + r.count, 0);
-
   return (
     <div className="border border-border p-4 space-y-3 hover:bg-accent/20 transition-colors">
-      {/* Header: tag + course + time */}
+      {/* Header */}
       <div className="flex flex-wrap items-center gap-2">
         {tagConfig && (
           <span
@@ -153,12 +270,15 @@ function PostCard({
             onClick={() => onReact(post.id, r.emoji)}
           />
         ))}
-        <div className="flex-1" />
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <MessageCircle className="h-3 w-3" />
-          <span className="tabular-nums">{post.replies} replies</span>
-        </div>
       </div>
+
+      {/* Replies section */}
+      <RepliesSection
+        postId={post.id}
+        replyCount={post.replies}
+        localReplies={localReplies}
+        onAddReply={onAddReply}
+      />
     </div>
   );
 }
@@ -265,6 +385,7 @@ const Lounge = () => {
   });
 
   const [localPosts, setLocalPosts] = useState<LoungePost[]>([]);
+  const [localReplies, setLocalReplies] = useState<Record<string, LoungeReply[]>>({});
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [filterCourse, setFilterCourse] = useState<string>("all");
@@ -302,6 +423,20 @@ const Lounge = () => {
     toast({ title: "Posted!", description: "Your anonymous post is live." });
   };
 
+  const handleAddReply = (postId: string, content: string) => {
+    const newReply: LoungeReply = {
+      id: `lr-${Date.now()}`,
+      content,
+      timestamp: new Date().toISOString(),
+      anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
+    };
+    setLocalReplies((prev) => ({
+      ...prev,
+      [postId]: [...(prev[postId] || []), newReply],
+    }));
+    toast({ title: "Replied!", description: "Your reply has been posted." });
+  };
+
   const coursesInData = useMemo(() => {
     const codes = allPosts.filter((p) => p.course).map((p) => p.course!);
     return [...new Set(codes)].sort();
@@ -337,7 +472,6 @@ const Lounge = () => {
     return result;
   }, [allPosts, filterTag, filterCourse, sortBy, search]);
 
-  // Stats
   const stats = useMemo(() => {
     const total = allPosts.length;
     const totalReactions = allPosts.reduce(
@@ -461,6 +595,7 @@ const Lounge = () => {
           )}
         </div>
       </div>
+
       {/* Feed */}
       {isLoading ? (
         <div className="space-y-3">
@@ -481,7 +616,9 @@ const Lounge = () => {
               key={post.id}
               post={post}
               userReactions={userReactions[post.id] || new Set()}
+              localReplies={localReplies[post.id] || []}
               onReact={handleReact}
+              onAddReply={handleAddReply}
             />
           ))}
         </div>
