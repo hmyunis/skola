@@ -62,11 +62,12 @@ export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { isAdmin, isOwner } = useAuth();
 
   const allMoreItems = [
     ...moreItems,
-    ...(IS_ADMIN ? adminItems : []),
-    ...(IS_OWNER ? ownerItems : []),
+    ...(isAdmin ? adminItems : []),
+    ...(isOwner ? ownerItems : []),
   ];
   const isMoreActive = allMoreItems.some((i) => location.pathname === i.url);
 
