@@ -202,7 +202,7 @@ const AdminAnnouncements = () => {
         {sorted.map((a) => {
           const pCfg = priorityConfig[a.priority];
           return (
-            <div key={a.id} className={cn("border p-4 space-y-2 hover:bg-accent/20 transition-colors", a.pinned ? "border-primary/30 bg-primary/5" : "border-border")}>
+            <div key={a.id} className={cn("border p-3 sm:p-4 space-y-2 hover:bg-accent/20 transition-colors", a.pinned ? "border-primary/30 bg-primary/5" : "border-border")}>
               <div className="flex items-center gap-2 flex-wrap">
                 {a.pinned && <Pin className="h-3 w-3 text-primary fill-primary" />}
                 <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", pCfg.color)}>{pCfg.label}</span>

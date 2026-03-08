@@ -80,7 +80,7 @@ const Announcements = () => {
               <div
                 key={a.id}
                 className={cn(
-                  "border p-4 space-y-2 transition-colors",
+                  "border p-3 sm:p-4 space-y-2 transition-colors",
                   isDismissed ? "opacity-60 border-border" : a.pinned ? "border-primary/30 bg-primary/5" : "border-border hover:bg-accent/20"
                 )}
               >
