@@ -450,6 +450,24 @@ function ResourceDetailDialog({
             />
           </div>
 
+          {/* Download / Open button */}
+          <div className="flex items-center justify-between">
+            {resource.type === "link" ? (
+              <Button size="sm" className="gap-1.5" onClick={() => { onDownload(resource.id); window.open("#", "_blank"); }}>
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open Link
+              </Button>
+            ) : (
+              <Button size="sm" className="gap-1.5" onClick={() => { onDownload(resource.id); toast({ title: "Downloading…", description: resource.title }); }}>
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </Button>
+            )}
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider tabular-nums">
+              <Download className="h-3 w-3 inline mr-1" />{downloadCount} downloads
+            </span>
+          </div>
+
           {/* Votes */}
           <div className="flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Helpful?</p>
