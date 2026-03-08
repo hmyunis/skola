@@ -264,38 +264,78 @@ const Login = () => {
             <CardContent className="p-5 space-y-4">
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase tracking-widest font-bold">Invite Code</Label>
-                <Input
-                  placeholder="e.g. A1B2C3"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  className="text-center text-lg font-mono tracking-[0.3em] uppercase"
-                  maxLength={10}
-                />
-                <p className="text-[10px] text-muted-foreground text-center">
-                  Ask your class owner for the invite code
-                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. A1B2C3"
+                    value={inviteCode}
+                    onChange={(e) => {
+                      setInviteCode(e.target.value.toUpperCase());
+                      if (inviteStatus !== "idle") {
+                        setInviteStatus("idle");
+                        setInviteError("");
+                      }
+                    }}
+                    className="text-center text-lg font-mono tracking-[0.3em] uppercase flex-1"
+                    maxLength={10}
+                  />
+                  <Button
+                    onClick={validateInviteCode}
+                    disabled={inviteStatus === "checking" || !inviteCode.trim()}
+                    variant={inviteStatus === "valid" ? "default" : "outline"}
+                    className="shrink-0 text-xs font-bold uppercase tracking-wider"
+                  >
+                    {inviteStatus === "checking" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : inviteStatus === "valid" ? (
+                      <><CheckCircle2 className="h-4 w-4" /> Valid</>
+                    ) : (
+                      "Verify"
+                    )}
+                  </Button>
+                </div>
+                {inviteStatus === "valid" && (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 text-center font-bold uppercase tracking-wider flex items-center justify-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Code verified — proceed to sign up below
+                  </p>
+                )}
+                {inviteStatus === "invalid" && (
+                  <p className="text-[10px] text-destructive text-center font-bold uppercase tracking-wider flex items-center justify-center gap-1">
+                    <XCircle className="h-3 w-3" /> {inviteError}
+                  </p>
+                )}
+                {inviteStatus === "idle" && (
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Ask your class owner for the invite code
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Telegram Login */}
-          <Card>
-            <CardContent className="p-5">
+          <Card className={cn(inviteStatus !== "valid" && "opacity-40 pointer-events-none select-none")}>
+            <CardContent className="p-5 space-y-3">
+              {inviteStatus !== "valid" && (
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center flex items-center justify-center gap-1.5">
+                  <Lock className="h-3 w-3" /> Verify invite code to unlock
+                </p>
+              )}
               <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
             </CardContent>
           </Card>
 
           {/* Demo signup with invite */}
-          <Card className="border-dashed">
+          <Card className={cn("border-dashed", inviteStatus !== "valid" && "opacity-40 pointer-events-none select-none")}>
             <CardContent className="p-4 space-y-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
                 Quick Signup (Demo)
               </p>
               <div className="space-y-2">
-                {MOCK_ACCOUNTS.filter((a) => a.role === "student").map((account, idx) => (
+                {MOCK_ACCOUNTS.filter((a) => a.role === "student").map((account) => (
                   <button
                     key={account.id}
                     onClick={() => handleSignupWithInvite(2)}
+                    disabled={inviteStatus !== "valid"}
                     className={cn("w-full flex items-center gap-3 p-3 border transition-colors hover:opacity-80", roleColor[account.role])}
                   >
                     <User className="h-4 w-4 shrink-0" />
