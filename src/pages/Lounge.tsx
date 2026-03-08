@@ -429,7 +429,7 @@ const Lounge = () => {
     });
   };
 
-  const handlePost = (content: string, tag: PostTag, course?: string) => {
+  const handlePost = (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => {
     const newPost: LoungePost = {
       id: `local-${Date.now()}`,
       content,
@@ -439,6 +439,9 @@ const Lounge = () => {
       reactions: { "🧠": 0, "💀": 0, "🔥": 0, "📚": 0, "😭": 0, "🤝": 0 },
       replies: 0,
       anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
+      displayName: isAnonymous ? undefined : MOCK_USER_NAME,
+      isAnonymous: !!isAnonymous,
+    };
     };
     setLocalPosts((prev) => [newPost, ...prev]);
     toast({ title: "Posted!", description: "Your anonymous post is live." });
