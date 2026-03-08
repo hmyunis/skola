@@ -173,6 +173,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 11,
       upvotes: 15,
       downvotes: 2,
+      downloads: 24,
       description: "Step-by-step walkthrough of Banker's algorithm and deadlock detection using resource allocation graphs.",
       tags: ["deadlock", "bankers-algorithm", "rag"],
     },
