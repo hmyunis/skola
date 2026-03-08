@@ -53,13 +53,16 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 block">Primary Color</label>
         <div className="flex flex-wrap gap-2">
           {primaryPresets.map((p, i) => (
-            <button
-              key={p.name}
-              onClick={() => setPrimaryIdx(i)}
-              className={`w-9 h-9 border-2 transition-all ${i === primaryIdx ? "border-foreground scale-110" : "border-transparent"}`}
-              style={{ backgroundColor: `hsl(${p.hsl})` }}
-              title={p.name}
-            />
+            <Tooltip key={p.name}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setPrimaryIdx(i)}
+                  className={`w-9 h-9 border-2 transition-all ${i === primaryIdx ? "border-foreground scale-110" : "border-transparent"}`}
+                  style={{ backgroundColor: `hsl(${p.hsl})` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{p.name}</span></TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>
