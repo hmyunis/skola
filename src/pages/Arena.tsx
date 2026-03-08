@@ -494,6 +494,16 @@ const Arena = () => {
           <h2 className="text-sm font-bold uppercase tracking-wider">Leaderboard</h2>
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search players..."
+            value={leaderboardSearch}
+            onChange={(e) => setLeaderboardSearch(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
+        </div>
+
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -501,7 +511,7 @@ const Arena = () => {
             ))}
           </div>
         ) : leaderboard ? (
-          <Leaderboard data={leaderboard} />
+          <Leaderboard data={leaderboard} search={leaderboardSearch} />
         ) : null}
       </div>
 
