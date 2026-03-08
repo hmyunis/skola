@@ -537,7 +537,7 @@ function CreateQuizDialog({
         difficulty: q.difficulty,
       })),
       createdAt: new Date().toISOString(),
-      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : "Arjun Patel",
+      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : MOCK_USER_NAME,
       createdByUser: true,
     };
 
