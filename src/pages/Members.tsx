@@ -46,6 +46,7 @@ const statusDot: Record<string, string> = {
 };
 
 const Members = () => {
+  const { isAdmin, isOwner } = useAuth();
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["managedUsers"],
     queryFn: fetchManagedUsers,
