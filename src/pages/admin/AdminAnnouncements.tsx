@@ -125,8 +125,8 @@ function AnnouncementFormDialog({
             <Pin className={cn("h-3.5 w-3.5", pinned && "fill-primary")} />
             {pinned ? "Pinned to top" : "Pin this announcement"}
           </button>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button disabled={!isValid} onClick={() => {
               onSave({
                 id: initial?.id || `ann-${Date.now()}`,
