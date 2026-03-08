@@ -4,32 +4,32 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 40% 10%;
+    --background: 220 17% 97%;
+    --foreground: 220 21% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 40% 10%;
+    --card-foreground: 220 21% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 40% 10%;
+    --popover-foreground: 220 21% 10%;
 
     --primary: 210 80% 45%;
-    --primary-foreground: 210 20% 98%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 220 40% 10%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 21% 10%;
 
-    --muted: 220 15% 92%;
+    --muted: 220 14% 93%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 220 15% 92%;
-    --accent-foreground: 220 40% 10%;
+    --accent: 220 14% 93%;
+    --accent-foreground: 220 21% 10%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 20% 82%;
-    --input: 220 20% 82%;
+    --border: 220 17% 84%;
+    --input: 220 17% 84%;
     --ring: 210 80% 45%;
 
     --radius: 0px;
@@ -47,33 +47,26 @@
     --header-fg: 220 15% 90%;
   }
 
+  /* Dark mode defaults — overridden dynamically by ThemeContext */
   .dark {
-    --background: 220 25% 6%;
-    --foreground: 220 15% 90%;
-
-    --card: 220 25% 10%;
-    --card-foreground: 220 15% 90%;
-
-    --popover: 220 25% 10%;
-    --popover-foreground: 220 15% 90%;
-
+    --background: 220 24% 5%;
+    --foreground: 220 10% 93%;
+    --card: 220 21% 8%;
+    --card-foreground: 220 10% 93%;
+    --popover: 220 21% 8%;
+    --popover-foreground: 220 10% 93%;
     --primary: 210 80% 55%;
-    --primary-foreground: 220 25% 6%;
-
-    --secondary: 220 20% 16%;
-    --secondary-foreground: 220 15% 90%;
-
-    --muted: 220 20% 16%;
-    --muted-foreground: 220 10% 55%;
-
-    --accent: 220 20% 16%;
-    --accent-foreground: 220 15% 90%;
-
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 17% 13%;
+    --secondary-foreground: 220 10% 88%;
+    --muted: 220 17% 13%;
+    --muted-foreground: 220 8% 55%;
+    --accent: 220 17% 13%;
+    --accent-foreground: 220 10% 88%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 98%;
-
-    --border: 220 20% 20%;
-    --input: 220 20% 20%;
+    --border: 220 14% 17%;
+    --input: 220 14% 17%;
     --ring: 210 80% 55%;
   }
 }
@@ -87,6 +80,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Lexend', sans-serif;
+    transition: background-color 0.3s ease, color 0.2s ease;
   }
 }
 

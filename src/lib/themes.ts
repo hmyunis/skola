@@ -18,9 +18,60 @@ export interface UserAccent {
   hsl: string;
 }
 
+export type ColorMode = "light" | "dark";
+
 export const svgUri = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`;
 
-// Reusable pattern templates — each returns an SVG data URI given a hex color
+// Parse hue and saturation from an HSL string like "210 80% 45%"
+export function parseHueSat(hsl: string): [number, number] {
+  const parts = hsl.split(/\s+/);
+  return [parseFloat(parts[0]) || 0, parseFloat(parts[1]) || 0];
+}
+
+// Generate theme-tinted surface colors for light or dark mode
+export function generateSurfaceColors(hue: number, rawSat: number, isDark: boolean): Record<string, string> {
+  const s = Math.min(rawSat, 35);
+  if (isDark) {
+    return {
+      "--background": `${hue} ${(s * 0.7).toFixed(0)}% 5%`,
+      "--foreground": `${hue} ${(s * 0.3).toFixed(0)}% 93%`,
+      "--card": `${hue} ${(s * 0.6).toFixed(0)}% 8%`,
+      "--card-foreground": `${hue} ${(s * 0.3).toFixed(0)}% 93%`,
+      "--popover": `${hue} ${(s * 0.6).toFixed(0)}% 8%`,
+      "--popover-foreground": `${hue} ${(s * 0.3).toFixed(0)}% 93%`,
+      "--secondary": `${hue} ${(s * 0.5).toFixed(0)}% 13%`,
+      "--secondary-foreground": `${hue} ${(s * 0.3).toFixed(0)}% 88%`,
+      "--muted": `${hue} ${(s * 0.5).toFixed(0)}% 13%`,
+      "--muted-foreground": `${hue} ${(s * 0.25).toFixed(0)}% 55%`,
+      "--accent": `${hue} ${(s * 0.5).toFixed(0)}% 13%`,
+      "--accent-foreground": `${hue} ${(s * 0.3).toFixed(0)}% 88%`,
+      "--border": `${hue} ${(s * 0.4).toFixed(0)}% 17%`,
+      "--input": `${hue} ${(s * 0.4).toFixed(0)}% 17%`,
+      "--destructive": "0 62% 30%",
+      "--destructive-foreground": "0 0% 98%",
+    };
+  }
+  return {
+    "--background": `${hue} ${(s * 0.5).toFixed(0)}% 97%`,
+    "--foreground": `${hue} ${(s * 0.6).toFixed(0)}% 10%`,
+    "--card": "0 0% 100%",
+    "--card-foreground": `${hue} ${(s * 0.6).toFixed(0)}% 10%`,
+    "--popover": "0 0% 100%",
+    "--popover-foreground": `${hue} ${(s * 0.6).toFixed(0)}% 10%`,
+    "--secondary": `${hue} ${(s * 0.4).toFixed(0)}% 93%`,
+    "--secondary-foreground": `${hue} ${(s * 0.6).toFixed(0)}% 10%`,
+    "--muted": `${hue} ${(s * 0.4).toFixed(0)}% 93%`,
+    "--muted-foreground": `${hue} ${(s * 0.3).toFixed(0)}% 46%`,
+    "--accent": `${hue} ${(s * 0.4).toFixed(0)}% 93%`,
+    "--accent-foreground": `${hue} ${(s * 0.6).toFixed(0)}% 10%`,
+    "--border": `${hue} ${(s * 0.5).toFixed(0)}% 84%`,
+    "--input": `${hue} ${(s * 0.5).toFixed(0)}% 84%`,
+    "--destructive": "0 84% 60%",
+    "--destructive-foreground": "0 0% 98%",
+  };
+}
+
+// Reusable pattern templates
 export const patternTemplates = [
   { id: "zigzag", name: "Zigzag", build: (c: string) => svgUri(`<svg width="60" height="30" xmlns="http://www.w3.org/2000/svg"><path d="M0 15h10l3-10 6 20 6-20 6 20 6-20 3 10h10" fill="none" stroke="${c}" stroke-width="0.8" opacity="0.12"/></svg>`) },
   { id: "cross", name: "Cross", build: (c: string) => svgUri(`<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><path d="M16 8h8v8h8v8h-8v8h-8v-8H8v-8h8z" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.1"/></svg>`) },

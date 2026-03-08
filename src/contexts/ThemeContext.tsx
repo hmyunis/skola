@@ -1,11 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { batchThemes, type BatchTheme, type UserAccent } from "@/lib/themes";
+import {
+  batchThemes,
+  type BatchTheme,
+  type UserAccent,
+  type ColorMode,
+  parseHueSat,
+  generateSurfaceColors,
+} from "@/lib/themes";
 
 interface ThemeContextType {
   batchTheme: BatchTheme;
   userAccent: UserAccent | null;
+  colorMode: ColorMode;
   setBatchTheme: (theme: BatchTheme) => void;
   setUserAccent: (accent: UserAccent | null) => void;
+  toggleColorMode: () => void;
+  setColorMode: (mode: ColorMode) => void;
   isAdmin: boolean;
   setIsAdmin: (v: boolean) => void;
   customThemes: BatchTheme[];
@@ -16,6 +26,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 const CUSTOM_THEMES_KEY = "scola-custom-themes";
+const COLOR_MODE_KEY = "scola-color-mode";
 
 function loadCustomThemes(): BatchTheme[] {
   try {
@@ -26,11 +37,33 @@ function loadCustomThemes(): BatchTheme[] {
   }
 }
 
+function loadColorMode(): ColorMode {
+  try {
+    const stored = localStorage.getItem(COLOR_MODE_KEY);
+    if (stored === "dark" || stored === "light") return stored;
+  } catch {}
+  // Respect system preference
+  if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+  return "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [batchTheme, setBatchTheme] = useState<BatchTheme>(batchThemes[6]);
   const [userAccent, setUserAccent] = useState<UserAccent | null>(null);
   const [isAdmin, setIsAdmin] = useState(true);
   const [customThemes, setCustomThemes] = useState<BatchTheme[]>(loadCustomThemes);
+  const [colorMode, setColorModeState] = useState<ColorMode>(loadColorMode);
+
+  const setColorMode = useCallback((mode: ColorMode) => {
+    setColorModeState(mode);
+    localStorage.setItem(COLOR_MODE_KEY, mode);
+  }, []);
+
+  const toggleColorMode = useCallback(() => {
+    setColorMode(colorMode === "light" ? "dark" : "light");
+  }, [colorMode, setColorMode]);
 
   const addCustomTheme = useCallback((theme: BatchTheme) => {
     setCustomThemes((prev) => {
@@ -46,28 +79,43 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(next));
       return next;
     });
-    // If the removed theme was active, fall back to default
     setBatchTheme((current) => (current.id === id ? batchThemes[6] : current));
   }, []);
 
   const applyTheme = useCallback(() => {
     const root = document.documentElement;
-    const primary = userAccent ? userAccent.hsl : batchTheme.primary;
+    const isDark = colorMode === "dark";
 
-    root.style.setProperty("--primary", primary);
+    // Toggle dark class
+    root.classList.toggle("dark", isDark);
+
+    // Primary colors
+    const primary = userAccent ? userAccent.hsl : batchTheme.primary;
+    const primaryForDark = isDark ? adjustPrimaryForDark(primary) : primary;
+
+    root.style.setProperty("--primary", primaryForDark);
     root.style.setProperty("--primary-foreground", batchTheme.primaryForeground);
-    root.style.setProperty("--ring", primary);
+    root.style.setProperty("--ring", primaryForDark);
+
+    // Header/sidebar (these stay dark-toned in both modes, just subtly adjusted)
     root.style.setProperty("--header-bg", batchTheme.headerBg);
     root.style.setProperty("--header-fg", batchTheme.headerFg);
     root.style.setProperty("--sidebar-background", batchTheme.sidebarBg);
     root.style.setProperty("--sidebar-foreground", batchTheme.sidebarFg);
     root.style.setProperty("--sidebar-accent", batchTheme.sidebarAccent);
     root.style.setProperty("--sidebar-accent-foreground", batchTheme.sidebarFg);
-    root.style.setProperty("--sidebar-primary", primary);
+    root.style.setProperty("--sidebar-primary", primaryForDark);
     root.style.setProperty("--sidebar-primary-foreground", batchTheme.primaryForeground);
     root.style.setProperty("--sidebar-border", batchTheme.sidebarAccent);
-    root.style.setProperty("--sidebar-ring", primary);
-  }, [batchTheme, userAccent]);
+    root.style.setProperty("--sidebar-ring", primaryForDark);
+
+    // Surface colors — derived from theme hue + mode
+    const [hue, sat] = parseHueSat(batchTheme.primary);
+    const surfaceVars = generateSurfaceColors(hue, sat, isDark);
+    for (const [key, value] of Object.entries(surfaceVars)) {
+      root.style.setProperty(key, value);
+    }
+  }, [batchTheme, userAccent, colorMode]);
 
   useEffect(() => {
     applyTheme();
@@ -76,7 +124,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider
       value={{
-        batchTheme, userAccent, setBatchTheme, setUserAccent,
+        batchTheme, userAccent, colorMode,
+        setBatchTheme, setUserAccent, toggleColorMode, setColorMode,
         isAdmin, setIsAdmin, customThemes, addCustomTheme, removeCustomTheme,
       }}
     >
@@ -85,13 +134,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         style={{
           backgroundImage: `url("${batchTheme.pattern}")`,
           backgroundRepeat: "repeat",
-          opacity: 0.6,
+          opacity: colorMode === "dark" ? 0.4 : 0.6,
         }}
         aria-hidden="true"
       />
       {children}
     </ThemeContext.Provider>
   );
+}
+
+// Boost lightness of primary in dark mode for better visibility
+function adjustPrimaryForDark(hsl: string): string {
+  const parts = hsl.split(/\s+/);
+  if (parts.length < 3) return hsl;
+  const h = parts[0];
+  const s = parts[1];
+  const l = parseFloat(parts[2]);
+  // Boost lightness to at least 55% for dark backgrounds
+  const newL = Math.max(l, 55);
+  return `${h} ${s} ${newL}%`;
 }
 
 export function useTheme() {

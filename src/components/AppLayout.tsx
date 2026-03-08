@@ -3,9 +3,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Sun, Moon } from "lucide-react";
 
 export function AppLayout() {
-  const { batchTheme } = useTheme();
+  const { batchTheme, colorMode, toggleColorMode } = useTheme();
 
   return (
     <SidebarProvider>
@@ -30,6 +31,22 @@ export function AppLayout() {
             <span className="text-[10px] uppercase tracking-widest opacity-60 hidden sm:inline">
               {batchTheme.name} Division
             </span>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Dark/Light mode toggle */}
+            <button
+              onClick={toggleColorMode}
+              className="h-8 w-8 flex items-center justify-center hover:bg-white/10 transition-colors"
+              title={colorMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            >
+              {colorMode === "light" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
+            </button>
           </header>
 
           {/* Main content */}
