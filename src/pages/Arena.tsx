@@ -357,12 +357,12 @@ function QuizBattle({
             </div>
           </div>
 
-          <div className="flex justify-center gap-2 pt-2">
-            <Button variant="outline" onClick={() => setState("idle")}>
+          <div className="flex flex-col sm:flex-row justify-center gap-2 pt-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setState("idle")}>
               <RotateCcw className="h-3 w-3" />
               New Battle
             </Button>
-            <Button onClick={startQuiz}>
+            <Button className="w-full sm:w-auto" onClick={startQuiz}>
               <Swords className="h-3 w-3" />
               Rematch
             </Button>
