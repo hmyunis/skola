@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeBackground } from "@/components/ThemeBackground";
 import { AppLayout } from "@/components/AppLayout";
 import Landing from "./pages/Landing";
+import Onboarding from "./pages/Onboarding";
 import Index from "./pages/Index";
 import Schedule from "./pages/Schedule";
 import Academics from "./pages/Academics";
