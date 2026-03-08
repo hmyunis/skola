@@ -113,19 +113,33 @@ const Login = () => {
 
   const handleQuickLogin = (accountIdx: number) => tryLogin(MOCK_ACCOUNTS[accountIdx]);
 
+  const validateInviteCode = () => {
+    const code = inviteCode.trim().toUpperCase();
+    if (!code) {
+      setInviteStatus("invalid");
+      setInviteError("Please enter an invite code.");
+      return;
+    }
+    setInviteStatus("checking");
+    // Simulate a brief network check
+    setTimeout(() => {
+      const invite = getInviteByCode(code);
+      if (invite) {
+        setInviteStatus("valid");
+        setInviteError("");
+      } else {
+        setInviteStatus("invalid");
+        setInviteError("Invalid, expired, or fully used code.");
+      }
+    }, 600);
+  };
+
   const handleSignupWithInvite = (accountIdx: number) => {
-    if (!inviteCode.trim()) {
-      toast({ title: "Invite code required", description: "Enter the invite code your class owner shared with you.", variant: "destructive" });
+    if (inviteStatus !== "valid") {
+      toast({ title: "Validate invite code first", description: "Click 'Verify' to check your code before signing up.", variant: "destructive" });
       return;
     }
 
-    const invite = getInviteByCode(inviteCode.trim().toUpperCase());
-    if (!invite) {
-      toast({ title: "Invalid invite code", description: "This code is invalid, expired, or has reached its usage limit.", variant: "destructive" });
-      return;
-    }
-
-    // Create a new mock student account
     const newUser = {
       ...MOCK_ACCOUNTS[accountIdx],
       id: `u-${Date.now()}`,
