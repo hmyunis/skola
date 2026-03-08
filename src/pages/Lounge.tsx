@@ -77,6 +77,18 @@ function timeAgo(timestamp: string): string {
   return `${days}d ago`;
 }
 
+function formatExactTime(timestamp: string): string {
+  const d = new Date(timestamp);
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 // ─── Reaction Button ───
 function ReactionButton({
   emoji,

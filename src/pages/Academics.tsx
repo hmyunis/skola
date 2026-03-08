@@ -389,7 +389,7 @@ const Academics = () => {
       {/* Header */}
       <div className="border-b border-border pb-4">
         <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Tracker</p>
-        <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Academics</h1>
+        <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Assessments</h1>
       </div>
 
       {/* Stats cards */}

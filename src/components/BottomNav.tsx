@@ -33,7 +33,7 @@ import { useAuth } from "@/stores/authStore";
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Schedule", url: "/schedule", icon: Calendar },
-  { title: "Academics", url: "/academics", icon: BookOpen },
+  { title: "Assessments", url: "/academics", icon: BookOpen },
   { title: "Lounge", url: "/lounge", icon: MessageSquare },
 ];
 
