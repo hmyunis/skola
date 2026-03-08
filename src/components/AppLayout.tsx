@@ -184,7 +184,7 @@ export function AppLayout() {
                   </TooltipContent>
                 </Tooltip>
               )}
-
+              <CommandPalette />
               <div className="flex-1" />
 
               <Tooltip>
