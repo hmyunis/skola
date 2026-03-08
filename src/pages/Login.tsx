@@ -141,11 +141,14 @@ const Login = () => {
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-destructive uppercase tracking-wider">
-                    Authentication Failed
+                    {deniedReason === "banned" ? "Account Banned" : deniedReason === "suspended" ? "Account Suspended" : "Authentication Failed"}
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Your Telegram account is not linked to any registered student profile.
-                    Contact your academic administrator for access provisioning.
+                    {deniedReason === "banned"
+                      ? "Your account has been permanently banned. You cannot access the platform. Contact your administrator if you believe this is an error."
+                      : deniedReason === "suspended"
+                      ? `Your account is temporarily suspended until ${suspendedUntil}. Please try again after the suspension period ends.`
+                      : "Your Telegram account is not linked to any registered student profile. Contact your academic administrator for access provisioning."}
                   </p>
                 </div>
               </div>
