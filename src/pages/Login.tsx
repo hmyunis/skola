@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 type AuthView = "login" | "signup" | "verifying" | "denied" | "success";
+type InviteStatus = "idle" | "checking" | "valid" | "invalid";
 
 const roleIcon = {
   owner: Crown,
