@@ -56,6 +56,13 @@ const AdminModeration = () => {
   const [localChanges, setLocalChanges] = useState<Record<string, FlaggedContent["status"]>>({});
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [confirmAction, setConfirmAction] = useState<{
+    id: string;
+    status: FlaggedContent["status"];
+    label: string;
+    description: string;
+    destructive?: boolean;
+  } | null>(null);
 
   const items = (flaggedItems || []).map((item) => ({
     ...item,
