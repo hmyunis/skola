@@ -37,6 +37,8 @@ export interface LoungePost {
   reactions: Record<AcademicReaction, number>;
   replies: number;
   anonymous_id: string;
+  displayName?: string;
+  isAnonymous: boolean;
 }
 
 const MOCK_REPLIES: Record<string, LoungeReply[]> = {
