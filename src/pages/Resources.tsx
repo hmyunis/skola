@@ -12,6 +12,7 @@ import { COURSES } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   FolderOpen,
   Search,
@@ -42,8 +53,14 @@ import {
   User,
   HardDrive,
   Tag,
+  Plus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+
+const MOCK_USER_NAME = "Arjun Patel";
 
 // ─── Type icon map ───
 const typeIcons: Record<ResourceType, typeof FileText> = {
@@ -99,19 +116,9 @@ function StarRating({
               key={s}
               onMouseEnter={() => onRate && setHoverStar(s)}
               onClick={() => onRate?.(s)}
-              className={cn(
-                "transition-colors",
-                onRate ? "cursor-pointer" : "cursor-default"
-              )}
+              className={cn("transition-colors", onRate ? "cursor-pointer" : "cursor-default")}
             >
-              <Star
-                className={cn(
-                  iconSize,
-                  filled
-                    ? "fill-amber-400 text-amber-400"
-                    : "text-muted-foreground/30"
-                )}
-              />
+              <Star className={cn(iconSize, filled ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
             </button>
           );
         })}
@@ -165,20 +172,191 @@ function VoteButtons({
   );
 }
 
+// ─── Resource Form Dialog (Create / Edit) ───
+function ResourceFormDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  initial,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => void;
+  initial?: Resource | null;
+}) {
+  const [title, setTitle] = useState(initial?.title || "");
+  const [description, setDescription] = useState(initial?.description || "");
+  const [course, setCourse] = useState(initial?.course || "CS301");
+  const [type, setType] = useState<ResourceType>(initial?.type || "pdf");
+  const [category, setCategory] = useState<ResourceCategory>(initial?.category || "lecture");
+  const [size, setSize] = useState(initial?.size || "");
+  const [tagsStr, setTagsStr] = useState(initial?.tags.join(", ") || "");
+
+  // Reset when initial changes
+  useState(() => {
+    if (initial) {
+      setTitle(initial.title);
+      setDescription(initial.description);
+      setCourse(initial.course);
+      setType(initial.type);
+      setCategory(initial.category);
+      setSize(initial.size);
+      setTagsStr(initial.tags.join(", "));
+    }
+  });
+
+  const isValid = title.trim() && description.trim();
+
+  const handleSubmit = () => {
+    if (!isValid) return;
+    onSubmit({
+      title: title.trim(),
+      description: description.trim(),
+      course,
+      type,
+      category,
+      size: size.trim() || "—",
+      tags: tagsStr
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean),
+    });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="uppercase tracking-wider text-sm">
+            {initial ? "Edit Resource" : "Add Resource"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Title</label>
+            <Input
+              placeholder="e.g. Binary Trees — Complete Notes"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Description</label>
+            <Textarea
+              placeholder="What does this resource contain?"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[70px] text-sm resize-none"
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Course</label>
+              <Select value={course} onValueChange={setCourse}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COURSES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Type</label>
+              <Select value={type} onValueChange={(v) => setType(v as ResourceType)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RESOURCE_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Category</label>
+              <Select value={category} onValueChange={(v) => setCategory(v as ResourceCategory)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RESOURCE_CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Size</label>
+              <Input
+                placeholder="e.g. 2.4 MB"
+                value={size}
+                onChange={(e) => setSize(e.target.value)}
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Tags <span className="font-normal">(comma-separated)</span>
+            </label>
+            <Input
+              placeholder="e.g. trees, bst, avl"
+              value={tagsStr}
+              onChange={(e) => setTagsStr(e.target.value)}
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={!isValid}>
+              {initial ? (
+                <><Pencil className="h-3 w-3" /> Save Changes</>
+              ) : (
+                <><Plus className="h-3 w-3" /> Add Resource</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Resource Detail Dialog ───
 function ResourceDetailDialog({
   resource,
   userRating,
   userVote,
+  isOwner,
   onRate,
   onVote,
+  onEdit,
+  onDelete,
   onClose,
 }: {
   resource: Resource | null;
   userRating?: number;
   userVote?: "up" | "down";
+  isOwner: boolean;
   onRate: (id: string, stars: number) => void;
   onVote: (id: string, dir: "up" | "down") => void;
+  onEdit: () => void;
+  onDelete: () => void;
   onClose: () => void;
 }) {
   if (!resource) return null;
@@ -206,7 +384,6 @@ function ResourceDetailDialog({
             </div>
           </div>
 
-          {/* Description */}
           <p className="text-sm text-muted-foreground leading-relaxed">{resource.description}</p>
 
           {/* Metadata grid */}
@@ -273,6 +450,19 @@ function ResourceDetailDialog({
               onVote={(dir) => onVote(resource.id, dir)}
             />
           </div>
+
+          {/* Owner actions */}
+          {isOwner && (
+            <div className="flex items-center gap-2 border-t border-border pt-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">Your resource</p>
+              <Button size="sm" variant="outline" onClick={onEdit}>
+                <Pencil className="h-3 w-3" /> Edit
+              </Button>
+              <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onDelete}>
+                <Trash2 className="h-3 w-3" /> Delete
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -300,12 +490,9 @@ function ResourceCard({
       onClick={onClick}
     >
       <div className="flex items-start gap-3">
-        {/* Type icon */}
         <div className={cn("p-2 border shrink-0", typeColors[resource.type])}>
           <TypeIcon className="h-4 w-4" />
         </div>
-
-        {/* Content */}
         <div className="flex-1 min-w-0 space-y-1.5">
           <div>
             <p className="font-bold text-sm truncate">{resource.title}</p>
@@ -313,8 +500,6 @@ function ResourceCard({
               {resource.course} · {resource.uploadedBy} · {resource.size}
             </p>
           </div>
-
-          {/* Tags row */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", typeColors[resource.type])}>
               {RESOURCE_TYPES.find((t) => t.value === resource.type)?.label}
@@ -323,8 +508,6 @@ function ResourceCard({
               {catLabel}
             </span>
           </div>
-
-          {/* Rating + votes row */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <StarRating rating={resource.rating} totalRatings={resource.totalRatings} />
             <VoteButtons
@@ -342,10 +525,14 @@ function ResourceCard({
 
 // ─── Main Page ───
 const Resources = () => {
-  const { data: resources, isLoading } = useQuery({
+  const { data: fetchedResources, isLoading } = useQuery({
     queryKey: ["resources"],
     queryFn: fetchResources,
   });
+
+  const [localResources, setLocalResources] = useState<Resource[]>([]);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [editedResources, setEditedResources] = useState<Record<string, Partial<Resource>>>({});
 
   const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState<string>("all");
@@ -356,25 +543,80 @@ const Resources = () => {
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [detailResource, setDetailResource] = useState<Resource | null>(null);
 
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Merge fetched + local, apply edits, remove deleted
+  const allResources = useMemo(() => {
+    const fetched = (fetchedResources || [])
+      .filter((r) => !deletedIds.has(r.id))
+      .map((r) => (editedResources[r.id] ? { ...r, ...editedResources[r.id] } : r));
+    return [...localResources, ...fetched] as Resource[];
+  }, [fetchedResources, localResources, deletedIds, editedResources]);
+
   const handleVote = (id: string, dir: "up" | "down") => {
-    setVotes((prev) => ({
-      ...prev,
-      [id]: prev[id] === dir ? undefined! : dir,
-    }));
+    setVotes((prev) => ({ ...prev, [id]: prev[id] === dir ? undefined! : dir }));
   };
 
   const handleRate = (id: string, stars: number) => {
     setRatings((prev) => ({ ...prev, [id]: stars }));
   };
 
+  const handleAddResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => {
+    const newResource: Resource = {
+      ...data,
+      id: `local-${Date.now()}`,
+      uploadedAt: new Date().toISOString().split("T")[0],
+      uploadedBy: MOCK_USER_NAME,
+      rating: 0,
+      totalRatings: 0,
+      upvotes: 0,
+      downvotes: 0,
+    };
+    setLocalResources((prev) => [newResource, ...prev]);
+    toast({ title: "Resource Added!", description: `"${newResource.title}" is now available.` });
+  };
+
+  const handleEditResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => {
+    if (!editingResource) return;
+    const id = editingResource.id;
+
+    // Check if it's a local resource
+    const localIdx = localResources.findIndex((r) => r.id === id);
+    if (localIdx >= 0) {
+      setLocalResources((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, ...data } : r))
+      );
+    } else {
+      setEditedResources((prev) => ({ ...prev, [id]: data }));
+    }
+
+    // Update detail view
+    setDetailResource((prev) => prev && prev.id === id ? { ...prev, ...data } : prev);
+    setEditingResource(null);
+    toast({ title: "Updated!", description: "Resource has been updated." });
+  };
+
+  const handleDeleteResource = () => {
+    if (!deletingId) return;
+    const localIdx = localResources.findIndex((r) => r.id === deletingId);
+    if (localIdx >= 0) {
+      setLocalResources((prev) => prev.filter((r) => r.id !== deletingId));
+    } else {
+      setDeletedIds((prev) => new Set([...prev, deletingId]));
+    }
+    if (detailResource?.id === deletingId) setDetailResource(null);
+    setDeletingId(null);
+    toast({ title: "Deleted", description: "Resource has been removed." });
+  };
+
   const coursesInData = useMemo(() => {
-    if (!resources) return [];
-    return [...new Set(resources.map((r) => r.course))].sort();
-  }, [resources]);
+    return [...new Set(allResources.map((r) => r.course))].sort();
+  }, [allResources]);
 
   const filtered = useMemo(() => {
-    if (!resources) return [];
-    let result = resources.filter((r) => {
+    let result = allResources.filter((r) => {
       if (filterCourse !== "all" && r.course !== filterCourse) return false;
       if (filterType !== "all" && r.type !== filterType) return false;
       if (filterCategory !== "all" && r.category !== filterCategory) return false;
@@ -384,38 +626,46 @@ const Resources = () => {
           r.title.toLowerCase().includes(q) ||
           r.description.toLowerCase().includes(q) ||
           r.tags.some((t) => t.includes(q)) ||
-          r.course.toLowerCase().includes(q)
+          r.course.toLowerCase().includes(q) ||
+          r.uploadedBy.toLowerCase().includes(q)
         );
       }
       return true;
     });
 
-    // Sort
     if (sortBy === "rating") result.sort((a, b) => b.rating - a.rating);
     else if (sortBy === "upvotes") result.sort((a, b) => b.upvotes - a.upvotes);
     else if (sortBy === "newest") result.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
     else if (sortBy === "name") result.sort((a, b) => a.title.localeCompare(b.title));
 
     return result;
-  }, [resources, filterCourse, filterType, filterCategory, search, sortBy]);
+  }, [allResources, filterCourse, filterType, filterCategory, search, sortBy]);
 
-  // Stats
   const stats = useMemo(() => {
-    if (!resources) return { total: 0, types: 0, courses: 0, avgRating: 0 };
+    const total = allResources.length;
+    if (total === 0) return { total: 0, types: 0, courses: 0, avgRating: 0 };
     return {
-      total: resources.length,
-      types: new Set(resources.map((r) => r.type)).size,
-      courses: new Set(resources.map((r) => r.course)).size,
-      avgRating: +(resources.reduce((s, r) => s + r.rating, 0) / resources.length).toFixed(1),
+      total,
+      types: new Set(allResources.map((r) => r.type)).size,
+      courses: new Set(allResources.map((r) => r.course)).size,
+      avgRating: +(allResources.reduce((s, r) => s + r.rating, 0) / total).toFixed(1),
     };
-  }, [resources]);
+  }, [allResources]);
+
+  const isOwner = (resource: Resource) => resource.uploadedBy === MOCK_USER_NAME;
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
       {/* Header */}
-      <div className="border-b border-border pb-4">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">File Hub</p>
-        <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Resources</h1>
+      <div className="border-b border-border pb-4 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">File Hub</p>
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Resources</h1>
+        </div>
+        <Button size="sm" onClick={() => { setEditingResource(null); setFormOpen(true); }}>
+          <Plus className="h-3 w-3" />
+          Add Resource
+        </Button>
       </div>
 
       {/* Stats */}
@@ -451,7 +701,6 @@ const Resources = () => {
 
       {/* Search + Filters */}
       <div className="space-y-3">
-        {/* Search bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -462,7 +711,6 @@ const Resources = () => {
           />
         </div>
 
-        {/* Filters row */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Filter className="h-3.5 w-3.5" />
@@ -573,10 +821,54 @@ const Resources = () => {
         resource={detailResource}
         userRating={detailResource ? ratings[detailResource.id] : undefined}
         userVote={detailResource ? votes[detailResource.id] : undefined}
+        isOwner={detailResource ? isOwner(detailResource) : false}
         onRate={handleRate}
         onVote={handleVote}
+        onEdit={() => {
+          setEditingResource(detailResource);
+          setDetailResource(null);
+          setFormOpen(true);
+        }}
+        onDelete={() => {
+          if (detailResource) {
+            setDeletingId(detailResource.id);
+            setDetailResource(null);
+          }
+        }}
         onClose={() => setDetailResource(null)}
       />
+
+      {/* Create / Edit form dialog */}
+      <ResourceFormDialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setEditingResource(null);
+        }}
+        onSubmit={editingResource ? handleEditResource : handleAddResource}
+        initial={editingResource}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Resource</AlertDialogTitle>
+            <AlertDialogDescription>
+              This resource will be permanently removed. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteResource}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
