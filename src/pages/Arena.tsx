@@ -477,6 +477,7 @@ function CreateQuizDialog({
   const resetForm = () => {
     setTitle("");
     setCourse("CS301");
+    setIsAnonymous(true);
     setQuestions([emptyDraftQuestion()]);
     setCurrentQ(0);
   };
