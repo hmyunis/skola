@@ -4,7 +4,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Sun, Moon, LogOut, Mail, GraduationCap, Shield } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Sun, Moon, LogOut, Mail, GraduationCap, Shield, Crown, User } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -17,16 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const MOCK_USER = {
-  name: "Dawit Tadesse",
-  email: "dawit.tadesse@university.edu",
-  avatar: null as string | null,
-  initials: "DT",
-  year: 3,
-  semester: 2,
-  batch: "Software",
-  role: "Student",
-};
+const roleLabels = { owner: "Owner", admin: "Admin", student: "Student" };
+const roleIcons = { owner: Crown, admin: Shield, student: User };
 
 function UserMenu() {
   const navigate = useNavigate();
