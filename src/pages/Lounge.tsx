@@ -442,7 +442,6 @@ const Lounge = () => {
       displayName: isAnonymous ? undefined : MOCK_USER_NAME,
       isAnonymous: !!isAnonymous,
     };
-    };
     setLocalPosts((prev) => [newPost, ...prev]);
     toast({ title: "Posted!", description: "Your anonymous post is live." });
   };
