@@ -137,7 +137,12 @@ function ReplyItem({
           <User className="h-2.5 w-2.5" />
           <span className="font-medium">{reply.anonymous_id}</span>
           <span className="opacity-50">·</span>
-          <span>{timeAgo(reply.timestamp)}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">{timeAgo(reply.timestamp)}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top"><span>{formatExactTime(reply.timestamp)}</span></TooltipContent>
+          </Tooltip>
           <div className="flex-1" />
           {/* Owner actions */}
           {isOwner && (
