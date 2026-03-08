@@ -167,6 +167,19 @@ const Members = () => {
                   </p>
                 </div>
 
+                {/* Telegram DM */}
+                {user.telegramUsername && (
+                  <a
+                    href={`https://t.me/${user.telegramUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-7 w-7 inline-flex items-center justify-center text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                    title={`Message @${user.telegramUsername}`}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </a>
+                )}
+
                 {/* Admin: remove button (owner-granted) */}
                 {isOwner && user.role !== "owner" && (
                   <Button
