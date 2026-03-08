@@ -20,7 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical, Trash2, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { formatTime12, hourTo12, dateToTimeInput, timeInputToDate } from "@/lib/utils";
 
