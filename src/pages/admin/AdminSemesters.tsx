@@ -54,7 +54,6 @@ function SemesterFormDialog({
 }) {
   const [name, setName] = useState(initial?.name || "");
   const [year, setYear] = useState(String(initial?.year || new Date().getFullYear()));
-  const [term, setTerm] = useState(String(initial?.term || 1));
   const [startDate, setStartDate] = useState(initial?.startDate || "");
   const [endDate, setEndDate] = useState(initial?.endDate || "");
   const [status, setStatus] = useState<Semester["status"]>(initial?.status || "upcoming");
@@ -76,21 +75,10 @@ function SemesterFormDialog({
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Semester Name</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Fall 2026" className="h-9 text-sm" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Year</label>
               <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Term</label>
-              <Select value={term} onValueChange={setTerm}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Term 1</SelectItem>
-                  <SelectItem value="2">Term 2</SelectItem>
-                  <SelectItem value="3">Summer</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Status</label>
@@ -124,16 +112,16 @@ function SemesterFormDialog({
               <DatePicker value={examEnd} onChange={setExamEnd} placeholder="Exam end" />
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
+              className="w-full sm:w-auto"
               disabled={!isValid}
               onClick={() => {
                 onSave({
                   id: initial?.id || `sem-${Date.now()}`,
                   name: name.trim(),
                   year: Number(year),
-                  term: Number(term),
                   startDate,
                   endDate,
                   status,
@@ -169,7 +157,6 @@ function DeleteSemesterDialog({
   const [error, setError] = useState("");
 
   const handleConfirm = () => {
-    // Verify using the owner's code as password
     if (password === user?.code) {
       setPassword("");
       setError("");
@@ -193,10 +180,8 @@ function DeleteSemesterDialog({
             <p className="text-sm font-bold text-destructive">⚠️ This action is irreversible</p>
             <p className="text-xs text-muted-foreground">
               Deleting <strong>"{semesterName}"</strong> will permanently remove the semester and all associated configuration.
-              All data scoped to this semester will no longer be accessible.
             </p>
           </div>
-
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
               Enter your verification code to confirm
@@ -211,16 +196,11 @@ function DeleteSemesterDialog({
             />
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => { setPassword(""); setError(""); onCancel(); }}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setPassword(""); setError(""); onCancel(); }}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              disabled={!password}
-              onClick={handleConfirm}
-            >
+            <Button variant="destructive" className="w-full sm:w-auto" disabled={!password} onClick={handleConfirm}>
               <Trash2 className="h-3 w-3" /> Delete Permanently
             </Button>
           </div>
@@ -296,7 +276,7 @@ const AdminSemesters = () => {
               <div className="flex items-center gap-3">
                 <CalendarDays className="h-5 w-5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-sm">{sem.name}</h3>
                     <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1", cfg.color)}>
                       <StatusIcon className="h-2.5 w-2.5" />
@@ -309,7 +289,7 @@ const AdminSemesters = () => {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Year {sem.year} · Term {sem.term} · {sem.startDate} → {sem.endDate}
+                    Year {sem.year} · {sem.startDate} → {sem.endDate}
                   </p>
                   {sem.examPeriod && (
                     <p className="text-[10px] text-muted-foreground mt-0.5">

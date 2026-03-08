@@ -4,12 +4,44 @@ export interface Semester {
   id: string;
   name: string;
   year: number;
-  term: number;
   startDate: string;
   endDate: string;
   status: "active" | "upcoming" | "archived";
   examPeriod?: { start: string; end: string };
   breaks?: { name: string; start: string; end: string }[];
+}
+
+export interface Assessment {
+  id: string;
+  title: string;
+  type: "exam" | "quiz" | "assignment" | "project";
+  courseCode: string;
+  dueDate: string;
+  description: string;
+  maxScore: number;
+  weight: number;
+  semesterId: string;
+  createdAt: string;
+}
+
+export interface InviteLink {
+  id: string;
+  code: string;
+  maxUses: number;
+  usedCount: number;
+  createdAt: string;
+  expiresAt?: string;
+  createdBy: string;
+  active: boolean;
+}
+
+export interface InviteRegistration {
+  id: string;
+  inviteCode: string;
+  fullName: string;
+  avatarUrl?: string;
+  telegramUsername?: string;
+  registeredAt: string;
 }
 
 export interface AdminCourse {
