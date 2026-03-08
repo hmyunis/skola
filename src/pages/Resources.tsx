@@ -722,12 +722,12 @@ const Resources = () => {
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
       {/* Header */}
-      <div className="border-b border-border pb-4 flex items-end justify-between">
+      <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">File Hub</p>
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Resources</h1>
         </div>
-        <Button size="sm" onClick={() => { setEditingResource(null); setFormOpen(true); }}>
+        <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingResource(null); setFormOpen(true); }}>
           <Plus className="h-3 w-3" />
           Add Resource
         </Button>
