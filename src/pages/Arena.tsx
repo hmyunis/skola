@@ -475,7 +475,7 @@ function CreateQuizDialog({
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
 }) {
-  const [title, setTitle] = useState("");
+  const { userName } = useAuth();
   const [course, setCourse] = useState("CS301");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
