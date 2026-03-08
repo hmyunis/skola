@@ -40,7 +40,9 @@ import {
   Trash2,
   Pin,
   AlertTriangle,
+  Send,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -69,6 +71,7 @@ function AnnouncementFormDialog({
   const [target, setTarget] = useState<Announcement["targetAudience"]>(initial?.targetAudience || "all");
   const [expiresAt, setExpiresAt] = useState(initial?.expiresAt || "");
   const [pinned, setPinned] = useState(initial?.pinned || false);
+  const [sendTelegram, setSendTelegram] = useState(false);
 
   const isValid = title.trim() && content.trim();
 
@@ -125,6 +128,27 @@ function AnnouncementFormDialog({
             <Pin className={cn("h-3.5 w-3.5", pinned && "fill-primary")} />
             {pinned ? "Pinned to top" : "Pin this announcement"}
           </button>
+
+          {/* Telegram broadcast toggle */}
+          {!initial && (
+            <div className={cn(
+              "flex items-center gap-3 px-3 py-3 border w-full transition-colors",
+              sendTelegram ? "border-primary/40 bg-primary/5" : "border-border"
+            )}>
+              <Send className={cn("h-4 w-4 shrink-0", sendTelegram ? "text-primary" : "text-muted-foreground")} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold">Send via Telegram</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Broadcast this announcement to all Telegram bot subscribers
+                </p>
+              </div>
+              <Switch
+                checked={sendTelegram}
+                onCheckedChange={setSendTelegram}
+              />
+            </div>
+          )}
+
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button className="w-full sm:w-auto" disabled={!isValid} onClick={() => {
@@ -139,9 +163,22 @@ function AnnouncementFormDialog({
                 targetAudience: target,
                 pinned,
               });
+              if (sendTelegram && !initial) {
+                toast({
+                  title: "Telegram Broadcast Queued",
+                  description: "The announcement will be sent to all Telegram subscribers.",
+                });
+              }
               onOpenChange(false);
             }}>
-              {initial ? <><Pencil className="h-3 w-3" /> Save</> : <><Plus className="h-3 w-3" /> Publish</>}
+              {initial ? (
+                <><Pencil className="h-3 w-3" /> Save</>
+              ) : (
+                <>
+                  {sendTelegram ? <Send className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                  {sendTelegram ? " Publish & Send" : " Publish"}
+                </>
+              )}
             </Button>
           </div>
         </div>
