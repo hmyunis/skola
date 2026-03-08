@@ -47,7 +47,6 @@ const navItems = [
 ];
 
 const adminItems = [
-  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Moderation", url: "/admin/moderation", icon: ShieldAlert },
   { title: "Announcements", url: "/admin/announcements", icon: Megaphone },
@@ -56,6 +55,7 @@ const adminItems = [
 
 const ownerItems = [
   { title: "Semesters", url: "/admin/semesters", icon: CalendarDays },
+  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
   { title: "Features", url: "/owner/features", icon: ToggleLeft },
   { title: "Data Export", url: "/owner/data-export", icon: Download },
 ];

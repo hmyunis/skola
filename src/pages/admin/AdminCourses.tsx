@@ -42,6 +42,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/stores/authStore";
+import { ShieldAlert } from "lucide-react";
 
 function CourseFormDialog({
   open,
@@ -127,6 +129,7 @@ function CourseFormDialog({
 }
 
 const AdminCourses = () => {
+  const { isOwner } = useAuth();
   const semesters = loadSemesters();
   const activeSemester = semesters.find((s) => s.status === "active");
   const [courses, setCourses] = useState<AdminCourse[]>(loadCourses);
@@ -167,11 +170,21 @@ const AdminCourses = () => {
     return c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q);
   });
 
+  if (!isOwner) {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <ShieldAlert className="h-10 w-10 mx-auto text-destructive" />
+        <h2 className="text-lg font-bold uppercase tracking-wider">Access Denied</h2>
+        <p className="text-sm text-muted-foreground">Only the Owner can manage courses.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-4xl">
       <div className="border-b border-border pb-4 flex items-end justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Admin</p>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Owner</p>
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Courses</h1>
         </div>
         <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }}>
