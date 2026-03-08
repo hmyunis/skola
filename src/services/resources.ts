@@ -139,6 +139,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 19,
       upvotes: 26,
       downvotes: 2,
+      downloads: 41,
       description: "Recorded lecture covering functional dependencies, 1NF through BCNF normalization with worked examples.",
       tags: ["normalization", "3nf", "bcnf", "functional-dependencies"],
     },
