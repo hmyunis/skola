@@ -561,7 +561,7 @@ function ResourceDetailDialog({
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <HardDrive className="h-3.5 w-3.5 shrink-0" />
-              <span>{resource.size}</span>
+              <span>{resource.size}{resource.fileName ? ` · ${resource.fileName}` : ""}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", typeColors[resource.type])}>
