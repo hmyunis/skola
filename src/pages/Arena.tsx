@@ -55,6 +55,8 @@ import {
   Search,
   Plus,
   Trash2,
+  Eye,
+  EyeOff,
   Play,
   BookOpen,
 } from "lucide-react";
