@@ -122,6 +122,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 34,
       upvotes: 45,
       downvotes: 1,
+      downloads: 82,
       description: "Collection of 5 previous year mid-semester papers with solutions for Data Structures & Algorithms.",
       tags: ["previous-year", "mid-sem", "solutions"],
     },
