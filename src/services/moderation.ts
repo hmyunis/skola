@@ -5,7 +5,7 @@ export type { FlaggedContent, UserReport } from "@/types/admin";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const REPORTS_KEY = "scola-user-reports";
+const REPORTS_KEY = "skola-user-reports";
 
 export async function fetchFlaggedContent(): Promise<FlaggedContent[]> {
   await delay(300);

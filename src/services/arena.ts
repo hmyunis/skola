@@ -14,7 +14,7 @@ export const ARENA_TITLES: Record<string, { label: string; minXp: number }> = {
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ─── Custom quiz localStorage ───
-const CUSTOM_QUIZZES_KEY = "scola-arena-custom-quizzes";
+const CUSTOM_QUIZZES_KEY = "skola-arena-custom-quizzes";
 
 export function loadCustomQuizzes(): CustomQuiz[] {
   try {

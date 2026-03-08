@@ -1,4 +1,4 @@
-# Telegram Login — Backend Requirements
+# Telegram Login — Backend Requirements (SKOLA)
 
 ## Overview
 

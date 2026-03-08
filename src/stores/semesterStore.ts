@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { loadSemesters, saveSemesters, type Semester } from "@/services/admin";
 
-const ACTIVE_SEMESTER_KEY = "scola-active-semester-id";
+const ACTIVE_SEMESTER_KEY = "skola-active-semester-id";
 
 function getInitialActiveSemester(semesters: Semester[]): Semester | null {
   // Try stored active semester

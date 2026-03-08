@@ -3,8 +3,8 @@ import type { Announcement } from "@/types/admin";
 // Re-export type for backward compatibility
 export type { Announcement } from "@/types/admin";
 
-const ANNOUNCEMENTS_KEY = "scola-admin-announcements";
-const DISMISSED_KEY = "scola-dismissed-announcements";
+const ANNOUNCEMENTS_KEY = "skola-admin-announcements";
+const DISMISSED_KEY = "skola-dismissed-announcements";
 
 const DEFAULT_ANNOUNCEMENTS: Announcement[] = [
   { id: "a1", title: "Mid-Semester Examination Schedule Released", content: "The mid-semester examination schedule for Spring 2026 has been published. Please check your schedule page for details.", priority: "high", createdAt: "2026-03-01T09:00:00", expiresAt: "2026-03-20", createdBy: "Dawit Tadesse", targetAudience: "all", pinned: true },
