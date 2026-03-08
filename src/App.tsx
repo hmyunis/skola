@@ -3,8 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeBackground } from "@/components/ThemeBackground";
 import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Schedule from "./pages/Schedule";
@@ -35,41 +34,38 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-      <ThemeProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/schedule" element={<Schedule />} />
-              <Route path="/academics" element={<Academics />} />
-              <Route path="/resources" element={<Resources />} />
-              <Route path="/lounge" element={<Lounge />} />
-              <Route path="/arena" element={<Arena />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/members" element={<Members />} />
-              <Route path="/announcements" element={<Announcements />} />
+      <Toaster />
+      <Sonner />
+      <ThemeBackground />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Index />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/academics" element={<Academics />} />
+            <Route path="/resources" element={<Resources />} />
+            <Route path="/lounge" element={<Lounge />} />
+            <Route path="/arena" element={<Arena />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/members" element={<Members />} />
+            <Route path="/announcements" element={<Announcements />} />
 
-              {/* Admin routes */}
-              <Route path="/admin/semesters" element={<AdminSemesters />} />
-              <Route path="/admin/courses" element={<AdminCourses />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/moderation" element={<AdminModeration />} />
-              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            {/* Admin routes */}
+            <Route path="/admin/semesters" element={<AdminSemesters />} />
+            <Route path="/admin/courses" element={<AdminCourses />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/moderation" element={<AdminModeration />} />
+            <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
 
-              {/* Owner routes */}
-              <Route path="/owner/features" element={<OwnerFeatures />} />
-              <Route path="/owner/data-export" element={<OwnerDataExport />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
-      </AuthProvider>
+            {/* Owner routes */}
+            <Route path="/owner/features" element={<OwnerFeatures />} />
+            <Route path="/owner/data-export" element={<OwnerDataExport />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

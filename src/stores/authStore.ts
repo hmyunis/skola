@@ -1,0 +1,102 @@
+import { create } from "zustand";
+
+export type UserRole = "student" | "admin" | "owner";
+
+export interface MockAccount {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+  phone: string;
+  role: UserRole;
+  code: string;
+  year: number;
+  semester: number;
+  batch: string;
+}
+
+export const MOCK_ACCOUNTS: MockAccount[] = [
+  {
+    id: "u1",
+    name: "Dawit Tadesse",
+    email: "dawit@scola.edu",
+    initials: "DT",
+    phone: "+251912345678",
+    role: "owner",
+    code: "11111",
+    year: 4,
+    semester: 2,
+    batch: "Software",
+  },
+  {
+    id: "u2",
+    name: "Meron Kebede",
+    email: "meron@scola.edu",
+    initials: "MK",
+    phone: "+251923456789",
+    role: "admin",
+    code: "22222",
+    year: 3,
+    semester: 2,
+    batch: "Software",
+  },
+  {
+    id: "u3",
+    name: "Bereket Wolde",
+    email: "bereket@scola.edu",
+    initials: "BW",
+    phone: "+251934567890",
+    role: "student",
+    code: "33333",
+    year: 2,
+    semester: 2,
+    batch: "Software",
+  },
+];
+
+const AUTH_KEY = "scola-auth-user";
+
+function loadStoredUser(): MockAccount | null {
+  try {
+    const s = localStorage.getItem(AUTH_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  return null;
+}
+
+interface AuthState {
+  user: MockAccount | null;
+  isAdmin: boolean;
+  isOwner: boolean;
+  userName: string;
+  login: (account: MockAccount) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>((set) => {
+  const initial = loadStoredUser();
+  return {
+    user: initial,
+    isOwner: initial?.role === "owner",
+    isAdmin: initial?.role === "owner" || initial?.role === "admin",
+    userName: initial?.name || "Guest",
+
+    login: (account) => {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(account));
+      set({
+        user: account,
+        isOwner: account.role === "owner",
+        isAdmin: account.role === "owner" || account.role === "admin",
+        userName: account.name,
+      });
+    },
+
+    logout: () => {
+      localStorage.removeItem(AUTH_KEY);
+      set({ user: null, isOwner: false, isAdmin: false, userName: "Guest" });
+    },
+  };
+});
+
+// Convenience hook matching old API
+export const useAuth = () => useAuthStore();

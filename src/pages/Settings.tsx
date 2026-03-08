@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useTheme } from "@/contexts/ThemeContext";
-import { FONT_FAMILIES } from "@/contexts/ThemeContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useTheme, FONT_FAMILIES } from "@/stores/themeStore";
+import { useAuth } from "@/stores/authStore";
 import { batchThemes, userAccents, primaryPresets, headerPresets, patternTemplates } from "@/lib/themes";
 import type { BatchTheme } from "@/lib/themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

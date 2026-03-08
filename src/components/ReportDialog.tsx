@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Flag } from "lucide-react";
 import { saveUserReport, type UserReport } from "@/services/admin";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/stores/authStore";
 import { toast } from "@/hooks/use-toast";
 
 const REPORT_REASONS = [
