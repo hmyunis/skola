@@ -65,7 +65,7 @@ interface EditDialogProps {
   onClose: () => void;
 }
 
-function EditClassDialog({ slot, day, onSave, onClose }: EditDialogProps) {
+function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogProps) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
