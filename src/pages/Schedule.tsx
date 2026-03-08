@@ -546,18 +546,21 @@ const Schedule = () => {
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <Button
-              variant={editMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => (editMode ? setEditMode(false) : enterEditMode())}
-            >
-              <Pencil className="h-3 w-3" />
-              {editMode ? "Editing" : "Edit Mode"}
-            </Button>
-            {editMode && (
-              <Button size="sm" onClick={handlePublish}>
-                <Check className="h-3 w-3" />
-                Publish
+            {editMode ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setEditMode(false)}>
+                  <X className="h-3 w-3" />
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handlePublish}>
+                  <Check className="h-3 w-3" />
+                  Publish
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={enterEditMode}>
+                <Pencil className="h-3 w-3" />
+                Edit Mode
               </Button>
             )}
           </div>
