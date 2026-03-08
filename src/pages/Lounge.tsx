@@ -431,6 +431,19 @@ function PostCard({
 
         {/* Edit / Delete actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover/post:opacity-100 transition-opacity">
+          {!isOwner && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setReportOpen(true)}
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <Flag className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>Report post</span></TooltipContent>
+            </Tooltip>
+          )}
           {isOwner && (
             <Tooltip>
               <TooltipTrigger asChild>
