@@ -60,6 +60,27 @@ const Login = () => {
     }, 1500);
   };
 
+  const tryLogin = (account: typeof MOCK_ACCOUNTS[0]) => {
+    const saved = getUserStatus(account.id);
+    if (saved?.status === "banned") {
+      setView("denied");
+      setDeniedReason("banned");
+      return;
+    }
+    if (saved?.status === "suspended" && saved.suspendedUntil) {
+      const until = new Date(saved.suspendedUntil);
+      if (until > new Date()) {
+        setView("denied");
+        setDeniedReason("suspended");
+        setSuspendedUntil(until.toLocaleString());
+        return;
+      }
+    }
+    login(account);
+    setView("success");
+    setTimeout(() => navigate("/"), 1200);
+  };
+
   const handleVerifyCode = () => {
     if (!code.trim() || code.length < 5) {
       setError("Enter the 5-digit code");
@@ -69,19 +90,14 @@ const Login = () => {
     setView("verifying");
 
     setTimeout(() => {
-      // Check against mock accounts
       const account = MOCK_ACCOUNTS.find((a) => a.code === code);
       if (code === "00000") {
         setView("denied");
+        setDeniedReason("unregistered");
       } else if (account) {
-        login(account);
-        setView("success");
-        setTimeout(() => navigate("/"), 1200);
+        tryLogin(account);
       } else {
-        // Any other code: default to student login
-        login(MOCK_ACCOUNTS[2]); // Bereket (student)
-        setView("success");
-        setTimeout(() => navigate("/"), 1200);
+        tryLogin(MOCK_ACCOUNTS[2]);
       }
     }, 2000);
   };
