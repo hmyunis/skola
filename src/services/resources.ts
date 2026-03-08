@@ -62,7 +62,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS302",
       type: "slides",
       category: "lecture",
-      uploadedBy: "Prof. Mehta",
+      uploadedBy: "Prof. Hana",
       uploadedAt: "2026-03-01",
       size: "5.1 MB",
       rating: 4.2,
