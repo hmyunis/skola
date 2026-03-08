@@ -1,9 +1,7 @@
 /**
  * Admin services barrel export.
- * Individual modules are available at @/services/semesters, @/services/courses, etc.
  */
 
-// Re-export everything from sub-modules
 export { loadSemesters, saveSemesters } from "./semesters";
 export type { Semester } from "./semesters";
 
@@ -24,3 +22,9 @@ export type { AnalyticsData } from "./analytics";
 
 export { loadFeatures, saveFeatures } from "./features";
 export type { FeatureToggle } from "./features";
+
+export { loadAssessments, saveAssessment, deleteAssessment } from "./assessments";
+export type { Assessment } from "./assessments";
+
+export { loadInviteLinks, createInviteLink, deactivateInviteLink, deleteInviteLink, getInviteByCode, useInviteLink, loadRegistrations, saveRegistration } from "./invites";
+export type { InviteLink, InviteRegistration } from "./invites";
