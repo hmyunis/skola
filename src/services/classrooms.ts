@@ -1,5 +1,5 @@
 import type { Classroom, ClassMembership } from "@/types/classroom";
-
+import { createInviteLink, getInviteByCode, useInviteLink } from "@/services/invites";
 const CLASSROOMS_KEY = "skola-classrooms";
 const MEMBERSHIPS_KEY = "skola-memberships";
 
