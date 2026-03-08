@@ -60,7 +60,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
-const MOCK_USER_NAME = "Arjun Patel";
+import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
 
 // ─── Type icon map ───
 const typeIcons: Record<ResourceType, typeof FileText> = {
