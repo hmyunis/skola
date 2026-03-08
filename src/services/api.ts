@@ -58,8 +58,9 @@ export async function fetchSemesterInfo(): Promise<SemesterInfo> {
   return { year: 3, semester: 2, startDate: "2026-01-15", endDate: "2026-05-30" };
 }
 
-export async function fetchTodaySchedule(): Promise<ClassSlot[]> {
+export async function fetchTodaySchedule(semesterId?: string): Promise<ClassSlot[]> {
   await delay(300);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   const now = new Date();
   const h = now.getHours();
   const today = (hour: number, minute: number) =>
