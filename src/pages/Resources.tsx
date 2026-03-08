@@ -363,6 +363,7 @@ function ResourceDetailDialog({
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const [reportOpen, setReportOpen] = useState(false);
   if (!resource) return null;
 
   const TypeIcon = typeIcons[resource.type];
