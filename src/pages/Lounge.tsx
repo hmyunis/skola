@@ -265,6 +265,7 @@ const Lounge = () => {
   });
 
   const [localPosts, setLocalPosts] = useState<LoungePost[]>([]);
+  const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [filterCourse, setFilterCourse] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
