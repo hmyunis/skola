@@ -22,7 +22,7 @@ type AuthView = "login" | "verifying" | "denied" | "success";
 const Login = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<AuthView>("login");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+251 ");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [showCode, setShowCode] = useState(false);
