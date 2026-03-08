@@ -151,6 +151,20 @@ export function AppLayout() {
                 {batchTheme.name} Division
               </span>
 
+              {activeSemester && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/10 text-[10px] uppercase tracking-wider font-bold cursor-default">
+                      <CalendarDays className="h-2.5 w-2.5" />
+                      {activeSemester.name}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <span>Active semester: {activeSemester.name}</span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
               <div className="flex-1" />
 
               <Tooltip>
