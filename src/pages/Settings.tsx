@@ -188,13 +188,17 @@ const SettingsPage = () => {
                   {theme.isCustom && <span className="block text-[9px] font-normal tracking-normal opacity-60 mt-0.5">Custom</span>}
                 </button>
                 {theme.isCustom && (
-                  <button
-                    onClick={() => removeCustomTheme(theme.id)}
-                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Delete"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => removeCustomTheme(theme.id)}
+                        className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><span>Delete</span></TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             ))}
