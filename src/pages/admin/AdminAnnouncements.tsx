@@ -89,7 +89,7 @@ function AnnouncementFormDialog({
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Content</label>
             <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Write your announcement..." className="min-h-[100px] text-sm resize-none" rows={4} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Priority</label>
               <Select value={priority} onValueChange={(v) => setPriority(v as Announcement["priority"])}>
