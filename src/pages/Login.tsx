@@ -205,7 +205,7 @@ const Login = () => {
                   className="w-full text-xs text-muted-foreground"
                   onClick={() =>
                     window.open(
-                      "mailto:admin@university.edu?subject=Access%20Request%20-%20SCOLA",
+                      "mailto:admin@university.edu?subject=Access%20Request%20-%20SKOLA",
                       "_blank"
                     )
                   }
