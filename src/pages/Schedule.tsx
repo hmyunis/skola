@@ -535,6 +535,22 @@ const Schedule = () => {
     if (editMode) setEditingSlot({ slot, day });
   };
 
+  const handleDeleteSlot = (slot: ClassSlot, day: DayOfWeek) => {
+    setEditingSlot(null);
+    setDeletingSlot({ slot, day });
+  };
+
+  const confirmDelete = () => {
+    if (!deletingSlot) return;
+    setLocalSchedule((prev) => {
+      const next = cloneSchedule(prev);
+      next[deletingSlot.day] = (next[deletingSlot.day] || []).filter((s) => s.id !== deletingSlot.slot.id);
+      return next;
+    });
+    toast({ title: "Class Removed", description: `${deletingSlot.slot.name} removed from ${deletingSlot.day}.` });
+    setDeletingSlot(null);
+  };
+
   const showDraft = editMode || Object.values(localSchedule).some((slots) => slots.some((s) => s.draft));
 
   return (
