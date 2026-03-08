@@ -97,7 +97,7 @@ const Members = () => {
             {users.length} members · {online} active
           </p>
         </div>
-        {IS_ADMIN && (
+        {isAdmin && (
           <Button size="sm" onClick={() => setInviteOpen(true)}>
             <UserPlus className="h-3 w-3" /> Invite
           </Button>
