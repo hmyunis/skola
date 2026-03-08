@@ -614,7 +614,13 @@ const Resources = () => {
     setRatings((prev) => ({ ...prev, [id]: stars }));
   };
 
-  const handleAddResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => {
+  const handleDownload = (id: string) => {
+    setDownloadCounts((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  };
+
+  const getDownloadCount = (r: Resource) => r.downloads + (downloadCounts[r.id] || 0);
+
+  const handleAddResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => {
     const newResource: Resource = {
       ...data,
       id: `local-${Date.now()}`,
@@ -624,6 +630,7 @@ const Resources = () => {
       totalRatings: 0,
       upvotes: 0,
       downvotes: 0,
+      downloads: 0,
     };
     setLocalResources((prev) => [newResource, ...prev]);
     toast({ title: "Resource Added!", description: `"${newResource.title}" is now available.` });
