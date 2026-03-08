@@ -240,6 +240,9 @@ const SettingsPage = () => {
         </Card>
       )}
 
+      {/* Telegram Group ID — Owner only */}
+      {isOwner && <TelegramGroupIdSetting />}
+
       {/* User Accent selector */}
       <Card>
         <CardHeader>

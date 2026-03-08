@@ -3,15 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth, MOCK_ACCOUNTS } from "@/stores/authStore";
 import { getUserStatus } from "@/services/admin";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  TelegramLoginWidget,
+  type TelegramUser,
+} from "@/components/TelegramLoginWidget";
 import {
   Shield,
   Lock,
-  Send,
   AlertTriangle,
-  Eye,
-  EyeOff,
   ArrowRight,
   Loader2,
   XOctagon,
@@ -19,6 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 type AuthView = "login" | "verifying" | "denied" | "success";
 
@@ -34,35 +35,77 @@ const roleColor = {
   student: "border-border bg-muted/50 text-muted-foreground",
 };
 
+// TODO: Replace with your actual bot name
+const TELEGRAM_BOT_NAME = "YourScolaBot";
+
+// TODO: Replace with your actual backend API URL
+const API_BASE_URL = "/api";
+
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [view, setView] = useState<AuthView>("login");
-  const [phone, setPhone] = useState("+251 ");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<"phone" | "code">("phone");
-  const [showCode, setShowCode] = useState(false);
   const [error, setError] = useState("");
-  const [deniedReason, setDeniedReason] = useState<"unregistered" | "banned" | "suspended">("unregistered");
+  const [deniedReason, setDeniedReason] = useState<
+    "unregistered" | "banned" | "suspended" | "not_in_group"
+  >("unregistered");
   const [suspendedUntil, setSuspendedUntil] = useState("");
 
-  const handleSendCode = () => {
-    const cleaned = phone.replace(/\s/g, "");
-    const ethRegex = /^\+251[79]\d{8}$/;
-    if (!ethRegex.test(cleaned)) {
-      setError("Enter a valid Ethiopian number: +251 (7 or 9) followed by 8 digits");
-      return;
-    }
-    setError("");
+  const handleTelegramAuth = async (telegramUser: TelegramUser) => {
     setView("verifying");
+    setError("");
 
-    setTimeout(() => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/telegram`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(telegramUser),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.reason === "not_in_group") {
+          setView("denied");
+          setDeniedReason("not_in_group");
+          return;
+        }
+        if (data.reason === "banned") {
+          setView("denied");
+          setDeniedReason("banned");
+          return;
+        }
+        if (data.reason === "suspended") {
+          setView("denied");
+          setDeniedReason("suspended");
+          setSuspendedUntil(
+            data.suspendedUntil
+              ? new Date(data.suspendedUntil).toLocaleString()
+              : ""
+          );
+          return;
+        }
+        setView("denied");
+        setDeniedReason("unregistered");
+        return;
+      }
+
+      // Successful login — data.user should match MockAccount shape
+      login(data.user);
+      setView("success");
+      setTimeout(() => navigate("/"), 1200);
+    } catch (err) {
+      console.error("Telegram auth error:", err);
+      toast({
+        title: "Connection Error",
+        description: "Could not reach the server. Please try again.",
+        variant: "destructive",
+      });
       setView("login");
-      setStep("code");
-    }, 1500);
+    }
   };
 
-  const tryLogin = (account: typeof MOCK_ACCOUNTS[0]) => {
+  const tryLogin = (account: (typeof MOCK_ACCOUNTS)[0]) => {
     const saved = getUserStatus(account.id);
     if (saved?.status === "banned") {
       setView("denied");
@@ -83,42 +126,41 @@ const Login = () => {
     setTimeout(() => navigate("/"), 1200);
   };
 
-  const handleVerifyCode = () => {
-    if (!code.trim() || code.length < 5) {
-      setError("Enter the 5-digit code");
-      return;
-    }
-    setError("");
-    setView("verifying");
-
-    setTimeout(() => {
-      const account = MOCK_ACCOUNTS.find((a) => a.code === code);
-      if (code === "00000") {
-        setView("denied");
-        setDeniedReason("unregistered");
-      } else if (account) {
-        tryLogin(account);
-      } else {
-        tryLogin(MOCK_ACCOUNTS[2]);
-      }
-    }, 2000);
-  };
-
-  const resetToLogin = () => {
-    setView("login");
-    setStep("phone");
-    setPhone("+251 ");
-    setCode("");
-    setError("");
-  };
-
-  // ─── Quick Login (dev helper) ───
   const handleQuickLogin = (accountIdx: number) => {
     tryLogin(MOCK_ACCOUNTS[accountIdx]);
   };
 
-  // ─── ACCESS DENIED state ───
+  const resetToLogin = () => {
+    setView("login");
+    setError("");
+  };
+
+  // ─── ACCESS DENIED ───
   if (view === "denied") {
+    const deniedMessages = {
+      banned: {
+        title: "Account Banned",
+        message:
+          "Your account has been permanently banned. You cannot access the platform. Contact your administrator if you believe this is an error.",
+      },
+      suspended: {
+        title: "Account Suspended",
+        message: `Your account is temporarily suspended until ${suspendedUntil}. Please try again after the suspension period ends.`,
+      },
+      not_in_group: {
+        title: "Not a Group Member",
+        message:
+          "You must be a member of the class Telegram group to access this platform. Join the group first, then try logging in again.",
+      },
+      unregistered: {
+        title: "Authentication Failed",
+        message:
+          "Your Telegram account is not linked to any registered student profile. Contact your academic administrator for access.",
+      },
+    };
+
+    const msg = deniedMessages[deniedReason];
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-6">
@@ -141,28 +183,31 @@ const Login = () => {
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-destructive uppercase tracking-wider">
-                    {deniedReason === "banned" ? "Account Banned" : deniedReason === "suspended" ? "Account Suspended" : "Authentication Failed"}
+                    {msg.title}
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    {deniedReason === "banned"
-                      ? "Your account has been permanently banned. You cannot access the platform. Contact your administrator if you believe this is an error."
-                      : deniedReason === "suspended"
-                      ? `Your account is temporarily suspended until ${suspendedUntil}. Please try again after the suspension period ends.`
-                      : "Your Telegram account is not linked to any registered student profile. Contact your academic administrator for access provisioning."}
+                    {msg.message}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-col gap-2 pt-2">
-                <Button variant="outline" onClick={resetToLogin} className="w-full">
+                <Button
+                  variant="outline"
+                  onClick={resetToLogin}
+                  className="w-full"
+                >
                   <ArrowRight className="h-3 w-3 rotate-180" />
-                  Try Another Account
+                  Try Again
                 </Button>
                 <Button
                   variant="ghost"
                   className="w-full text-xs text-muted-foreground"
                   onClick={() =>
-                    window.open("mailto:admin@university.edu?subject=Access%20Request%20-%20SCOLA", "_blank")
+                    window.open(
+                      "mailto:admin@university.edu?subject=Access%20Request%20-%20SCOLA",
+                      "_blank"
+                    )
                   }
                 >
                   Contact Administrator
@@ -172,14 +217,15 @@ const Login = () => {
           </Card>
 
           <p className="text-center text-[10px] text-muted-foreground/50 uppercase tracking-widest">
-            Error 403 · Unauthorized · {new Date().toISOString().split("T")[0]}
+            Error 403 · Unauthorized ·{" "}
+            {new Date().toISOString().split("T")[0]}
           </p>
         </div>
       </div>
     );
   }
 
-  // ─── Verifying state ───
+  // ─── Verifying ───
   if (view === "verifying") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -187,12 +233,10 @@ const Login = () => {
           <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
           <div className="space-y-1">
             <p className="text-sm font-bold uppercase tracking-wider">
-              {step === "phone" ? "Sending Code..." : "Verifying..."}
+              Verifying...
             </p>
             <p className="text-xs text-muted-foreground">
-              {step === "phone"
-                ? "Connecting to Telegram"
-                : "Authenticating your identity"}
+              Checking group membership & authenticating
             </p>
           </div>
         </div>
@@ -200,7 +244,7 @@ const Login = () => {
     );
   }
 
-  // ─── Success state ───
+  // ─── Success ───
   if (view === "success") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -212,7 +256,9 @@ const Login = () => {
             <p className="text-sm font-bold uppercase tracking-wider text-emerald-600">
               Access Granted
             </p>
-            <p className="text-xs text-muted-foreground">Redirecting to dashboard...</p>
+            <p className="text-xs text-muted-foreground">
+              Redirecting to dashboard...
+            </p>
           </div>
         </div>
       </div>
@@ -232,116 +278,19 @@ const Login = () => {
             <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
               Student Portal
             </p>
-            <h1 className="text-2xl font-black uppercase tracking-wider">SCOLA</h1>
+            <h1 className="text-2xl font-black uppercase tracking-wider">
+              SCOLA
+            </h1>
           </div>
         </div>
 
-        {/* Telegram Login Card */}
+        {/* Telegram Login Widget */}
         <Card>
-          <CardContent className="p-5 space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-border">
-              <Send className="h-4 w-4 text-[hsl(200,80%,50%)]" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                Telegram Login
-              </span>
-              <div className="flex-1" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                {step === "phone" ? "Step 1/2" : "Step 2/2"}
-              </span>
-            </div>
-
-            {step === "phone" ? (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-                    Phone Number
-                  </label>
-                  <Input
-                    placeholder="+251 9XX XXX XXX"
-                    value={phone}
-                    onChange={(e) => {
-                      let val = e.target.value;
-                      if (!val.startsWith("+251")) {
-                        val = "+251 ";
-                      }
-                      const afterPrefix = val.slice(4).replace(/[^\d\s]/g, "");
-                      const digitsOnly = afterPrefix.replace(/\s/g, "");
-                      if (digitsOnly.length > 9) return;
-                      setPhone("+251" + afterPrefix);
-                      setError("");
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
-                    className="h-10 text-sm font-mono"
-                    type="tel"
-                  />
-                </div>
-
-                {error && (
-                  <p className="text-[11px] text-destructive flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> {error}
-                  </p>
-                )}
-
-                <Button onClick={handleSendCode} className="w-full">
-                  <Send className="h-3 w-3" />
-                  Send Verification Code
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Code sent to <span className="font-mono font-bold text-foreground">{phone}</span>
-                </p>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-                    Verification Code
-                  </label>
-                  <div className="relative">
-                    <Input
-                      placeholder="XXXXX"
-                      value={code}
-                      onChange={(e) => {
-                        setCode(e.target.value.replace(/\D/g, "").slice(0, 5));
-                        setError("");
-                      }}
-                      onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
-                      className="h-10 text-sm font-mono tracking-[0.5em] text-center pr-10"
-                      type={showCode ? "text" : "password"}
-                      maxLength={5}
-                    />
-                    <button
-                      onClick={() => setShowCode(!showCode)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {error && (
-                  <p className="text-[11px] text-destructive flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> {error}
-                  </p>
-                )}
-
-                <Button onClick={handleVerifyCode} className="w-full" disabled={code.length < 5}>
-                  <Shield className="h-3 w-3" />
-                  Verify & Login
-                </Button>
-
-                <button
-                  onClick={() => {
-                    setStep("phone");
-                    setCode("");
-                    setError("");
-                  }}
-                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-                >
-                  ← Change phone number
-                </button>
-              </div>
-            )}
+          <CardContent className="p-5">
+            <TelegramLoginWidget
+              botName={TELEGRAM_BOT_NAME}
+              onAuth={handleTelegramAuth}
+            />
           </CardContent>
         </Card>
 
@@ -366,7 +315,9 @@ const Login = () => {
                     <RoleIcon className="h-4 w-4 shrink-0" />
                     <div className="text-left flex-1 min-w-0">
                       <p className="text-xs font-bold">{account.name}</p>
-                      <p className="text-[10px] opacity-70 uppercase tracking-wider">{account.role} · Code: {account.code}</p>
+                      <p className="text-[10px] opacity-70 uppercase tracking-wider">
+                        {account.role} · Code: {account.code}
+                      </p>
                     </div>
                     <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
                   </button>
