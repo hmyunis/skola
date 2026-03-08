@@ -111,8 +111,12 @@ function UserMenu() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => navigate("/login")}
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
             >
               Log Out
             </AlertDialogAction>
