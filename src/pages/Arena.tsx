@@ -62,7 +62,7 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { IS_ADMIN } from "@/lib/user";
+import { IS_ADMIN, MOCK_USER_NAME } from "@/lib/user";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Player stats (localStorage) ───
