@@ -113,6 +113,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { batchTheme } = useTheme();
+  const { isAdmin, isOwner } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
