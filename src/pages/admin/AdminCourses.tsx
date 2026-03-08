@@ -112,7 +112,6 @@ function CourseFormDialog({
                 name: name.trim(),
                 credits: Number(credits),
                 instructor: instructor.trim(),
-                department: department.trim(),
                 semesterId,
                 enrolled: initial?.enrolled || 0,
               });
