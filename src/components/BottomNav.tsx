@@ -1,0 +1,103 @@
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Calendar,
+  BookOpen,
+  MessageSquare,
+  MoreHorizontal,
+  FolderOpen,
+  Swords,
+  Settings,
+} from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useState } from "react";
+
+const mainItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Schedule", url: "/schedule", icon: Calendar },
+  { title: "Academics", url: "/academics", icon: BookOpen },
+  { title: "Lounge", url: "/lounge", icon: MessageSquare },
+];
+
+const moreItems = [
+  { title: "Resources", url: "/resources", icon: FolderOpen },
+  { title: "Arena", url: "/arena", icon: Swords },
+  { title: "Settings", url: "/settings", icon: Settings },
+];
+
+export function BottomNav() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const isMoreActive = moreItems.some((i) => location.pathname === i.url);
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden">
+      <div className="flex items-center justify-around h-14">
+        {mainItems.map((item) => {
+          const active = location.pathname === item.url;
+          return (
+            <button
+              key={item.url}
+              onClick={() => navigate(item.url)}
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[10px] uppercase tracking-wider font-medium transition-colors ${
+                active ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <item.icon className="h-5 w-5" />
+              <span>{item.title}</span>
+            </button>
+          );
+        })}
+
+        {/* More button */}
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <button
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[10px] uppercase tracking-wider font-medium transition-colors ${
+                isMoreActive ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+              <span>More</span>
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="border-t border-border">
+            <SheetHeader>
+              <SheetTitle className="uppercase tracking-widest text-sm">More</SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col gap-1 mt-4">
+              {moreItems.map((item) => {
+                const active = location.pathname === item.url;
+                return (
+                  <button
+                    key={item.url}
+                    onClick={() => {
+                      navigate(item.url);
+                      setOpen(false);
+                    }}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm font-medium uppercase tracking-wide transition-colors border border-border ${
+                      active
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : "text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </nav>
+  );
+}
