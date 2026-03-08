@@ -62,6 +62,7 @@ function AnnouncementFormDialog({
   initial?: Announcement | null;
   onSave: (a: Announcement) => void;
 }) {
+  const { userName } = useAuth();
   const [title, setTitle] = useState(initial?.title || "");
   const [content, setContent] = useState(initial?.content || "");
   const [priority, setPriority] = useState<Announcement["priority"]>(initial?.priority || "normal");

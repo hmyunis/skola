@@ -49,6 +49,7 @@ const statusConfig = {
 };
 
 const AdminUsers = () => {
+  const { isOwner } = useAuth();
   const { data: fetchedUsers, isLoading } = useQuery({
     queryKey: ["managedUsers"],
     queryFn: fetchManagedUsers,
