@@ -23,96 +23,131 @@ export const REACTIONS: { emoji: AcademicReaction; label: string }[] = [
   { emoji: "🤝", label: "Relatable" },
 ];
 
+const MOCK_REPLIES: Record<string, LoungeReply[]> = {
+  p1: [
+    { id: "r1-1", content: "Left rotation, right rotation, left-right, right-left. Draw it out on paper, it clicks eventually.", timestamp: "2026-03-08T09:20:00", anonymous_id: "Anon#2156" },
+    { id: "r1-2", content: "I just memorize the patterns tbh. Understanding is overrated when the exam is in 2 days.", timestamp: "2026-03-08T09:35:00", anonymous_id: "Anon#5544" },
+    { id: "r1-3", content: "Watch Abdul Bari's video on YouTube. Changed my life.", timestamp: "2026-03-08T09:50:00", anonymous_id: "Anon#6120" },
+  ],
+  p2: [
+    { id: "r2-1", content: "This is why I switched to Rust. The compiler yells at you BEFORE you waste 4 hours.", timestamp: "2026-03-08T08:50:00", anonymous_id: "Anon#3367" },
+    { id: "r2-2", content: "Semicolons are the silent killers of engineering careers.", timestamp: "2026-03-08T09:00:00", anonymous_id: "Anon#8891" },
+    { id: "r2-3", content: "Use an IDE with better linting? VSCode catches that stuff instantly.", timestamp: "2026-03-08T09:10:00", anonymous_id: "Anon#4821" },
+    { id: "r2-4", content: "4 hours is rookie numbers. I once spent 8 hours on a missing bracket.", timestamp: "2026-03-08T09:25:00", anonymous_id: "Anon#9012" },
+  ],
+  p3: [
+    { id: "r3-1", content: "This actually works. Did it for CN and got a B+. Not proud but not sorry either.", timestamp: "2026-03-08T07:45:00", anonymous_id: "Anon#7733" },
+    { id: "r3-2", content: "Bold of you to assume lectures are recorded.", timestamp: "2026-03-08T08:00:00", anonymous_id: "Anon#9012" },
+  ],
+  p5: [
+    { id: "r5-1", content: "HOW did the prof not notice?? MongoDB syntax looks nothing like SQL 😭", timestamp: "2026-03-07T15:10:00", anonymous_id: "Anon#4821" },
+    { id: "r5-2", content: "Chaotic neutral is the perfect description. Legend.", timestamp: "2026-03-07T15:30:00", anonymous_id: "Anon#2156" },
+  ],
+  p6: [
+    { id: "r6-1", content: "The academic office literally does not care. We've complained 3 times.", timestamp: "2026-03-07T11:30:00", anonymous_id: "Anon#7733" },
+    { id: "r6-2", content: "Same thing happened last sem with DBMS and Math. They never learn.", timestamp: "2026-03-07T11:45:00", anonymous_id: "Anon#5544" },
+    { id: "r6-3", content: "Start a petition. I'll sign.", timestamp: "2026-03-07T12:00:00", anonymous_id: "Anon#8891" },
+  ],
+};
+
 const MOCK_SEMESTER_ID = "sem-2";
 
-export async function fetchPosts(semesterId?: string): Promise<LoungePost[]> {
-  await delay(400);
+export async function fetchLoungePosts(semesterId?: string): Promise<LoungePost[]> {
+  await delay(300);
   if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   return [
     {
       id: "p1",
-      author: "Anon#4821",
-      title: "Is it just me or is the DSA mid-sem syllabus way too huge?",
-      content:
-        "I mean, come on! Binary trees, BSTs, AVL trees, B-trees, heaps, sorting, searching... It's like they want us to become walking encyclopedias in 2 months. Anyone else feeling the same?",
-      tags: ["question", "rant"],
-      reactions: { "🧠": 5, "💀": 2, "🔥": 8, "📚": 12, "😭": 23, "🤝": 31 },
-      createdAt: "2026-03-08T14:30:00",
-      replies: 17,
+      content: "Does anyone actually understand how AVL rotations work or are we all just pretending? Asking for a friend (the friend is me).",
+      tag: "question",
+      course: "CS301",
+      timestamp: "2026-03-08T09:15:00",
+      reactions: { "🧠": 3, "💀": 12, "🔥": 1, "📚": 2, "😭": 8, "🤝": 15 },
+      replies: 7,
+      anonymous_id: "Anon#4821",
+      isAnonymous: true,
     },
     {
       id: "p2",
-      author: "Anon#7733",
-      title: "Pro-tip: Use a password manager!",
-      content:
-        "Seriously, folks. Stop reusing passwords across different sites. It's a huge security risk. Use a password manager like Bitwarden or LastPass to generate and store strong, unique passwords for each site. Your future self will thank you.",
-      tags: ["tip"],
-      reactions: { "🧠": 18, "💀": 0, "🔥": 2, "📚": 3, "😭": 1, "🤝": 11 },
-      createdAt: "2026-03-07T21:15:00",
-      replies: 5,
+      content: "Just spent 4 hours debugging a segfault only to realize I forgot a semicolon. Engineering is glamorous.",
+      tag: "rant",
+      timestamp: "2026-03-08T08:42:00",
+      reactions: { "🧠": 0, "💀": 24, "🔥": 2, "📚": 0, "😭": 18, "🤝": 31 },
+      replies: 12,
+      anonymous_id: "Anon#7733",
+      displayName: "Meron Kebede",
+      isAnonymous: false,
     },
     {
       id: "p3",
-      author: "Anon#2156",
-      title: "When the TA says 'just read the documentation'...",
-      content: "https://i.imgur.com/9NoKGjz.jpeg",
-      tags: ["meme"],
-      reactions: { "🧠": 2, "💀": 42, "🔥": 3, "📚": 1, "😭": 17, "🤝": 28 },
-      createdAt: "2026-03-07T11:00:00",
+      content: "Pro tip: Record your lectures and play them at 2x speed before exams. You cover a whole semester in one night. Not that I recommend it... but it works.",
+      tag: "tip",
+      course: "CS302",
+      timestamp: "2026-03-08T07:30:00",
+      reactions: { "🧠": 15, "💀": 5, "🔥": 22, "📚": 8, "😭": 3, "🤝": 11 },
       replies: 9,
+      anonymous_id: "Anon#2156",
+      isAnonymous: true,
     },
     {
       id: "p4",
-      author: "Anon#9012",
-      title: "Confession: I still don't understand dynamic programming",
-      content:
-        "I've watched all the lectures, read the textbook, and even tried solving practice problems, but I still can't wrap my head around dynamic programming. It's like some kind of black magic. Anyone else in the same boat?",
-      tags: ["confession"],
-      reactions: { "🧠": 1, "💀": 7, "🔥": 0, "📚": 15, "😭": 33, "🤝": 45 },
-      createdAt: "2026-03-06T18:45:00",
-      replies: 21,
+      content: "The WiFi in Lab 302 has been down for 3 days and nobody has fixed it. We're coding on pen and paper at this point.",
+      tag: "rant",
+      timestamp: "2026-03-07T16:20:00",
+      reactions: { "🧠": 0, "💀": 8, "🔥": 0, "📚": 0, "😭": 14, "🤝": 22 },
+      replies: 5,
+      anonymous_id: "Anon#9012",
+      displayName: "Bereket Wolde",
+      isAnonymous: false,
     },
     {
       id: "p5",
-      author: "Anon#5544",
-      title: "Discussion: What are your favorite resources for learning system design?",
-      content:
-        "I'm trying to level up my system design skills, but I'm not sure where to start. What are your favorite books, articles, or online courses for learning system design concepts and patterns?",
-      tags: ["discussion"],
-      reactions: { "🧠": 22, "💀": 0, "🔥": 7, "📚": 28, "😭": 0, "🤝": 14 },
-      createdAt: "2026-03-05T09:20:00",
-      replies: 12,
+      content: "I wrote my entire DBMS assignment in MongoDB syntax instead of SQL. Prof didn't notice. Chaotic neutral energy.",
+      tag: "confession",
+      course: "CS302",
+      timestamp: "2026-03-07T14:55:00",
+      reactions: { "🧠": 7, "💀": 19, "🔥": 14, "📚": 1, "😭": 3, "🤝": 6 },
+      replies: 15,
+      anonymous_id: "Anon#5544",
+      isAnonymous: true,
+    },
+    {
+      id: "p6",
+      content: "Can we talk about how the OS mid-sem is on the same day as the CN lab exam? Who makes these schedules?",
+      tag: "discussion",
+      course: "CS304",
+      timestamp: "2026-03-07T11:10:00",
+      reactions: { "🧠": 2, "💀": 6, "🔥": 1, "📚": 4, "😭": 21, "🤝": 28 },
+      replies: 23,
+      anonymous_id: "Anon#3367",
+      isAnonymous: true,
+    },
+    {
+      id: "p7",
+      content: "Whoever left their Thermodynamics textbook in the CS lab — wrong building, wrong department, wrong universe. Respect the commitment though.",
+      tag: "meme",
+      timestamp: "2026-03-07T09:45:00",
+      reactions: { "🧠": 1, "💀": 30, "🔥": 8, "📚": 2, "😭": 4, "🤝": 12 },
+      replies: 8,
+      anonymous_id: "Anon#8891",
+      isAnonymous: true,
+    },
+    {
+      id: "p8",
+      content: "Subnetting finally clicked after watching that one YouTube video for the 11th time. There IS hope. Don't give up.",
+      tag: "tip",
+      course: "CS303",
+      timestamp: "2026-03-06T22:30:00",
+      reactions: { "🧠": 18, "💀": 2, "🔥": 9, "📚": 12, "😭": 1, "🤝": 7 },
+      replies: 4,
+      anonymous_id: "Anon#6120",
+      displayName: "Amina Hassan",
+      isAnonymous: false,
     },
   ];
 }
 
-export async function fetchReplies(postId: string): Promise<LoungeReply[]> {
-  await delay(250);
-  return [
-    {
-      id: "r1",
-      postId,
-      author: "Anon#3367",
-      content: "Yeah, I feel you. It's like they're trying to cram a whole semester's worth of material into a single mid-sem.",
-      createdAt: "2026-03-08T15:00:00",
-      reactions: { "🧠": 2, "💀": 1, "🔥": 0, "📚": 2, "😭": 7, "🤝": 14 },
-    },
-    {
-      id: "r2",
-      postId,
-      author: "Anon#8891",
-      content:
-        "I've started using flashcards to memorize the different tree algorithms and their time complexities. It seems to be helping a bit.",
-      createdAt: "2026-03-08T15:30:00",
-      reactions: { "🧠": 5, "💀": 0, "🔥": 1, "📚": 9, "😭": 2, "🤝": 6 },
-    },
-    {
-      id: "r3",
-      postId,
-      author: "Anon#6120",
-      content: "Don't worry, you're not alone. I'm completely lost too.",
-      createdAt: "2026-03-08T16:00:00",
-      reactions: { "🧠": 0, "💀": 2, "🔥": 0, "📚": 1, "😭": 12, "🤝": 18 },
-    },
-  ];
+export async function fetchPostReplies(postId: string): Promise<LoungeReply[]> {
+  await delay(200);
+  return MOCK_REPLIES[postId] || [];
 }
