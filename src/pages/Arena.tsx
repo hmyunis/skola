@@ -470,6 +470,7 @@ function CreateQuizDialog({
 }) {
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("CS301");
+  const [isAnonymous, setIsAnonymous] = useState(true);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
   const [currentQ, setCurrentQ] = useState(0);
 
