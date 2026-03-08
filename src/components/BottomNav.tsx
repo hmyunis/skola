@@ -71,20 +71,20 @@ export function BottomNav() {
   const isMoreActive = allMoreItems.some((i) => location.pathname === i.url);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden">
-      <div className="flex items-center justify-around h-14">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden safe-area-bottom">
+      <div className="flex items-center justify-around h-12 px-1">
         {mainItems.map((item) => {
           const active = location.pathname === item.url;
           return (
             <button
               key={item.url}
               onClick={() => navigate(item.url)}
-              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[10px] uppercase tracking-wider font-medium transition-colors ${
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[9px] uppercase tracking-wider font-medium transition-colors ${
                 active ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <item.icon className="h-5 w-5" />
-              <span>{item.title}</span>
+              <item.icon className="h-4 w-4" />
+              <span className="leading-none">{item.title}</span>
             </button>
           );
         })}
