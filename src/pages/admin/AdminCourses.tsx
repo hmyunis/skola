@@ -216,7 +216,7 @@ const AdminCourses = () => {
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Users className="h-3 w-3" />
-              <span className="tabular-nums">{c.enrolled}/{c.maxCapacity}</span>
+              <span className="tabular-nums">{c.enrolled}</span>
             </div>
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditing(c); setFormOpen(true); }}>
               <Pencil className="h-3 w-3" />
