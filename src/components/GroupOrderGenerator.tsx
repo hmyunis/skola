@@ -43,18 +43,11 @@ export function GroupOrderGenerator({ embedded }: { embedded?: boolean } = {}) {
     setOrder([]);
   };
 
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <Shuffle className="h-4 w-4 text-primary" />
-          <CardTitle className="text-xs">Group Order Generator</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          Randomly generate presentation or activity order for groups.
-        </p>
+  const content = (
+    <div className="space-y-4">
+      <p className="text-[10px] text-muted-foreground leading-relaxed">
+        Randomly generate presentation or activity order for groups.
+      </p>
 
         <div className="flex flex-col sm:flex-row gap-2">
           <Input
