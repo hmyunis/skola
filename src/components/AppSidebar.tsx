@@ -47,7 +47,6 @@ const navItems = [
 ];
 
 const adminItems = [
-  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Moderation", url: "/admin/moderation", icon: ShieldAlert },
   { title: "Announcements", url: "/admin/announcements", icon: Megaphone },
