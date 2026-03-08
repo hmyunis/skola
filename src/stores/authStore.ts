@@ -8,7 +8,7 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
   {
     id: "u1",
     name: "Dawit Tadesse",
-    email: "dawit@scola.edu",
+    email: "dawit@skola.edu",
     initials: "DT",
     phone: "+251912345678",
     role: "owner",
@@ -22,7 +22,7 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
   {
     id: "u2",
     name: "Meron Kebede",
-    email: "meron@scola.edu",
+    email: "meron@skola.edu",
     initials: "MK",
     phone: "+251923456789",
     role: "admin",
@@ -36,7 +36,7 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
   {
     id: "u3",
     name: "Bereket Wolde",
-    email: "bereket@scola.edu",
+    email: "bereket@skola.edu",
     initials: "BW",
     phone: "+251934567890",
     role: "student",
@@ -49,7 +49,7 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
   },
 ];
 
-const AUTH_KEY = "scola-auth-user";
+const AUTH_KEY = "skola-auth-user";
 
 function loadStoredUser(): MockAccount | null {
   try {

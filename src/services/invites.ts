@@ -2,8 +2,8 @@ import type { InviteLink, InviteRegistration } from "@/types/admin";
 
 export type { InviteLink, InviteRegistration } from "@/types/admin";
 
-const INVITES_KEY = "scola-invite-links";
-const REGISTRATIONS_KEY = "scola-invite-registrations";
+const INVITES_KEY = "skola-invite-links";
+const REGISTRATIONS_KEY = "skola-invite-registrations";
 
 export function loadInviteLinks(): InviteLink[] {
   try {

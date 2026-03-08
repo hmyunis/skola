@@ -21,9 +21,9 @@ export const FONT_FAMILIES = [
   { id: "ibm-plex", name: "IBM Plex Sans", value: "'IBM Plex Sans', sans-serif" },
 ];
 
-const CUSTOM_THEMES_KEY = "scola-custom-themes";
-const COLOR_MODE_KEY = "scola-color-mode";
-const FONT_FAMILY_KEY = "scola-font-family";
+const CUSTOM_THEMES_KEY = "skola-custom-themes";
+const COLOR_MODE_KEY = "skola-color-mode";
+const FONT_FAMILY_KEY = "skola-font-family";
 
 function loadCustomThemes(): BatchTheme[] {
   try {

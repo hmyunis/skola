@@ -36,7 +36,7 @@ const roleColor = {
 };
 
 // TODO: Replace with your actual bot name
-const TELEGRAM_BOT_NAME = "YourScolaBot";
+const TELEGRAM_BOT_NAME = "YourSkolaBot";
 
 // TODO: Replace with your actual backend API URL
 const API_BASE_URL = "/api";
@@ -205,7 +205,7 @@ const Login = () => {
                   className="w-full text-xs text-muted-foreground"
                   onClick={() =>
                     window.open(
-                      "mailto:admin@university.edu?subject=Access%20Request%20-%20SCOLA",
+                      "mailto:admin@university.edu?subject=Access%20Request%20-%20SKOLA",
                       "_blank"
                     )
                   }
@@ -279,7 +279,7 @@ const Login = () => {
               Student Portal
             </p>
             <h1 className="text-2xl font-black uppercase tracking-wider">
-              SCOLA
+              SKOLA
             </h1>
           </div>
         </div>
@@ -333,7 +333,7 @@ const Login = () => {
             Secure · Encrypted · Anonymous
           </p>
           <p className="text-[10px] text-muted-foreground/30">
-            SCOLA v1.0 · {new Date().getFullYear()}
+            SKOLA v1.0 · {new Date().getFullYear()}
           </p>
         </div>
       </div>

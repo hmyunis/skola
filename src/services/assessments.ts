@@ -2,7 +2,7 @@ import type { Assessment } from "@/types/admin";
 
 export type { Assessment } from "@/types/admin";
 
-const ASSESSMENTS_KEY = "scola-assessments";
+const ASSESSMENTS_KEY = "skola-assessments";
 
 const DEFAULT_ASSESSMENTS: Assessment[] = [
   {

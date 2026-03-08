@@ -127,7 +127,7 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
 
 // ─── Telegram Group ID Setting ───
 
-const TELEGRAM_GROUP_ID_KEY = "scola-telegram-group-id";
+const TELEGRAM_GROUP_ID_KEY = "skola-telegram-group-id";
 
 function TelegramGroupIdSetting() {
   const [groupId, setGroupId] = useState(() => localStorage.getItem(TELEGRAM_GROUP_ID_KEY) || "");

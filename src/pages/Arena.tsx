@@ -82,7 +82,7 @@ interface PlayerStats {
   totalAnswers: number;
 }
 
-const STATS_KEY = "scola-arena-stats";
+const STATS_KEY = "skola-arena-stats";
 
 function loadStats(): PlayerStats {
   try {

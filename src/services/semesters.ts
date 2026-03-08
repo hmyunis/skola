@@ -3,7 +3,7 @@ import type { Semester } from "@/types/admin";
 // Re-export type for backward compatibility
 export type { Semester } from "@/types/admin";
 
-const SEMESTERS_KEY = "scola-admin-semesters";
+const SEMESTERS_KEY = "skola-admin-semesters";
 
 const DEFAULT_SEMESTERS: Semester[] = [
   {

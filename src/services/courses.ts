@@ -3,7 +3,7 @@ import type { AdminCourse } from "@/types/admin";
 // Re-export type for backward compatibility
 export type { AdminCourse } from "@/types/admin";
 
-const COURSES_KEY = "scola-admin-courses";
+const COURSES_KEY = "skola-admin-courses";
 
 const DEFAULT_COURSES: AdminCourse[] = [
   { id: "c1", code: "CS301", name: "Data Structures & Algorithms", credits: 4, instructor: "Dr. Abebe Bekele", semesterId: "sem-2", enrolled: 68 },

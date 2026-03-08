@@ -5,7 +5,7 @@ export type { ManagedUser } from "@/types/admin";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const USER_STATUS_KEY = "scola-user-statuses";
+const USER_STATUS_KEY = "skola-user-statuses";
 
 export function loadUserStatuses(): Record<string, { status: string; suspendedUntil?: string }> {
   try {
@@ -30,14 +30,14 @@ export async function fetchManagedUsers(): Promise<ManagedUser[]> {
   await delay(300);
   const statuses = loadUserStatuses();
   const users: ManagedUser[] = [
-    { id: "u1", name: "Dawit Tadesse", email: "dawit@scola.edu", role: "owner", status: "active", joinedAt: "2025-06-01", lastActive: "2026-03-08", telegramUsername: "dawit_t" },
-    { id: "u2", name: "Meron Kebede", email: "meron@scola.edu", role: "admin", status: "active", joinedAt: "2025-08-15", lastActive: "2026-03-07", telegramUsername: "meron_k" },
-    { id: "u3", name: "Bereket Wolde", email: "bereket@scola.edu", role: "student", status: "active", joinedAt: "2025-08-20", lastActive: "2026-03-08", telegramUsername: "bereket_w" },
-    { id: "u4", name: "Amina Hassan", email: "amina@scola.edu", role: "student", status: "active", joinedAt: "2025-09-01", lastActive: "2026-03-06", telegramUsername: "amina_h" },
-    { id: "u5", name: "Nahom Tesfaye", email: "nahom@scola.edu", role: "student", status: "suspended", joinedAt: "2025-09-10", lastActive: "2026-02-28", telegramUsername: "nahom_t" },
-    { id: "u6", name: "Sara Mohammed", email: "sara@scola.edu", role: "student", status: "banned", joinedAt: "2025-10-05", lastActive: "2026-01-15", telegramUsername: "sara_m" },
-    { id: "u7", name: "Kidus Mengistu", email: "kidus@scola.edu", role: "admin", status: "active", joinedAt: "2025-08-10", lastActive: "2026-03-08", telegramUsername: "kidus_m" },
-    { id: "u8", name: "Liya Abdi", email: "liya@scola.edu", role: "student", status: "active", joinedAt: "2025-11-01", lastActive: "2026-03-07", telegramUsername: "liya_a" },
+    { id: "u1", name: "Dawit Tadesse", email: "dawit@skola.edu", role: "owner", status: "active", joinedAt: "2025-06-01", lastActive: "2026-03-08", telegramUsername: "dawit_t" },
+    { id: "u2", name: "Meron Kebede", email: "meron@skola.edu", role: "admin", status: "active", joinedAt: "2025-08-15", lastActive: "2026-03-07", telegramUsername: "meron_k" },
+    { id: "u3", name: "Bereket Wolde", email: "bereket@skola.edu", role: "student", status: "active", joinedAt: "2025-08-20", lastActive: "2026-03-08", telegramUsername: "bereket_w" },
+    { id: "u4", name: "Amina Hassan", email: "amina@skola.edu", role: "student", status: "active", joinedAt: "2025-09-01", lastActive: "2026-03-06", telegramUsername: "amina_h" },
+    { id: "u5", name: "Nahom Tesfaye", email: "nahom@skola.edu", role: "student", status: "suspended", joinedAt: "2025-09-10", lastActive: "2026-02-28", telegramUsername: "nahom_t" },
+    { id: "u6", name: "Sara Mohammed", email: "sara@skola.edu", role: "student", status: "banned", joinedAt: "2025-10-05", lastActive: "2026-01-15", telegramUsername: "sara_m" },
+    { id: "u7", name: "Kidus Mengistu", email: "kidus@skola.edu", role: "admin", status: "active", joinedAt: "2025-08-10", lastActive: "2026-03-08", telegramUsername: "kidus_m" },
+    { id: "u8", name: "Liya Abdi", email: "liya@skola.edu", role: "student", status: "active", joinedAt: "2025-11-01", lastActive: "2026-03-07", telegramUsername: "liya_a" },
   ];
   return users.map((u) => {
     const saved = statuses[u.id];

@@ -3,7 +3,7 @@ import type { FeatureToggle } from "@/types/admin";
 // Re-export type for backward compatibility
 export type { FeatureToggle } from "@/types/admin";
 
-const FEATURES_KEY = "scola-owner-features";
+const FEATURES_KEY = "skola-owner-features";
 
 const DEFAULT_FEATURES: FeatureToggle[] = [
   { id: "ft-schedule", name: "Schedule", description: "Class schedule and timetable management", enabled: true, category: "core" },

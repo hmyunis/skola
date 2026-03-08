@@ -70,7 +70,7 @@ const JoinPage = () => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="max-w-sm w-full border border-border p-6 sm:p-8 space-y-6">
         <div className="text-center space-y-1">
-          <h1 className="text-xl font-black uppercase tracking-[0.3em]">SCOLA</h1>
+          <h1 className="text-xl font-black uppercase tracking-[0.3em]">SKOLA</h1>
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Join the Community</p>
         </div>
 
