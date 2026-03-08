@@ -68,7 +68,7 @@ const Login = () => {
   const resetToLogin = () => {
     setView("login");
     setStep("phone");
-    setPhone("");
+    setPhone("+251 ");
     setCode("");
     setError("");
   };
