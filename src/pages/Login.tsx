@@ -235,10 +235,19 @@ const Login = () => {
                     Phone Number
                   </label>
                   <Input
-                    placeholder="+91 XXXXX XXXXX"
+                    placeholder="+251 9XX XXX XXX"
                     value={phone}
                     onChange={(e) => {
-                      setPhone(e.target.value);
+                      let val = e.target.value;
+                      // Ensure +251 prefix is always present
+                      if (!val.startsWith("+251")) {
+                        val = "+251 ";
+                      }
+                      // Only allow digits after +251 (and spaces)
+                      const afterPrefix = val.slice(4).replace(/[^\d\s]/g, "");
+                      const digitsOnly = afterPrefix.replace(/\s/g, "");
+                      if (digitsOnly.length > 9) return;
+                      setPhone("+251" + afterPrefix);
                       setError("");
                     }}
                     onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
