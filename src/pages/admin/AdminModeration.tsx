@@ -158,10 +158,14 @@ const AdminModeration = () => {
                   <span>By: {item.author} · Reported by: {item.reportedBy}</span>
                   {item.status === "pending" && (
                     <div className="flex gap-1">
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => updateStatus(item.id, "resolved")}>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => {
+                        setConfirmAction({ id: item.id, status: "resolved", label: "Remove Content", description: "This content will be permanently removed from the platform.", destructive: true });
+                      }}>
                         <Trash2 className="h-2.5 w-2.5" /> Remove Content
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => updateStatus(item.id, "dismissed")}>
+                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => {
+                        setConfirmAction({ id: item.id, status: "dismissed", label: "Dismiss Report", description: "This report will be dismissed and the content will remain." });
+                      }}>
                         <XCircle className="h-2.5 w-2.5" /> Dismiss
                       </Button>
                     </div>
