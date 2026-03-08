@@ -47,6 +47,7 @@ const API_BASE_URL = "/api";
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { colorMode, toggleColorMode } = useThemeStore();
   const [view, setView] = useState<AuthView>("login");
   const [error, setError] = useState("");
   const [deniedReason, setDeniedReason] = useState<
