@@ -13,7 +13,7 @@ export function PanicButton() {
       >
         {/* Hazard stripes background */}
         <div className="absolute inset-0 hazard-stripes opacity-90" />
-        <span className="relative z-10 flex items-center gap-2 text-destructive-foreground drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+        <span className="relative z-10 flex items-center gap-2 text-destructive font-black [text-shadow:_-1px_-1px_0_hsl(var(--destructive-foreground)),_1px_-1px_0_hsl(var(--destructive-foreground)),_-1px_1px_0_hsl(var(--destructive-foreground)),_1px_1px_0_hsl(var(--destructive-foreground)),_0_0_8px_hsl(var(--destructive-foreground)/0.5)]">
           <AlertTriangle className="h-4 w-4" />
           SURPRISE ASSESSMENT
         </span>
