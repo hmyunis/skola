@@ -141,7 +141,7 @@ export function AppSidebar() {
               </p>
             </div>
           ) : (
-            <span className="text-lg font-black text-sidebar-primary-foreground">S</span>
+            <span className="text-lg font-black text-sidebar-primary-foreground">SK</span>
           )}
         </div>
 

@@ -333,7 +333,7 @@ const Login = () => {
             Secure · Encrypted · Anonymous
           </p>
           <p className="text-[10px] text-muted-foreground/30">
-            SCOLA v1.0 · {new Date().getFullYear()}
+            SKOLA v1.0 · {new Date().getFullYear()}
           </p>
         </div>
       </div>

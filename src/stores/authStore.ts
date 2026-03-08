@@ -49,7 +49,7 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
   },
 ];
 
-const AUTH_KEY = "scola-auth-user";
+const AUTH_KEY = "skola-auth-user";
 
 function loadStoredUser(): MockAccount | null {
   try {
