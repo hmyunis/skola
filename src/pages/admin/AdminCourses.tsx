@@ -179,14 +179,10 @@ const AdminCourses = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Card><CardContent className="p-3">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total</p>
           <p className="text-2xl font-black tabular-nums mt-1">{filtered.length}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-3">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Departments</p>
-          <p className="text-2xl font-black tabular-nums mt-1">{new Set(filtered.map((c) => c.department)).size}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Enrolled</p>
