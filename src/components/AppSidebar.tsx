@@ -134,7 +134,7 @@ export function AppSidebar() {
           {!collapsed ? (
             <div>
               <h1 className="text-xl font-black uppercase tracking-[0.3em] text-sidebar-primary-foreground">
-                SCOLA
+                SKOLA
               </h1>
               <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60 mt-0.5">
                 {batchTheme.name} Division
