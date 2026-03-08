@@ -178,6 +178,39 @@ function VoteButtons({
   );
 }
 
+// ─── File size formatter ───
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+// ─── Extension → ResourceType map ───
+const extToType: Record<string, ResourceType> = {
+  pdf: "pdf",
+  pptx: "slides",
+  ppt: "slides",
+  key: "slides",
+  odp: "slides",
+  txt: "notes",
+  md: "notes",
+  doc: "notes",
+  docx: "notes",
+  mp4: "video",
+  mkv: "video",
+  avi: "video",
+  mov: "video",
+  webm: "video",
+  py: "code",
+  js: "code",
+  ts: "code",
+  java: "code",
+  c: "code",
+  cpp: "code",
+  zip: "code",
+  rar: "code",
+};
+
 // ─── Resource Form Dialog (Create / Edit) ───
 function ResourceFormDialog({
   open,
@@ -198,6 +231,13 @@ function ResourceFormDialog({
   const [size, setSize] = useState(initial?.size || "");
   const [tagsStr, setTagsStr] = useState(initial?.tags.join(", ") || "");
 
+  // File upload state
+  const [file, setFile] = useState<File | null>(null);
+  const [fileDataUrl, setFileDataUrl] = useState<string | undefined>(initial?.fileDataUrl);
+  const [fileName, setFileName] = useState<string | undefined>(initial?.fileName);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Reset when initial changes
   useState(() => {
     if (initial) {
@@ -208,8 +248,61 @@ function ResourceFormDialog({
       setCategory(initial.category);
       setSize(initial.size);
       setTagsStr(initial.tags.join(", "));
+      setFileDataUrl(initial.fileDataUrl);
+      setFileName(initial.fileName);
+      setFile(null);
     }
   });
+
+  const handleFileSelect = useCallback((selectedFile: File) => {
+    setFile(selectedFile);
+    setFileName(selectedFile.name);
+    setSize(formatFileSize(selectedFile.size));
+
+    // Auto-detect type from extension
+    const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
+    if (extToType[ext]) {
+      setType(extToType[ext]);
+    }
+
+    // Auto-fill title if empty
+    if (!title.trim()) {
+      const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
+      setTitle(nameWithoutExt.replace(/[-_]/g, " "));
+    }
+
+    // Read file as data URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setFileDataUrl(e.target?.result as string);
+    };
+    reader.readAsDataURL(selectedFile);
+  }, [title]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) handleFileSelect(droppedFile);
+  }, [handleFileSelect]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const removeFile = () => {
+    setFile(null);
+    setFileDataUrl(undefined);
+    setFileName(undefined);
+    setSize("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const isValid = title.trim() && description.trim();
 
@@ -226,6 +319,8 @@ function ResourceFormDialog({
         .split(",")
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean),
+      fileDataUrl,
+      fileName,
     });
     onOpenChange(false);
   };
@@ -240,6 +335,60 @@ function ResourceFormDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* File upload area */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              File Upload
+            </label>
+            {fileName && fileDataUrl ? (
+              <div className="border border-border p-3 flex items-center gap-3">
+                <div className="p-2 bg-primary/10 border border-primary/30">
+                  <FileText className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{fileName}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{size}</p>
+                </div>
+                <button
+                  onClick={removeFile}
+                  className="h-7 w-7 flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "border-2 border-dashed p-6 flex flex-col items-center gap-2 cursor-pointer transition-colors",
+                  isDragging
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/50 hover:bg-accent/30"
+                )}
+              >
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground text-center">
+                  <span className="font-bold text-foreground">Click to upload</span> or drag and drop
+                </p>
+                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+                  PDF, PPTX, DOCX, MP4, ZIP, and more
+                </p>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFileSelect(f);
+              }}
+            />
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Title</label>
             <Input
@@ -311,6 +460,7 @@ function ResourceFormDialog({
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
                 className="h-9 text-xs"
+                disabled={!!file}
               />
             </div>
           </div>
