@@ -31,6 +31,7 @@ import {
   Clock,
   TrendingUp,
   User,
+  UserCheck,
   ChevronDown,
   ChevronUp,
   CornerDownRight,
