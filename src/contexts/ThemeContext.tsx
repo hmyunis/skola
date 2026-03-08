@@ -71,6 +71,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(true);
   const [customThemes, setCustomThemes] = useState<BatchTheme[]>(loadCustomThemes);
   const [colorMode, setColorModeState] = useState<ColorMode>(loadColorMode);
+  const [fontFamily, setFontFamilyState] = useState<string>(() => {
+    try { return localStorage.getItem(FONT_FAMILY_KEY) || "system"; } catch { return "system"; }
+  });
 
   const setColorMode = useCallback((mode: ColorMode) => {
     setColorModeState(mode);
