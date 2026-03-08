@@ -94,6 +94,9 @@ function UserMenu() {
             <LogOut className="h-3.5 w-3.5" />
             Log Out
           </button>
+            <LogOut className="h-3.5 w-3.5" />
+            Log Out
+          </button>
         </div>
       )}
 
