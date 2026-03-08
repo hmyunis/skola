@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Send,
   Filter,
+  Search,
   MessageCircle,
   Clock,
   TrendingUp,
