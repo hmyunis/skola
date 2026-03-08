@@ -99,7 +99,7 @@
 /* Custom thin sharp scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--border)) transparent;
+  scrollbar-color: hsl(var(--primary) / 0.4) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -112,12 +112,12 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: hsl(var(--primary) / 0.4);
   border-radius: 0 !important;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  background: hsl(var(--primary) / 0.7);
 }
 
 *::-webkit-scrollbar-corner {
