@@ -442,16 +442,20 @@ function PostCard({
             </Tooltip>
           )}
           {(isOwner || isAdmin) && (
-            <button
-              onClick={onDelete}
-              className={cn(
-                "p-1 transition-colors",
-                isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
-              )}
-              title={isOwner ? "Delete post" : "Delete post (admin)"}
-            >
-              {!isOwner && isAdmin ? <Shield className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onDelete}
+                  className={cn(
+                    "p-1 transition-colors",
+                    isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
+                  )}
+                >
+                  {!isOwner && isAdmin ? <Shield className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{isOwner ? "Delete post" : "Delete post (admin)"}</span></TooltipContent>
+            </Tooltip>
           )}
         </div>
 
