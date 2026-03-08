@@ -156,6 +156,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 28,
       upvotes: 38,
       downvotes: 1,
+      downloads: 56,
       description: "Quick reference for subnet masks, CIDR notation, and IP address class ranges with practice problems.",
       tags: ["subnetting", "cidr", "ip-addressing"],
     },
