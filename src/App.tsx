@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeBackground } from "@/components/ThemeBackground";
 import { AppLayout } from "@/components/AppLayout";
+import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Schedule from "./pages/Schedule";
 import Academics from "./pages/Academics";
@@ -40,10 +41,14 @@ const App = () => (
       <ThemeBackground />
       <BrowserRouter>
         <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/join/:code" element={<JoinPage />} />
+
+          {/* Authenticated app routes */}
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Index />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/academics" element={<Academics />} />
             <Route path="/resources" element={<Resources />} />
