@@ -127,7 +127,24 @@ function UserMenu() {
 
 export function AppLayout() {
   const { batchTheme, colorMode, toggleColorMode } = useTheme();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const activeSemester = useSemesterStore((s) => s.activeSemester);
+
+  // Enforce ban/suspend for already logged-in users
+  useEffect(() => {
+    if (!user) return;
+    const saved = getUserStatus(user.id);
+    if (saved?.status === "banned") {
+      logout();
+      navigate("/login");
+    } else if (saved?.status === "suspended" && saved.suspendedUntil) {
+      if (new Date(saved.suspendedUntil) > new Date()) {
+        logout();
+        navigate("/login");
+      }
+    }
+  }, [user, logout, navigate]);
 
   return (
     <SidebarProvider>
