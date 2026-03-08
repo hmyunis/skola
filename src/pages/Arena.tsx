@@ -1,8 +1,17 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchLeaderboard, fetchQuizQuestions, type QuizQuestion, type LeaderboardEntry } from "@/services/arena";
+import {
+  fetchLeaderboard,
+  fetchQuizQuestions,
+  loadCustomQuizzes,
+  saveCustomQuiz,
+  deleteCustomQuiz,
+  type QuizQuestion,
+  type CustomQuiz,
+  type LeaderboardEntry,
+} from "@/services/arena";
 import { COURSES } from "@/services/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -12,6 +21,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Swords,
   Trophy,
@@ -26,9 +53,13 @@ import {
   ArrowRight,
   RotateCcw,
   Search,
+  Plus,
+  Trash2,
+  Play,
+  BookOpen,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 // ─── Player stats (localStorage) ───
 interface PlayerStats {
@@ -64,7 +95,7 @@ function getTitle(xp: number): string {
 }
 
 const difficultyXp = { easy: 10, medium: 20, hard: 30 };
-const QUIZ_TIME = 15; // seconds per question
+const QUIZ_TIME = 15;
 
 // ─── Rank badge colors ───
 function rankStyle(rank: number) {
@@ -86,15 +117,11 @@ function Leaderboard({ data, search }: { data: LeaderboardEntry[]; search: strin
   const filtered = data.filter((e) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return (
-      e.anonymous_id.toLowerCase().includes(q) ||
-      e.title.toLowerCase().includes(q)
-    );
+    return e.anonymous_id.toLowerCase().includes(q) || e.title.toLowerCase().includes(q);
   });
 
   return (
     <div className="border border-border overflow-hidden">
-      {/* Header */}
       <div className="grid grid-cols-[40px_1fr_60px_50px_50px_60px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2 bg-muted/50 border-b border-border text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
         <span>#</span>
         <span>Player</span>
@@ -141,13 +168,15 @@ type QuizState = "idle" | "playing" | "result";
 function QuizBattle({
   playerStats,
   onUpdateStats,
+  customQuizQuestions,
 }: {
   playerStats: PlayerStats;
   onUpdateStats: (stats: PlayerStats) => void;
+  customQuizQuestions?: QuizQuestion[] | null;
 }) {
   const [course, setCourse] = useState("CS301");
-  const [state, setState] = useState<QuizState>("idle");
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [state, setState] = useState<QuizState>(customQuizQuestions ? "playing" : "idle");
+  const [questions, setQuestions] = useState<QuizQuestion[]>(customQuizQuestions || []);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -155,6 +184,21 @@ function QuizBattle({
   const [correctCount, setCorrectCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState(QUIZ_TIME);
   const [xpEarned, setXpEarned] = useState(0);
+
+  // Initialize with custom quiz questions if provided
+  useEffect(() => {
+    if (customQuizQuestions && customQuizQuestions.length > 0) {
+      setQuestions(customQuizQuestions);
+      setCurrentIdx(0);
+      setSelected(null);
+      setAnswered(false);
+      setScore(0);
+      setCorrectCount(0);
+      setTimeLeft(QUIZ_TIME);
+      setXpEarned(0);
+      setState("playing");
+    }
+  }, [customQuizQuestions]);
 
   const startQuiz = useCallback(async () => {
     const qs = await fetchQuizQuestions(course);
@@ -169,11 +213,9 @@ function QuizBattle({
     setState("playing");
   }, [course]);
 
-  // Timer
   useEffect(() => {
     if (state !== "playing" || answered) return;
     if (timeLeft <= 0) {
-      // Time's up — treat as wrong
       setAnswered(true);
       return;
     }
@@ -196,7 +238,6 @@ function QuizBattle({
 
   const nextQuestion = () => {
     if (currentIdx + 1 >= questions.length) {
-      // Quiz complete
       const won = correctCount >= Math.ceil(questions.length / 2);
       const newStats: PlayerStats = {
         ...playerStats,
@@ -306,14 +347,14 @@ function QuizBattle({
     );
   }
 
-  // Playing state
+  if (!currentQ) return null;
+
   const progress = ((currentIdx + (answered ? 1 : 0)) / questions.length) * 100;
   const timerPct = (timeLeft / QUIZ_TIME) * 100;
 
   return (
     <Card className="border-2 border-primary/30">
       <CardContent className="p-5 space-y-4">
-        {/* Progress + Timer header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
@@ -338,7 +379,6 @@ function QuizBattle({
 
         <Progress value={progress} className="h-1.5" />
 
-        {/* Timer bar */}
         <div className="h-1 bg-muted overflow-hidden">
           <div
             className={cn("h-full transition-all duration-1000 linear", timeLeft <= 5 ? "bg-destructive" : "bg-primary")}
@@ -346,10 +386,8 @@ function QuizBattle({
           />
         </div>
 
-        {/* Question */}
         <p className="text-sm font-bold leading-relaxed py-2">{currentQ.question}</p>
 
-        {/* Options */}
         <div className="space-y-2">
           {currentQ.options.map((opt, idx) => {
             const isCorrect = idx === currentQ.correctIndex;
@@ -371,10 +409,7 @@ function QuizBattle({
                 key={idx}
                 onClick={() => handleAnswer(idx)}
                 disabled={answered}
-                className={cn(
-                  "w-full text-left p-3 flex items-center gap-3 transition-all",
-                  optionClass
-                )}
+                className={cn("w-full text-left p-3 flex items-center gap-3 transition-all", optionClass)}
               >
                 <span className="h-6 w-6 shrink-0 flex items-center justify-center border border-current text-[10px] font-black">
                   {String.fromCharCode(65 + idx)}
@@ -387,7 +422,6 @@ function QuizBattle({
           })}
         </div>
 
-        {/* Next button */}
         {answered && (
           <div className="flex justify-between items-center pt-2">
             <p className="text-xs font-medium">
@@ -408,9 +442,354 @@ function QuizBattle({
   );
 }
 
+// ─── Create Quiz Dialog ───
+interface DraftQuestion {
+  question: string;
+  options: [string, string, string, string];
+  correctIndex: number;
+  difficulty: "easy" | "medium" | "hard";
+}
+
+const emptyDraftQuestion = (): DraftQuestion => ({
+  question: "",
+  options: ["", "", "", ""],
+  correctIndex: 0,
+  difficulty: "medium",
+});
+
+function CreateQuizDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [course, setCourse] = useState("CS301");
+  const [questions, setQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
+  const [currentQ, setCurrentQ] = useState(0);
+
+  const resetForm = () => {
+    setTitle("");
+    setCourse("CS301");
+    setQuestions([emptyDraftQuestion()]);
+    setCurrentQ(0);
+  };
+
+  const updateQuestion = (idx: number, patch: Partial<DraftQuestion>) => {
+    setQuestions((prev) => prev.map((q, i) => (i === idx ? { ...q, ...patch } : q)));
+  };
+
+  const updateOption = (qIdx: number, optIdx: number, value: string) => {
+    setQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIdx) return q;
+        const newOpts = [...q.options] as [string, string, string, string];
+        newOpts[optIdx] = value;
+        return { ...q, options: newOpts };
+      })
+    );
+  };
+
+  const addQuestion = () => {
+    if (questions.length >= 20) return;
+    setQuestions((prev) => [...prev, emptyDraftQuestion()]);
+    setCurrentQ(questions.length);
+  };
+
+  const removeQuestion = (idx: number) => {
+    if (questions.length <= 1) return;
+    setQuestions((prev) => prev.filter((_, i) => i !== idx));
+    setCurrentQ((prev) => Math.min(prev, questions.length - 2));
+  };
+
+  const isValid = () => {
+    if (!title.trim()) return false;
+    return questions.every(
+      (q) => q.question.trim() && q.options.every((o) => o.trim())
+    );
+  };
+
+  const handleCreate = () => {
+    if (!isValid()) {
+      toast({ title: "Incomplete", description: "Fill in all question and option fields.", variant: "destructive" });
+      return;
+    }
+
+    const quiz: CustomQuiz = {
+      id: `cq-${Date.now()}`,
+      title: title.trim(),
+      course,
+      questions: questions.map((q, i) => ({
+        id: `cq-${Date.now()}-q${i}`,
+        question: q.question.trim(),
+        options: q.options.map((o) => o.trim()),
+        correctIndex: q.correctIndex,
+        course,
+        difficulty: q.difficulty,
+      })),
+      createdAt: new Date().toISOString(),
+      anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
+    };
+
+    saveCustomQuiz(quiz);
+    toast({ title: "Quiz Created!", description: `"${quiz.title}" with ${quiz.questions.length} questions.` });
+    resetForm();
+    onOpenChange(false);
+    onCreated();
+  };
+
+  const q = questions[currentQ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="uppercase tracking-wider text-sm">Create a Quiz</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Title & Course */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Quiz Title</label>
+              <Input
+                placeholder="e.g. OS Chapter 5 Review"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Course</label>
+              <Select value={course} onValueChange={setCourse}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COURSES.filter((c) => ["CS301", "CS302", "CS303", "CS304"].includes(c.code)).map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} — {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Question tabs */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                Questions ({questions.length})
+              </p>
+              <div className="flex-1" />
+              <Button size="sm" variant="outline" onClick={addQuestion} disabled={questions.length >= 20} className="h-7 text-xs">
+                <Plus className="h-3 w-3" /> Add
+              </Button>
+            </div>
+
+            {/* Question selector pills */}
+            <div className="flex flex-wrap gap-1">
+              {questions.map((q, i) => {
+                const filled = q.question.trim() && q.options.every((o) => o.trim());
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentQ(i)}
+                    className={cn(
+                      "h-7 w-7 text-[10px] font-bold border transition-all",
+                      i === currentQ
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : filled
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                        : "border-border text-muted-foreground hover:bg-accent"
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Current question editor */}
+          {q && (
+            <div className="space-y-3 border border-border p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold">Question {currentQ + 1}</p>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={q.difficulty}
+                    onValueChange={(v) => updateQuestion(currentQ, { difficulty: v as "easy" | "medium" | "hard" })}
+                  >
+                    <SelectTrigger className="w-[100px] h-7 text-[10px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {questions.length > 1 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      onClick={() => removeQuestion(currentQ)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <Textarea
+                placeholder="Type your question..."
+                value={q.question}
+                onChange={(e) => updateQuestion(currentQ, { question: e.target.value })}
+                className="min-h-[60px] text-sm resize-none"
+                rows={2}
+              />
+
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                  Options — click letter to set correct answer
+                </p>
+                {q.options.map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateQuestion(currentQ, { correctIndex: i })}
+                      className={cn(
+                        "h-7 w-7 shrink-0 flex items-center justify-center border text-[10px] font-black transition-all",
+                        q.correctIndex === i
+                          ? "bg-emerald-500 text-white border-emerald-500"
+                          : "border-border text-muted-foreground hover:bg-accent"
+                      )}
+                      title={q.correctIndex === i ? "Correct answer" : "Mark as correct"}
+                    >
+                      {String.fromCharCode(65 + i)}
+                    </button>
+                    <Input
+                      placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                      value={opt}
+                      onChange={(e) => updateOption(currentQ, i, e.target.value)}
+                      className="h-8 text-xs flex-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={!isValid()}>
+              <Plus className="h-3 w-3" />
+              Create Quiz
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Custom Quizzes List ───
+function CustomQuizzesList({
+  onPlay,
+  refreshKey,
+}: {
+  onPlay: (quiz: CustomQuiz) => void;
+  refreshKey: number;
+}) {
+  const [quizzes, setQuizzes] = useState<CustomQuiz[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setQuizzes(loadCustomQuizzes());
+  }, [refreshKey]);
+
+  const handleDelete = () => {
+    if (!deletingId) return;
+    deleteCustomQuiz(deletingId);
+    setQuizzes(loadCustomQuizzes());
+    setDeletingId(null);
+    toast({ title: "Deleted", description: "Quiz has been removed." });
+  };
+
+  if (quizzes.length === 0) return null;
+
+  return (
+    <>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-bold uppercase tracking-wider">Your Quizzes</h2>
+        </div>
+
+        <div className="space-y-2">
+          {quizzes.map((quiz) => {
+            const courseLabel = COURSES.find((c) => c.code === quiz.course)?.name || quiz.course;
+            return (
+              <div key={quiz.id} className="border border-border p-3 flex items-center gap-3 hover:bg-accent/20 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate">{quiz.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{quiz.course}</span>
+                    <span className="text-[10px] text-muted-foreground">·</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{quiz.questions.length} Q</span>
+                    <span className="text-[10px] text-muted-foreground">·</span>
+                    <span className="text-[10px] text-muted-foreground">{quiz.anonymous_id}</span>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onPlay(quiz)}>
+                  <Play className="h-3 w-3" /> Play
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                  onClick={() => setDeletingId(quiz.id)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
+            <AlertDialogDescription>This quiz will be permanently removed. Continue?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 // ─── Main Page ───
 const Arena = () => {
   const [playerStats, setPlayerStats] = useState<PlayerStats>(loadStats);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [customQuizRefresh, setCustomQuizRefresh] = useState(0);
+  const [playingCustomQuiz, setPlayingCustomQuiz] = useState<CustomQuiz | null>(null);
 
   const { data: leaderboard, isLoading } = useQuery({
     queryKey: ["leaderboard"],
@@ -422,6 +801,7 @@ const Arena = () => {
   const handleUpdateStats = useCallback((stats: PlayerStats) => {
     setPlayerStats(stats);
     saveStats(stats);
+    setPlayingCustomQuiz(null);
   }, []);
 
   const accuracy = playerStats.totalAnswers > 0
@@ -432,9 +812,15 @@ const Arena = () => {
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
       {/* Header */}
-      <div className="border-b border-border pb-4">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Gamification</p>
-        <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">The Arena</h1>
+      <div className="border-b border-border pb-4 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Gamification</p>
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">The Arena</h1>
+        </div>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-3 w-3" />
+          Create Quiz
+        </Button>
       </div>
 
       {/* Player stats */}
@@ -487,7 +873,17 @@ const Arena = () => {
       </div>
 
       {/* Quiz Battle */}
-      <QuizBattle playerStats={playerStats} onUpdateStats={handleUpdateStats} />
+      <QuizBattle
+        playerStats={playerStats}
+        onUpdateStats={handleUpdateStats}
+        customQuizQuestions={playingCustomQuiz?.questions}
+      />
+
+      {/* Custom Quizzes */}
+      <CustomQuizzesList
+        refreshKey={customQuizRefresh}
+        onPlay={(quiz) => setPlayingCustomQuiz(quiz)}
+      />
 
       {/* Leaderboard */}
       <div className="space-y-3">
@@ -542,6 +938,13 @@ const Arena = () => {
           )}
         </div>
       </div>
+
+      {/* Create Quiz Dialog */}
+      <CreateQuizDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => setCustomQuizRefresh((p) => p + 1)}
+      />
     </div>
   );
 };

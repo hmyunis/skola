@@ -9,6 +9,15 @@ export interface QuizQuestion {
   difficulty: "easy" | "medium" | "hard";
 }
 
+export interface CustomQuiz {
+  id: string;
+  title: string;
+  course: string;
+  questions: QuizQuestion[];
+  createdAt: string;
+  anonymous_id: string;
+}
+
 export interface LeaderboardEntry {
   rank: number;
   anonymous_id: string;
@@ -26,6 +35,28 @@ export const ARENA_TITLES: Record<string, { label: string; minXp: number }> = {
   champion: { label: "Champion", minXp: 1000 },
   legend: { label: "Legend", minXp: 2000 },
 };
+
+// ─── Custom quiz localStorage ───
+const CUSTOM_QUIZZES_KEY = "scola-arena-custom-quizzes";
+
+export function loadCustomQuizzes(): CustomQuiz[] {
+  try {
+    const s = localStorage.getItem(CUSTOM_QUIZZES_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  return [];
+}
+
+export function saveCustomQuiz(quiz: CustomQuiz) {
+  const existing = loadCustomQuizzes();
+  existing.unshift(quiz);
+  localStorage.setItem(CUSTOM_QUIZZES_KEY, JSON.stringify(existing));
+}
+
+export function deleteCustomQuiz(id: string) {
+  const existing = loadCustomQuizzes().filter((q) => q.id !== id);
+  localStorage.setItem(CUSTOM_QUIZZES_KEY, JSON.stringify(existing));
+}
 
 export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
   await delay(300);
