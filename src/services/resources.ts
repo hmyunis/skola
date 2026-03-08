@@ -105,6 +105,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 8,
       upvotes: 22,
       downvotes: 0,
+      downloads: 35,
       description: "Python-based simulator for FCFS, SJF, Round Robin, and Priority scheduling algorithms with Gantt chart output.",
       tags: ["scheduling", "fcfs", "sjf", "python"],
     },
