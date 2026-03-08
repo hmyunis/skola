@@ -36,7 +36,7 @@ const roleColor = {
 };
 
 // TODO: Replace with your actual bot name
-const TELEGRAM_BOT_NAME = "YourScolaBot";
+const TELEGRAM_BOT_NAME = "YourSkolaBot";
 
 // TODO: Replace with your actual backend API URL
 const API_BASE_URL = "/api";
