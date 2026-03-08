@@ -606,12 +606,36 @@ function ResourceDetailDialog({
           {/* Download / Open button */}
           <div className="flex items-center justify-between">
             {resource.type === "link" ? (
-              <Button size="sm" className="gap-1.5" onClick={() => { onDownload(resource.id); window.open("#", "_blank"); }}>
+              <Button size="sm" className="gap-1.5" onClick={() => {
+                onDownload(resource.id);
+                if (resource.fileDataUrl && resource.fileName) {
+                  const link = document.createElement("a");
+                  link.href = resource.fileDataUrl;
+                  link.download = resource.fileName;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                } else {
+                  window.open("#", "_blank");
+                }
+              }}>
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open Link
               </Button>
             ) : (
-              <Button size="sm" className="gap-1.5" onClick={() => { onDownload(resource.id); toast({ title: "Downloading…", description: resource.title }); }}>
+              <Button size="sm" className="gap-1.5" onClick={() => {
+                onDownload(resource.id);
+                if (resource.fileDataUrl && resource.fileName) {
+                  const link = document.createElement("a");
+                  link.href = resource.fileDataUrl;
+                  link.download = resource.fileName;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                } else {
+                  toast({ title: "No file attached", description: "This resource has no uploaded file." });
+                }
+              }}>
                 <Download className="h-3.5 w-3.5" />
                 Download
               </Button>
