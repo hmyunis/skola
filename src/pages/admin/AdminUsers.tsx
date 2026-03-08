@@ -5,6 +5,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -48,6 +58,13 @@ const AdminUsers = () => {
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [confirmAction, setConfirmAction] = useState<{
+    user: ManagedUser & Partial<ManagedUser>;
+    action: string;
+    changes: Partial<ManagedUser>;
+    description: string;
+    destructive?: boolean;
+  } | null>(null);
 
   const users = (fetchedUsers || []).map((u) => ({ ...u, ...localChanges[u.id] }));
 
@@ -150,8 +167,7 @@ const AdminUsers = () => {
                   <div className="flex items-center gap-1">
                     {user.status === "active" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => {
-                        updateUser(user.id, { status: "suspended" });
-                        toast({ title: "Suspended", description: `${user.name} has been suspended.` });
+                        setConfirmAction({ user, action: "Suspend", changes: { status: "suspended" }, description: `${user.name} will be suspended and lose access.`, destructive: true });
                       }}>
                         <AlertTriangle className="h-3 w-3" /> Suspend
                       </Button>
@@ -166,8 +182,7 @@ const AdminUsers = () => {
                     )}
                     {user.status !== "banned" && (
                       <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => {
-                        updateUser(user.id, { status: "banned" });
-                        toast({ title: "Banned", description: `${user.name} has been banned.` });
+                        setConfirmAction({ user, action: "Ban", changes: { status: "banned" }, description: `${user.name} will be permanently banned from the platform.`, destructive: true });
                       }}>
                         <Ban className="h-3 w-3" /> Ban
                       </Button>
@@ -182,16 +197,14 @@ const AdminUsers = () => {
                     )}
                     {IS_OWNER && user.role === "student" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
-                        updateUser(user.id, { role: "admin" });
-                        toast({ title: "Promoted", description: `${user.name} is now an admin.` });
+                        setConfirmAction({ user, action: "Promote", changes: { role: "admin" }, description: `${user.name} will be promoted to admin with elevated privileges.` });
                       }}>
                         <Shield className="h-3 w-3" /> Promote
                       </Button>
                     )}
                     {IS_OWNER && user.role === "admin" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => {
-                        updateUser(user.id, { role: "student" });
-                        toast({ title: "Demoted", description: `${user.name} is now a student.` });
+                        setConfirmAction({ user, action: "Demote", changes: { role: "student" }, description: `${user.name} will lose all admin privileges.`, destructive: true });
                       }}>
                         <UserCog className="h-3 w-3" /> Demote
                       </Button>
@@ -203,6 +216,31 @@ const AdminUsers = () => {
           })}
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(o) => !o && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmAction?.action} User</AlertDialogTitle>
+            <AlertDialogDescription>{confirmAction?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirmAction?.destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              onClick={() => {
+                if (confirmAction) {
+                  updateUser(confirmAction.user.id, confirmAction.changes);
+                  toast({ title: confirmAction.action, description: confirmAction.description });
+                  setConfirmAction(null);
+                }
+              }}
+            >
+              {confirmAction?.action}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

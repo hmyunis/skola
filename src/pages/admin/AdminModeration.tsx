@@ -4,6 +4,16 @@ import { fetchFlaggedContent, type FlaggedContent } from "@/services/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -46,6 +56,13 @@ const AdminModeration = () => {
   const [localChanges, setLocalChanges] = useState<Record<string, FlaggedContent["status"]>>({});
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [confirmAction, setConfirmAction] = useState<{
+    id: string;
+    status: FlaggedContent["status"];
+    label: string;
+    description: string;
+    destructive?: boolean;
+  } | null>(null);
 
   const items = (flaggedItems || []).map((item) => ({
     ...item,
@@ -141,10 +158,14 @@ const AdminModeration = () => {
                   <span>By: {item.author} · Reported by: {item.reportedBy}</span>
                   {item.status === "pending" && (
                     <div className="flex gap-1">
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => updateStatus(item.id, "resolved")}>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => {
+                        setConfirmAction({ id: item.id, status: "resolved", label: "Remove Content", description: "This content will be permanently removed from the platform.", destructive: true });
+                      }}>
                         <Trash2 className="h-2.5 w-2.5" /> Remove Content
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => updateStatus(item.id, "dismissed")}>
+                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => {
+                        setConfirmAction({ id: item.id, status: "dismissed", label: "Dismiss Report", description: "This report will be dismissed and the content will remain." });
+                      }}>
                         <XCircle className="h-2.5 w-2.5" /> Dismiss
                       </Button>
                     </div>
@@ -155,6 +176,30 @@ const AdminModeration = () => {
           })}
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(o) => !o && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmAction?.label}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmAction?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirmAction?.destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              onClick={() => {
+                if (confirmAction) {
+                  updateStatus(confirmAction.id, confirmAction.status);
+                  setConfirmAction(null);
+                }
+              }}
+            >
+              {confirmAction?.label}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
