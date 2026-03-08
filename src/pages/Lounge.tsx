@@ -253,7 +253,7 @@ function RepliesSection({
                 key={r.id}
                 reply={r}
                 isOwner={isReplyOwner(r)}
-                isAdmin={IS_ADMIN}
+                isAdmin={isAdmin}
                 onEdit={() => {
                   const newContent = prompt("Edit reply:", r.content);
                   if (newContent && newContent.trim()) {
