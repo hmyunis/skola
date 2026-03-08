@@ -152,16 +152,20 @@ function ReplyItem({
             </Tooltip>
           )}
           {(isOwner || isAdmin) && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className={cn(
-                "opacity-0 group-hover:opacity-100 transition-opacity",
-                isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
-              )}
-              title={isOwner ? "Delete reply" : "Delete reply (admin)"}
-            >
-              {!isOwner && isAdmin ? <Shield className="h-2.5 w-2.5" /> : <Trash2 className="h-2.5 w-2.5" />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  className={cn(
+                    "opacity-0 group-hover:opacity-100 transition-opacity",
+                    isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
+                  )}
+                >
+                  {!isOwner && isAdmin ? <Shield className="h-2.5 w-2.5" /> : <Trash2 className="h-2.5 w-2.5" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{isOwner ? "Delete reply" : "Delete reply (admin)"}</span></TooltipContent>
+            </Tooltip>
           )}
         </div>
         <p className="text-xs leading-relaxed">{reply.content}</p>
