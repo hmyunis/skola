@@ -127,7 +127,7 @@ function AnnouncementFormDialog({
           </button>
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button disabled={!isValid} onClick={() => {
+            <Button className="w-full sm:w-auto" disabled={!isValid} onClick={() => {
               onSave({
                 id: initial?.id || `ann-${Date.now()}`,
                 title: title.trim(),
