@@ -357,9 +357,18 @@ const Academics = () => {
       if (filterCourse !== "all" && a.course !== filterCourse) return false;
       if (filterStatus !== "all" && a.status !== filterStatus) return false;
       if (filterSource !== "all" && a.source !== filterSource) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const courseName = COURSES.find((c) => c.code === a.course)?.name || "";
+        return (
+          a.title.toLowerCase().includes(q) ||
+          a.course.toLowerCase().includes(q) ||
+          courseName.toLowerCase().includes(q)
+        );
+      }
       return true;
     });
-  }, [assignments, filterCourse, filterStatus, filterSource]);
+  }, [assignments, filterCourse, filterStatus, filterSource, search]);
 
   // Stats
   const stats = useMemo(() => {
