@@ -55,11 +55,13 @@ import {
   Pencil,
   Trash2,
   Shield,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { ReportDialog } from "@/components/ReportDialog";
 
 // ─── Time ago helper ───
 function timeAgo(timestamp: string): string {
