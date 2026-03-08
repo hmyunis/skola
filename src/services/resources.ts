@@ -54,6 +54,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 23,
       upvotes: 31,
       downvotes: 2,
+      downloads: 47,
       description: "Comprehensive notes covering binary trees, BST, AVL trees, and B-trees with diagrams and complexity analysis.",
       tags: ["trees", "bst", "avl", "data-structures"],
     },
