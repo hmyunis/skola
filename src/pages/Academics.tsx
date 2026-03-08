@@ -500,7 +500,17 @@ const Academics = () => {
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-muted animate-pulse" />
+            <div key={i} className="border border-border p-3 flex items-center gap-3">
+              <div className="h-8 w-8 bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-36 bg-muted animate-pulse" />
+                  <div className="h-4 w-14 bg-muted animate-pulse" />
+                </div>
+                <div className="h-2.5 w-48 bg-muted animate-pulse" />
+              </div>
+              <div className="h-6 w-16 bg-muted animate-pulse" />
+            </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (

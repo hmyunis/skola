@@ -116,9 +116,15 @@ const Members = () => {
 
       {/* Member List */}
       {isLoading ? (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 bg-muted animate-pulse" />
+            <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+              <div className="h-9 w-9 bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3.5 w-28 bg-muted animate-pulse" />
+                <div className="h-2.5 w-20 bg-muted animate-pulse" />
+              </div>
+            </div>
           ))}
         </div>
       ) : (

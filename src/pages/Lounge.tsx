@@ -886,7 +886,23 @@ const Lounge = () => {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-muted animate-pulse" />
+            <div key={i} className="border border-border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-14 bg-muted animate-pulse" />
+                <div className="h-4 w-10 bg-muted animate-pulse" />
+                <div className="flex-1" />
+                <div className="h-3 w-12 bg-muted animate-pulse" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="h-3.5 w-full bg-muted animate-pulse" />
+                <div className="h-3.5 w-2/3 bg-muted animate-pulse" />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-12 bg-muted animate-pulse" />
+                <div className="h-6 w-12 bg-muted animate-pulse" />
+                <div className="h-6 w-16 bg-muted animate-pulse" />
+              </div>
+            </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (

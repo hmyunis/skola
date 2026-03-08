@@ -131,7 +131,27 @@ const AdminModeration = () => {
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-20 bg-muted animate-pulse" />)}</div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="border border-border p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-12 bg-muted animate-pulse" />
+                <div className="h-4 w-20 bg-muted animate-pulse" />
+                <div className="h-4 w-16 bg-muted animate-pulse" />
+                <div className="flex-1" />
+                <div className="h-3 w-16 bg-muted animate-pulse" />
+              </div>
+              <div className="h-4 w-3/4 bg-muted animate-pulse" />
+              <div className="flex justify-between">
+                <div className="h-3 w-40 bg-muted animate-pulse" />
+                <div className="flex gap-1">
+                  <div className="h-6 w-24 bg-muted animate-pulse" />
+                  <div className="h-6 w-16 bg-muted animate-pulse" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((item) => {

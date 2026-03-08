@@ -22,11 +22,29 @@ const AdminAnalytics = () => {
     return (
       <div className="p-4 md:p-6 space-y-5 max-w-5xl">
         <div className="border-b border-border pb-4">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Admin</p>
-          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Analytics</h1>
+          <div className="h-2.5 w-12 bg-muted animate-pulse mb-2" />
+          <div className="h-7 w-36 bg-muted animate-pulse" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-24 bg-muted animate-pulse" />)}
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="border border-border p-3 space-y-2">
+              <div className="flex items-center gap-1">
+                <div className="h-3 w-3 bg-muted animate-pulse" />
+                <div className="h-2.5 w-16 bg-muted animate-pulse" />
+              </div>
+              <div className="h-7 w-12 bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="border border-border p-4 space-y-3">
+          <div className="h-2.5 w-24 bg-muted animate-pulse" />
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="h-3 w-8 bg-muted animate-pulse" />
+              <div className="flex-1 h-5 bg-muted animate-pulse" />
+              <div className="h-3 w-6 bg-muted animate-pulse" />
+            </div>
+          ))}
         </div>
       </div>
     );
