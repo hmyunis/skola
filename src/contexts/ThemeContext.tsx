@@ -8,14 +8,29 @@ import {
   generateSurfaceColors,
 } from "@/lib/themes";
 
+export const FONT_FAMILIES = [
+  { id: "system", name: "System Default", value: "ui-sans-serif, system-ui, sans-serif" },
+  { id: "inter", name: "Inter", value: "'Inter', sans-serif" },
+  { id: "dm-sans", name: "DM Sans", value: "'DM Sans', sans-serif" },
+  { id: "space-grotesk", name: "Space Grotesk", value: "'Space Grotesk', sans-serif" },
+  { id: "jetbrains", name: "JetBrains Mono", value: "'JetBrains Mono', monospace" },
+  { id: "playfair", name: "Playfair Display", value: "'Playfair Display', serif" },
+  { id: "outfit", name: "Outfit", value: "'Outfit', sans-serif" },
+  { id: "sora", name: "Sora", value: "'Sora', sans-serif" },
+  { id: "manrope", name: "Manrope", value: "'Manrope', sans-serif" },
+  { id: "ibm-plex", name: "IBM Plex Sans", value: "'IBM Plex Sans', sans-serif" },
+];
+
 interface ThemeContextType {
   batchTheme: BatchTheme;
   userAccent: UserAccent | null;
   colorMode: ColorMode;
+  fontFamily: string;
   setBatchTheme: (theme: BatchTheme) => void;
   setUserAccent: (accent: UserAccent | null) => void;
   toggleColorMode: () => void;
   setColorMode: (mode: ColorMode) => void;
+  setFontFamily: (id: string) => void;
   isAdmin: boolean;
   setIsAdmin: (v: boolean) => void;
   customThemes: BatchTheme[];
