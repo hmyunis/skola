@@ -114,9 +114,7 @@ const Login = () => {
 
   // ─── Quick Login (dev helper) ───
   const handleQuickLogin = (accountIdx: number) => {
-    login(MOCK_ACCOUNTS[accountIdx]);
-    setView("success");
-    setTimeout(() => navigate("/"), 800);
+    tryLogin(MOCK_ACCOUNTS[accountIdx]);
   };
 
   // ─── ACCESS DENIED state ───
