@@ -189,7 +189,7 @@ const Landing = () => {
             transition={{ delay: 0.6 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-3"
           >
-            <Link to="/login">
+            <Link to="/get-started">
               <Button size="lg" className="text-sm font-bold uppercase tracking-wider px-8 gap-2">
                 Create Your Class
                 <ArrowRight className="h-4 w-4" />
