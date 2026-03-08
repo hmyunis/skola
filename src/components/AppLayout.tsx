@@ -46,10 +46,10 @@ function UserMenu() {
             onClick={() => setOpen((p) => !p)}
             className="h-8 w-8 flex items-center justify-center bg-white/15 hover:bg-white/25 transition-colors text-[10px] font-black uppercase tracking-wider"
           >
-            {MOCK_USER.initials}
+            {user?.initials || "?"}
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom"><span>{MOCK_USER.name}</span></TooltipContent>
+        <TooltipContent side="bottom"><span>{user?.name || "Guest"}</span></TooltipContent>
       </Tooltip>
 
       {open && (
