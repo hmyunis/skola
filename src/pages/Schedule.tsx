@@ -452,7 +452,7 @@ function DailyAgenda({
 
 // ─── Main Schedule Page ───
 const Schedule = () => {
-  const { isAdmin } = useTheme();
+  const { isAdmin } = useAuth();
   const isMobile = useIsMobile();
   const [editMode, setEditMode] = useState(false);
   const [localSchedule, setLocalSchedule] = useState<Record<string, ClassSlot[]>>({});
