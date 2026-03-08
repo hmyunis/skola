@@ -1,10 +1,20 @@
 import { useState, useRef, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Sun, Moon, LogOut, Mail, GraduationCap, Shield } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MOCK_USER = {
   name: "Arjun Patel",
@@ -18,7 +28,9 @@ const MOCK_USER = {
 };
 
 function UserMenu() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,7 +86,7 @@ function UserMenu() {
           <button
             onClick={() => {
               setOpen(false);
-              alert("Mock logout — connect Lovable Cloud for real auth");
+              setLogoutOpen(true);
             }}
             className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 transition-colors"
           >
@@ -83,6 +95,26 @@ function UserMenu() {
           </button>
         </div>
       )}
+
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => navigate("/login")}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Log Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
