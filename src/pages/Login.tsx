@@ -22,15 +22,18 @@ type AuthView = "login" | "verifying" | "denied" | "success";
 const Login = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<AuthView>("login");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+251 ");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [showCode, setShowCode] = useState(false);
   const [error, setError] = useState("");
 
   const handleSendCode = () => {
-    if (!phone.trim() || phone.length < 6) {
-      setError("Enter a valid phone number");
+    // Strip spaces and validate Ethiopian format: +251 followed by 9 digits starting with 7 or 9
+    const cleaned = phone.replace(/\s/g, "");
+    const ethRegex = /^\+251[79]\d{8}$/;
+    if (!ethRegex.test(cleaned)) {
+      setError("Enter a valid Ethiopian number: +251 (7 or 9) followed by 8 digits");
       return;
     }
     setError("");
@@ -65,7 +68,7 @@ const Login = () => {
   const resetToLogin = () => {
     setView("login");
     setStep("phone");
-    setPhone("");
+    setPhone("+251 ");
     setCode("");
     setError("");
   };
@@ -232,10 +235,19 @@ const Login = () => {
                     Phone Number
                   </label>
                   <Input
-                    placeholder="+91 XXXXX XXXXX"
+                    placeholder="+251 9XX XXX XXX"
                     value={phone}
                     onChange={(e) => {
-                      setPhone(e.target.value);
+                      let val = e.target.value;
+                      // Ensure +251 prefix is always present
+                      if (!val.startsWith("+251")) {
+                        val = "+251 ";
+                      }
+                      // Only allow digits after +251 (and spaces)
+                      const afterPrefix = val.slice(4).replace(/[^\d\s]/g, "");
+                      const digitsOnly = afterPrefix.replace(/\s/g, "");
+                      if (digitsOnly.length > 9) return;
+                      setPhone("+251" + afterPrefix);
                       setError("");
                     }}
                     onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
