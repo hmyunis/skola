@@ -71,13 +71,16 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 block">Header / Sidebar</label>
         <div className="flex flex-wrap gap-2">
           {headerPresets.map((h, i) => (
-            <button
-              key={h.name}
-              onClick={() => setHeaderIdx(i)}
-              className={`w-9 h-9 border-2 transition-all ${i === headerIdx ? "border-foreground scale-110" : "border-transparent"}`}
-              style={{ backgroundColor: `hsl(${h.hsl})` }}
-              title={h.name}
-            />
+            <Tooltip key={h.name}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setHeaderIdx(i)}
+                  className={`w-9 h-9 border-2 transition-all ${i === headerIdx ? "border-foreground scale-110" : "border-transparent"}`}
+                  style={{ backgroundColor: `hsl(${h.hsl})` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{h.name}</span></TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>
