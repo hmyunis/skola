@@ -8,6 +8,16 @@ import {
   FolderOpen,
   Swords,
   Settings,
+  CalendarDays,
+  GraduationCap,
+  Users,
+  ShieldAlert,
+  Megaphone,
+  BarChart3,
+  ToggleLeft,
+  Download,
+  Shield,
+  Crown,
 } from "lucide-react";
 import {
   Sheet,
@@ -16,7 +26,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
+import { IS_ADMIN, IS_OWNER } from "@/lib/user";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -31,12 +43,31 @@ const moreItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
+const adminItems = [
+  { title: "Semesters", url: "/admin/semesters", icon: CalendarDays },
+  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
+  { title: "Users", url: "/admin/users", icon: Users },
+  { title: "Moderation", url: "/admin/moderation", icon: ShieldAlert },
+  { title: "Announcements", url: "/admin/announcements", icon: Megaphone },
+  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+];
+
+const ownerItems = [
+  { title: "Features", url: "/owner/features", icon: ToggleLeft },
+  { title: "Data Export", url: "/owner/data-export", icon: Download },
+];
+
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const isMoreActive = moreItems.some((i) => location.pathname === i.url);
+  const allMoreItems = [
+    ...moreItems,
+    ...(IS_ADMIN ? adminItems : []),
+    ...(IS_OWNER ? ownerItems : []),
+  ];
+  const isMoreActive = allMoreItems.some((i) => location.pathname === i.url);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden">
@@ -69,7 +100,7 @@ export function BottomNav() {
               <span>More</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="border-t border-border">
+          <SheetContent side="bottom" className="border-t border-border max-h-[70vh] overflow-y-auto">
             <SheetHeader>
               <SheetTitle className="uppercase tracking-widest text-sm">More</SheetTitle>
             </SheetHeader>
@@ -94,6 +125,66 @@ export function BottomNav() {
                   </button>
                 );
               })}
+
+              {IS_ADMIN && (
+                <>
+                  <div className="flex items-center gap-2 pt-3 pb-1 px-1">
+                    <Shield className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Admin</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  {adminItems.map((item) => {
+                    const active = location.pathname === item.url;
+                    return (
+                      <button
+                        key={item.url}
+                        onClick={() => {
+                          navigate(item.url);
+                          setOpen(false);
+                        }}
+                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium uppercase tracking-wide transition-colors border border-border ${
+                          active
+                            ? "bg-primary/10 text-primary border-primary/30"
+                            : "text-foreground hover:bg-accent"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              {IS_OWNER && (
+                <>
+                  <div className="flex items-center gap-2 pt-3 pb-1 px-1">
+                    <Crown className="h-3 w-3 text-amber-500" />
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Owner</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  {ownerItems.map((item) => {
+                    const active = location.pathname === item.url;
+                    return (
+                      <button
+                        key={item.url}
+                        onClick={() => {
+                          navigate(item.url);
+                          setOpen(false);
+                        }}
+                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium uppercase tracking-wide transition-colors border border-border ${
+                          active
+                            ? "bg-primary/10 text-primary border-primary/30"
+                            : "text-foreground hover:bg-accent"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </SheetContent>
         </Sheet>
