@@ -417,6 +417,8 @@ const Arena = () => {
     queryFn: fetchLeaderboard,
   });
 
+  const [leaderboardSearch, setLeaderboardSearch] = useState("");
+
   const handleUpdateStats = useCallback((stats: PlayerStats) => {
     setPlayerStats(stats);
     saveStats(stats);
