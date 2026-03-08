@@ -198,8 +198,8 @@ const AdminCourses = () => {
           <p className="text-2xl font-black tabular-nums mt-1">{filtered.length}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Instructors</p>
-          <p className="text-2xl font-black tabular-nums mt-1">{new Set(filtered.map(c => c.instructor)).size}</p>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total ECTS</p>
+          <p className="text-2xl font-black tabular-nums mt-1">{filtered.reduce((sum, c) => sum + c.credits, 0)}</p>
         </CardContent></Card>
       </div>
 
