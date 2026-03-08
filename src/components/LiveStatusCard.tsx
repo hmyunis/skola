@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchTodaySchedule, type ClassSlot } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Radio, Clock, Coffee } from "lucide-react";
+import { Clock, Coffee } from "lucide-react";
+import { formatTime12 } from "@/lib/utils";
 
 type LiveState =
   | { status: "live"; classSlot: ClassSlot; progress: number; remaining: string }
@@ -77,7 +78,7 @@ export function LiveStatusCard() {
           <div>
             <p className="text-lg font-bold">{state.classSlot.name}</p>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              {state.classSlot.code} · {state.classSlot.room}
+              {state.classSlot.code} · {state.classSlot.room} · {formatTime12(state.classSlot.startTime)} – {formatTime12(state.classSlot.endTime)}
             </p>
           </div>
           <div className="space-y-1">
@@ -101,7 +102,7 @@ export function LiveStatusCard() {
         <CardContent>
           <p className="text-lg font-bold">{state.classSlot.name}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            {state.classSlot.code} · {state.classSlot.room} · Starts in {state.startsIn}
+            {state.classSlot.code} · {state.classSlot.room} · {formatTime12(state.classSlot.startTime)} – {formatTime12(state.classSlot.endTime)} · Starts in {state.startsIn}
           </p>
         </CardContent>
       </Card>
