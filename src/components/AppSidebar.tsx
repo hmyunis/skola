@@ -13,7 +13,7 @@ import {
   Megaphone,
   BarChart3,
   ToggleLeft,
-  Download,
+  
   Crown,
   Shield,
 } from "lucide-react";
