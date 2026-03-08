@@ -164,7 +164,7 @@ export function AppLayout() {
             >
               <SidebarTrigger className="hidden md:flex text-inherit hover:bg-white/10" />
               <div className="h-5 w-px bg-current opacity-20 hidden md:block" />
-              <span className="text-xs font-bold uppercase tracking-[0.2em]">SCOLA</span>
+              <span className="text-xs font-bold uppercase tracking-[0.2em]">SKOLA</span>
               <span className="text-[10px] uppercase tracking-widest opacity-60 hidden sm:inline">
                 {batchTheme.name} Division
               </span>
