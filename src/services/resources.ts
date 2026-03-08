@@ -88,6 +88,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 12,
       upvotes: 14,
       downvotes: 4,
+      downloads: 19,
       description: "Lab manual covering TCP/IP socket programming, Wireshark captures, and packet analysis exercises.",
       tags: ["tcp", "ip", "wireshark", "sockets"],
     },
