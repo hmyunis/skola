@@ -118,13 +118,15 @@ export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySc
   };
 }
 
-export async function fetchQuickStats(): Promise<QuickStats> {
+export async function fetchQuickStats(semesterId?: string): Promise<QuickStats> {
   await delay(150);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return { remainingClasses: 0, pendingAssignments: 0, upcomingExams: 0 };
   return { remainingClasses: 3, pendingAssignments: 5, upcomingExams: 2 };
 }
 
-export async function fetchAssignments(): Promise<Assignment[]> {
+export async function fetchAssignments(semesterId?: string): Promise<Assignment[]> {
   await delay(350);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   return [
     { id: "a1", title: "Binary Tree Implementation", course: "CS301", dueDate: "2026-03-12", source: "classroom", status: "pending" },
     { id: "a2", title: "ER Diagram - Library System", course: "CS302", dueDate: "2026-03-14", source: "direct", status: "pending" },
