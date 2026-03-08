@@ -159,8 +159,8 @@ const AdminModeration = () => {
             const sCfg = statusConfig[item.status];
             const SIcon = sCfg.icon;
             return (
-              <div key={item.id} className="border border-border p-4 space-y-2 hover:bg-accent/20 transition-colors">
-                <div className="flex items-center gap-2 flex-wrap">
+              <div key={item.id} className="border border-border p-3 sm:p-4 space-y-2 hover:bg-accent/20 transition-colors">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   <span className="px-1.5 py-0.5 border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1">
                     <TypeIcon className="h-2.5 w-2.5" /> {item.type}
                   </span>
@@ -170,20 +170,20 @@ const AdminModeration = () => {
                   <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1", sCfg.color)}>
                     <SIcon className="h-2.5 w-2.5" /> {sCfg.label}
                   </span>
-                  <div className="flex-1" />
+                  <div className="hidden sm:block flex-1" />
                   <span className="text-[10px] text-muted-foreground">{new Date(item.reportedAt).toLocaleDateString()}</span>
                 </div>
-                <p className="text-sm">{item.content}</p>
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>By: {item.author} · Reported by: {item.reportedBy}</span>
+                <p className="text-sm break-words">{item.content}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[10px] text-muted-foreground">
+                  <span className="break-words">By: {item.author} · Reported by: {item.reportedBy}</span>
                   {item.status === "pending" && (
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => {
+                    <div className="flex gap-1 w-full sm:w-auto">
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 flex-1 sm:flex-none" onClick={() => {
                         setConfirmAction({ id: item.id, status: "resolved", label: "Remove Content", description: "This content will be permanently removed from the platform.", destructive: true });
                       }}>
-                        <Trash2 className="h-2.5 w-2.5" /> Remove Content
+                        <Trash2 className="h-2.5 w-2.5" /> Remove
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => {
+                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 flex-1 sm:flex-none" onClick={() => {
                         setConfirmAction({ id: item.id, status: "dismissed", label: "Dismiss Report", description: "This report will be dismissed and the content will remain." });
                       }}>
                         <XCircle className="h-2.5 w-2.5" /> Dismiss
