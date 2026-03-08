@@ -27,6 +27,7 @@ export interface Assessment {
 export interface InviteLink {
   id: string;
   code: string;
+  classroomId: string;
   maxUses: number;
   usedCount: number;
   createdAt: string;
