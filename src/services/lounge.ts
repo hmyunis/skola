@@ -90,7 +90,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 0, "💀": 24, "🔥": 2, "📚": 0, "😭": 18, "🤝": 31 },
       replies: 12,
       anonymous_id: "Anon#7733",
-      displayName: "Riya Sharma",
+      displayName: "Meron Kebede",
       isAnonymous: false,
     },
     {
@@ -112,7 +112,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 0, "💀": 8, "🔥": 0, "📚": 0, "😭": 14, "🤝": 22 },
       replies: 5,
       anonymous_id: "Anon#9012",
-      displayName: "Vikram Desai",
+      displayName: "Bereket Wolde",
       isAnonymous: false,
     },
     {
@@ -156,7 +156,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 18, "💀": 2, "🔥": 9, "📚": 12, "😭": 1, "🤝": 7 },
       replies: 4,
       anonymous_id: "Anon#6120",
-      displayName: "Priya Nair",
+      displayName: "Amina Hassan",
       isAnonymous: false,
     },
   ];

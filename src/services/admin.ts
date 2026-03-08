@@ -77,12 +77,12 @@ export interface AdminCourse {
 const COURSES_KEY = "scola-admin-courses";
 
 const DEFAULT_COURSES: AdminCourse[] = [
-  { id: "c1", code: "CS301", name: "Data Structures & Algorithms", credits: 4, instructor: "Dr. Rajesh Kumar", semesterId: "sem-2", enrolled: 68 },
-  { id: "c2", code: "CS302", name: "Database Management Systems", credits: 4, instructor: "Prof. Meena Iyer", semesterId: "sem-2", enrolled: 72 },
-  { id: "c3", code: "CS303", name: "Computer Networks", credits: 3, instructor: "Dr. Anil Verma", semesterId: "sem-2", enrolled: 65 },
-  { id: "c4", code: "CS304", name: "Operating Systems", credits: 4, instructor: "Prof. Sunita Rao", semesterId: "sem-2", enrolled: 70 },
-  { id: "c5", code: "MA201", name: "Engineering Mathematics", credits: 3, instructor: "Dr. Vikram Singh", semesterId: "sem-2", enrolled: 120 },
-  { id: "c6", code: "EC201", name: "Digital Electronics", credits: 3, instructor: "Dr. Priya Nair", semesterId: "sem-2", enrolled: 55 },
+  { id: "c1", code: "CS301", name: "Data Structures & Algorithms", credits: 4, instructor: "Dr. Abebe Bekele", semesterId: "sem-2", enrolled: 68 },
+  { id: "c2", code: "CS302", name: "Database Management Systems", credits: 4, instructor: "Prof. Hana Gebremedhin", semesterId: "sem-2", enrolled: 72 },
+  { id: "c3", code: "CS303", name: "Computer Networks", credits: 3, instructor: "Dr. Mohammed Yusuf", semesterId: "sem-2", enrolled: 65 },
+  { id: "c4", code: "CS304", name: "Operating Systems", credits: 4, instructor: "Prof. Tigist Alemu", semesterId: "sem-2", enrolled: 70 },
+  { id: "c5", code: "MA201", name: "Engineering Mathematics", credits: 3, instructor: "Dr. Yonas Hailu", semesterId: "sem-2", enrolled: 120 },
+  { id: "c6", code: "EC201", name: "Digital Electronics", credits: 3, instructor: "Dr. Fatima Ahmed", semesterId: "sem-2", enrolled: 55 },
 ];
 
 export function loadCourses(): AdminCourse[] {
@@ -111,14 +111,14 @@ export interface ManagedUser {
 export async function fetchManagedUsers(): Promise<ManagedUser[]> {
   await delay(300);
   return [
-    { id: "u1", name: "Arjun Patel", email: "arjun@scola.edu", role: "owner", status: "active", joinedAt: "2025-06-01", lastActive: "2026-03-08" },
-    { id: "u2", name: "Riya Sharma", email: "riya@scola.edu", role: "admin", status: "active", joinedAt: "2025-08-15", lastActive: "2026-03-07" },
-    { id: "u3", name: "Vikram Desai", email: "vikram@scola.edu", role: "student", status: "active", joinedAt: "2025-08-20", lastActive: "2026-03-08" },
-    { id: "u4", name: "Priya Nair", email: "priya@scola.edu", role: "student", status: "active", joinedAt: "2025-09-01", lastActive: "2026-03-06" },
-    { id: "u5", name: "Karan Mehta", email: "karan@scola.edu", role: "student", status: "suspended", joinedAt: "2025-09-10", lastActive: "2026-02-28" },
-    { id: "u6", name: "Ananya Gupta", email: "ananya@scola.edu", role: "student", status: "banned", joinedAt: "2025-10-05", lastActive: "2026-01-15" },
-    { id: "u7", name: "Rohan Das", email: "rohan@scola.edu", role: "admin", status: "active", joinedAt: "2025-08-10", lastActive: "2026-03-08" },
-    { id: "u8", name: "Deepika Reddy", email: "deepika@scola.edu", role: "student", status: "active", joinedAt: "2025-11-01", lastActive: "2026-03-07" },
+    { id: "u1", name: "Dawit Tadesse", email: "dawit@scola.edu", role: "owner", status: "active", joinedAt: "2025-06-01", lastActive: "2026-03-08" },
+    { id: "u2", name: "Meron Kebede", email: "meron@scola.edu", role: "admin", status: "active", joinedAt: "2025-08-15", lastActive: "2026-03-07" },
+    { id: "u3", name: "Bereket Wolde", email: "bereket@scola.edu", role: "student", status: "active", joinedAt: "2025-08-20", lastActive: "2026-03-08" },
+    { id: "u4", name: "Amina Hassan", email: "amina@scola.edu", role: "student", status: "active", joinedAt: "2025-09-01", lastActive: "2026-03-06" },
+    { id: "u5", name: "Nahom Tesfaye", email: "nahom@scola.edu", role: "student", status: "suspended", joinedAt: "2025-09-10", lastActive: "2026-02-28" },
+    { id: "u6", name: "Sara Mohammed", email: "sara@scola.edu", role: "student", status: "banned", joinedAt: "2025-10-05", lastActive: "2026-01-15" },
+    { id: "u7", name: "Kidus Mengistu", email: "kidus@scola.edu", role: "admin", status: "active", joinedAt: "2025-08-10", lastActive: "2026-03-08" },
+    { id: "u8", name: "Liya Abdi", email: "liya@scola.edu", role: "student", status: "active", joinedAt: "2025-11-01", lastActive: "2026-03-07" },
   ];
 }
 
@@ -138,7 +138,7 @@ export async function fetchFlaggedContent(): Promise<FlaggedContent[]> {
   await delay(300);
   return [
     { id: "f1", type: "post", content: "Extremely inappropriate comment about a professor...", author: "Anon#6120", reason: "Harassment", reportedBy: "Anon#4821", reportedAt: "2026-03-07T14:30:00", status: "pending" },
-    { id: "f2", type: "resource", content: "Uploaded copyrighted textbook PDF", author: "Vikram Desai", reason: "Copyright violation", reportedBy: "Riya Sharma", reportedAt: "2026-03-06T10:15:00", status: "pending" },
+    { id: "f2", type: "resource", content: "Uploaded copyrighted textbook PDF", author: "Bereket Wolde", reason: "Copyright violation", reportedBy: "Meron Kebede", reportedAt: "2026-03-06T10:15:00", status: "pending" },
     { id: "f3", type: "reply", content: "Spam link to external website", author: "Anon#9012", reason: "Spam", reportedBy: "Anon#2156", reportedAt: "2026-03-05T18:45:00", status: "resolved" },
     { id: "f4", type: "quiz", content: "Quiz with offensive question content", author: "Anon#3367", reason: "Offensive content", reportedBy: "Anon#7733", reportedAt: "2026-03-04T09:20:00", status: "dismissed" },
     { id: "f5", type: "post", content: "Sharing exam answers openly in the lounge", author: "Anon#5544", reason: "Academic dishonesty", reportedBy: "Anon#8891", reportedAt: "2026-03-08T08:00:00", status: "pending" },
@@ -161,9 +161,9 @@ export interface Announcement {
 const ANNOUNCEMENTS_KEY = "scola-admin-announcements";
 
 const DEFAULT_ANNOUNCEMENTS: Announcement[] = [
-  { id: "a1", title: "Mid-Semester Examination Schedule Released", content: "The mid-semester examination schedule for Spring 2026 has been published. Please check your schedule page for details.", priority: "high", createdAt: "2026-03-01T09:00:00", expiresAt: "2026-03-20", createdBy: "Arjun Patel", targetAudience: "all", pinned: true },
-  { id: "a2", title: "Lab 302 Maintenance", content: "Lab 302 will be unavailable for maintenance on March 10-11. All lab sessions will be relocated to Lab 204.", priority: "normal", createdAt: "2026-03-05T14:00:00", expiresAt: "2026-03-12", createdBy: "Riya Sharma", targetAudience: "students", pinned: false },
-  { id: "a3", title: "Spring Break Reminder", content: "Spring break is from March 20-27. Campus facilities will operate on reduced hours.", priority: "low", createdAt: "2026-03-08T08:00:00", createdBy: "Arjun Patel", targetAudience: "all", pinned: false },
+  { id: "a1", title: "Mid-Semester Examination Schedule Released", content: "The mid-semester examination schedule for Spring 2026 has been published. Please check your schedule page for details.", priority: "high", createdAt: "2026-03-01T09:00:00", expiresAt: "2026-03-20", createdBy: "Dawit Tadesse", targetAudience: "all", pinned: true },
+  { id: "a2", title: "Lab 302 Maintenance", content: "Lab 302 will be unavailable for maintenance on March 10-11. All lab sessions will be relocated to Lab 204.", priority: "normal", createdAt: "2026-03-05T14:00:00", expiresAt: "2026-03-12", createdBy: "Meron Kebede", targetAudience: "students", pinned: false },
+  { id: "a3", title: "Spring Break Reminder", content: "Spring break is from March 20-27. Campus facilities will operate on reduced hours.", priority: "low", createdAt: "2026-03-08T08:00:00", createdBy: "Dawit Tadesse", targetAudience: "all", pinned: false },
 ];
 
 export function loadAnnouncements(): Announcement[] {

@@ -17,10 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MOCK_USER = {
-  name: "Arjun Patel",
-  email: "arjun.patel@university.edu",
+  name: "Dawit Tadesse",
+  email: "dawit.tadesse@university.edu",
   avatar: null as string | null,
-  initials: "AP",
+  initials: "DT",
   year: 3,
   semester: 2,
   batch: "Software",
