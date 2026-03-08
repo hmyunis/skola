@@ -20,7 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical, Trash2, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { formatTime12, hourTo12, dateToTimeInput, timeInputToDate } from "@/lib/utils";
 
@@ -51,10 +61,11 @@ interface EditDialogProps {
   slot: ClassSlot | null;
   day: DayOfWeek;
   onSave: (original: ClassSlot, updated: ClassSlot, originalDay: DayOfWeek, newDay: DayOfWeek) => void;
+  onDelete: (slot: ClassSlot, day: DayOfWeek) => void;
   onClose: () => void;
 }
 
-function EditClassDialog({ slot, day, onSave, onClose }: EditDialogProps) {
+function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogProps) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
@@ -189,9 +200,19 @@ function EditClassDialog({ slot, day, onSave, onClose }: EditDialogProps) {
           </label>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" onClick={handleSave}>Save Changes</Button>
+        <DialogFooter className="flex !justify-between">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => slot && onDelete(slot, day)}
+          >
+            <Trash2 className="h-3 w-3" />
+            Remove
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" onClick={handleSave}>Save Changes</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -436,6 +457,7 @@ const Schedule = () => {
   const [editMode, setEditMode] = useState(false);
   const [localSchedule, setLocalSchedule] = useState<Record<string, ClassSlot[]>>({});
   const [editingSlot, setEditingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
+  const [deletingSlot, setDeletingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
 
   const { data: fetchedSchedule, isLoading } = useQuery({
     queryKey: ["weeklySchedule"],
@@ -513,6 +535,22 @@ const Schedule = () => {
     if (editMode) setEditingSlot({ slot, day });
   };
 
+  const handleDeleteSlot = (slot: ClassSlot, day: DayOfWeek) => {
+    setEditingSlot(null);
+    setDeletingSlot({ slot, day });
+  };
+
+  const confirmDelete = () => {
+    if (!deletingSlot) return;
+    setLocalSchedule((prev) => {
+      const next = cloneSchedule(prev);
+      next[deletingSlot.day] = (next[deletingSlot.day] || []).filter((s) => s.id !== deletingSlot.slot.id);
+      return next;
+    });
+    toast({ title: "Class Removed", description: `${deletingSlot.slot.name} removed from ${deletingSlot.day}.` });
+    setDeletingSlot(null);
+  };
+
   const showDraft = editMode || Object.values(localSchedule).some((slots) => slots.some((s) => s.draft));
 
   return (
@@ -525,18 +563,21 @@ const Schedule = () => {
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <Button
-              variant={editMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => (editMode ? setEditMode(false) : enterEditMode())}
-            >
-              <Pencil className="h-3 w-3" />
-              {editMode ? "Editing" : "Edit Mode"}
-            </Button>
-            {editMode && (
-              <Button size="sm" onClick={handlePublish}>
-                <Check className="h-3 w-3" />
-                Publish
+            {editMode ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setEditMode(false)}>
+                  <X className="h-3 w-3" />
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handlePublish}>
+                  <Check className="h-3 w-3" />
+                  Publish
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={enterEditMode}>
+                <Pencil className="h-3 w-3" />
+                Edit Mode
               </Button>
             )}
           </div>
@@ -598,9 +639,32 @@ const Schedule = () => {
           slot={editingSlot.slot}
           day={editingSlot.day}
           onSave={handleSaveEdit}
+          onDelete={handleDeleteSlot}
           onClose={() => setEditingSlot(null)}
         />
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deletingSlot} onOpenChange={() => setDeletingSlot(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase tracking-wider text-sm">Remove Class</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <span className="font-bold">{deletingSlot?.slot.name}</span> ({deletingSlot?.slot.code}) from {deletingSlot?.day}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              <Trash2 className="h-3 w-3" />
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
