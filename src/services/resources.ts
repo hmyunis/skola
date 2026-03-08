@@ -16,6 +16,7 @@ export interface Resource {
   totalRatings: number;
   upvotes: number;
   downvotes: number;
+  downloads: number;
   description: string;
   tags: string[];
 }
