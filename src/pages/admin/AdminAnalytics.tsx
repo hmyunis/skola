@@ -9,14 +9,27 @@ import {
   Swords,
   TrendingUp,
   Activity,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/authStore";
 
 const AdminAnalytics = () => {
+  const { isOwner } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["adminAnalytics"],
     queryFn: fetchAnalytics,
   });
+
+  if (!isOwner) {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <ShieldAlert className="h-10 w-10 mx-auto text-destructive" />
+        <h2 className="text-lg font-bold uppercase tracking-wider">Access Denied</h2>
+        <p className="text-sm text-muted-foreground">Only the Owner can view analytics.</p>
+      </div>
+    );
+  }
 
   if (isLoading || !data) {
     return (

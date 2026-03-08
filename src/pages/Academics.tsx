@@ -301,8 +301,8 @@ function AssignmentRow({
           </div>
         </div>
 
-        {/* Confidence voting (inline on desktop) */}
-        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        {/* Confidence voting (inline on desktop, wrap on mobile) */}
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           {(["confident", "neutral", "struggling"] as ConfidenceVote[]).map((v) => (
             <ConfidenceButton
               key={v}

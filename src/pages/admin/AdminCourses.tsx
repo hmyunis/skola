@@ -182,24 +182,24 @@ const AdminCourses = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-4xl">
-      <div className="border-b border-border pb-4 flex items-end justify-between">
+      <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Owner</p>
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Courses</h1>
         </div>
-        <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }}>
+        <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditing(null); setFormOpen(true); }}>
           <Plus className="h-3 w-3" /> Add Course
         </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Card><CardContent className="p-3">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total</p>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Courses</p>
           <p className="text-2xl font-black tabular-nums mt-1">{filtered.length}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Enrolled</p>
-          <p className="text-2xl font-black tabular-nums mt-1">{filtered.reduce((s, c) => s + c.enrolled, 0)}</p>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Instructors</p>
+          <p className="text-2xl font-black tabular-nums mt-1">{new Set(filtered.map(c => c.instructor)).size}</p>
         </CardContent></Card>
       </div>
 
