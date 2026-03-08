@@ -184,7 +184,7 @@ function Leaderboard({ data, search }: { data: LeaderboardEntry[]; search: strin
       )}
       </div>
     </div>
-}
+  );
 
 // ─── Quiz Battle Component ───
 type QuizState = "idle" | "playing" | "result";
