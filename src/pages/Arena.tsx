@@ -751,6 +751,7 @@ function CustomQuizzesList({
 }) {
   const [quizzes, setQuizzes] = useState<CustomQuiz[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reportQuiz, setReportQuiz] = useState<CustomQuiz | null>(null);
 
   useEffect(() => {
     setQuizzes(loadCustomQuizzes());
