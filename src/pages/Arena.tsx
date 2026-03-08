@@ -59,8 +59,10 @@ import {
   EyeOff,
   Play,
   BookOpen,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IS_ADMIN, MOCK_USER_NAME } from "@/lib/user";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Player stats (localStorage) ───
@@ -535,7 +537,8 @@ function CreateQuizDialog({
         difficulty: q.difficulty,
       })),
       createdAt: new Date().toISOString(),
-      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : "Arjun Patel",
+      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : MOCK_USER_NAME,
+      createdByUser: true,
     };
 
     saveCustomQuiz(quiz);
@@ -598,7 +601,7 @@ function CreateQuizDialog({
                   <Eye className="h-4 w-4 text-primary shrink-0" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : "Arjun Patel"}</p>
+                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : MOCK_USER_NAME}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {isAnonymous ? "Your name will be hidden" : "Your name will be visible"}
                   </p>
@@ -759,7 +762,7 @@ function CustomQuizzesList({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-bold uppercase tracking-wider">Your Quizzes</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider">Community Quizzes</h2>
         </div>
 
         <div className="space-y-2">
@@ -780,14 +783,17 @@ function CustomQuizzesList({
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onPlay(quiz)}>
                   <Play className="h-3 w-3" /> Play
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  onClick={() => setDeletingId(quiz.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                {(quiz.createdByUser || IS_ADMIN) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={cn("h-7 w-7 p-0", quiz.createdByUser ? "text-destructive hover:text-destructive" : "text-amber-500 hover:text-destructive")}
+                    onClick={() => setDeletingId(quiz.id)}
+                    title={quiz.createdByUser ? "Delete quiz" : "Delete quiz (admin)"}
+                  >
+                    {quiz.createdByUser ? <Trash2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                  </Button>
+                )}
               </div>
             );
           })}

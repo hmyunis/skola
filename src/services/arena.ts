@@ -16,6 +16,7 @@ export interface CustomQuiz {
   questions: QuizQuestion[];
   createdAt: string;
   anonymous_id: string;
+  createdByUser?: boolean;
 }
 
 export interface LeaderboardEntry {

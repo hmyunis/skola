@@ -60,7 +60,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
-const MOCK_USER_NAME = "Arjun Patel";
+import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
 
 // ─── Type icon map ───
 const typeIcons: Record<ResourceType, typeof FileText> = {
@@ -343,6 +343,7 @@ function ResourceDetailDialog({
   userRating,
   userVote,
   isOwner,
+  isAdmin,
   onRate,
   onVote,
   onEdit,
@@ -353,6 +354,7 @@ function ResourceDetailDialog({
   userRating?: number;
   userVote?: "up" | "down";
   isOwner: boolean;
+  isAdmin: boolean;
   onRate: (id: string, stars: number) => void;
   onVote: (id: string, dir: "up" | "down") => void;
   onEdit: () => void;
@@ -451,13 +453,17 @@ function ResourceDetailDialog({
             />
           </div>
 
-          {/* Owner actions */}
-          {isOwner && (
+          {/* Owner / Admin actions */}
+          {(isOwner || isAdmin) && (
             <div className="flex items-center gap-2 border-t border-border pt-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">Your resource</p>
-              <Button size="sm" variant="outline" onClick={onEdit}>
-                <Pencil className="h-3 w-3" /> Edit
-              </Button>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">
+                {isOwner ? "Your resource" : "Admin moderation"}
+              </p>
+              {isOwner && (
+                <Button size="sm" variant="outline" onClick={onEdit}>
+                  <Pencil className="h-3 w-3" /> Edit
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onDelete}>
                 <Trash2 className="h-3 w-3" /> Delete
               </Button>
@@ -822,6 +828,7 @@ const Resources = () => {
         userRating={detailResource ? ratings[detailResource.id] : undefined}
         userVote={detailResource ? votes[detailResource.id] : undefined}
         isOwner={detailResource ? isOwner(detailResource) : false}
+        isAdmin={IS_ADMIN}
         onRate={handleRate}
         onVote={handleVote}
         onEdit={() => {
