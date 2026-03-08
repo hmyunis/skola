@@ -533,9 +533,14 @@ const Academics = () => {
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Assessments</h1>
         </div>
         {isAdmin && (
-          <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingAssess(null); setAssessFormOpen(true); }}>
-            <Plus className="h-3 w-3" /> Add Assessment
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setGroupOrderOpen(true)}>
+              <Shuffle className="h-3 w-3" /> Group Order
+            </Button>
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingAssess(null); setAssessFormOpen(true); }}>
+              <Plus className="h-3 w-3" /> Add Assessment
+            </Button>
+          </div>
         )}
       </div>
 
