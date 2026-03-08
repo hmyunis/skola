@@ -458,6 +458,7 @@ const Academics = () => {
   const [assessFormOpen, setAssessFormOpen] = useState(false);
   const [editingAssess, setEditingAssess] = useState<AdminAssessment | null>(null);
   const [deletingAssessId, setDeletingAssessId] = useState<string | null>(null);
+  const [groupOrderOpen, setGroupOrderOpen] = useState(false);
 
   // Reload assessments when semester changes
   useMemo(() => {
