@@ -279,7 +279,7 @@ const Login = () => {
               Student Portal
             </p>
             <h1 className="text-2xl font-black uppercase tracking-wider">
-              SCOLA
+              SKOLA
             </h1>
           </div>
         </div>
