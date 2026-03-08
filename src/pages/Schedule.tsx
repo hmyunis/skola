@@ -61,6 +61,7 @@ interface EditDialogProps {
   slot: ClassSlot | null;
   day: DayOfWeek;
   onSave: (original: ClassSlot, updated: ClassSlot, originalDay: DayOfWeek, newDay: DayOfWeek) => void;
+  onDelete: (slot: ClassSlot, day: DayOfWeek) => void;
   onClose: () => void;
 }
 
