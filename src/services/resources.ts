@@ -110,7 +110,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS301",
       type: "pdf",
       category: "exam-prep",
-      uploadedBy: "Priya S.",
+      uploadedBy: "Amina H.",
       uploadedAt: "2026-03-05",
       size: "4.2 MB",
       rating: 4.9,
