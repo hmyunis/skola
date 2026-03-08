@@ -596,6 +596,7 @@ const Resources = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadCounts, setDownloadCounts] = useState<Record<string, number>>({});
 
   // Merge fetched + local, apply edits, remove deleted
   const allResources = useMemo(() => {
