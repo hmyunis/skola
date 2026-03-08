@@ -221,10 +221,13 @@ function RepliesSection({
 
       {expanded && (
         <div className="ml-2 border-l-2 border-border pl-3 space-y-1">
-          {isLoading ? (
+            {isLoading ? (
             <div className="py-2 space-y-2">
               {[1, 2].map((i) => (
-                <div key={i} className="h-8 bg-muted animate-pulse" />
+                <div key={i} className="flex items-center gap-2 py-1">
+                  <div className="h-2.5 w-16 bg-muted animate-pulse" />
+                  <div className="h-2.5 w-full bg-muted animate-pulse" />
+                </div>
               ))}
             </div>
           ) : allReplies.length === 0 ? (
