@@ -335,7 +335,7 @@ const Lounge = () => {
     }
 
     return result;
-  }, [allPosts, filterTag, filterCourse, sortBy]);
+  }, [allPosts, filterTag, filterCourse, sortBy, search]);
 
   // Stats
   const stats = useMemo(() => {
