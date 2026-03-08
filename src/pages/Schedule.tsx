@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWeeklySchedule, COURSES, type ClassSlot, type DayOfWeek } from "@/services/api";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -452,7 +452,7 @@ function DailyAgenda({
 
 // ─── Main Schedule Page ───
 const Schedule = () => {
-  const { isAdmin } = useTheme();
+  const { isAdmin } = useAuth();
   const isMobile = useIsMobile();
   const [editMode, setEditMode] = useState(false);
   const [localSchedule, setLocalSchedule] = useState<Record<string, ClassSlot[]>>({});
