@@ -894,10 +894,12 @@ const Resources = () => {
         resource={detailResource}
         userRating={detailResource ? ratings[detailResource.id] : undefined}
         userVote={detailResource ? votes[detailResource.id] : undefined}
+        downloadCount={detailResource ? getDownloadCount(detailResource) : 0}
         isOwner={detailResource ? isOwner(detailResource) : false}
         isAdmin={isAdmin}
         onRate={handleRate}
         onVote={handleVote}
+        onDownload={handleDownload}
         onEdit={() => {
           setEditingResource(detailResource);
           setDetailResource(null);
