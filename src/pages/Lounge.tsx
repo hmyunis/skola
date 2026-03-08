@@ -640,6 +640,7 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
 
 // ─── Main Page ───
 const Lounge = () => {
+  const { isAdmin, userName } = useAuth();
   const { data: fetchedPosts, isLoading } = useQuery({
     queryKey: ["loungePosts"],
     queryFn: fetchLoungePosts,
