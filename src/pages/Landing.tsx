@@ -4,7 +4,7 @@ import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
 import {
   Shield, Lock, Users, BookOpen, MessageSquare, BarChart3,
-  ArrowRight, Sun, Moon, Zap, Eye, Globe, ChevronDown,
+  ArrowRight, Sun, Moon, Zap, Eye, Globe, ChevronDown, Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -112,7 +112,7 @@ const Landing = () => {
             <span className="text-sm font-black uppercase tracking-[0.2em]">SKOLA</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={toggleColorMode}
               className="p-2 border border-border hover:bg-accent transition-colors"
@@ -125,11 +125,11 @@ const Landing = () => {
               )}
             </button>
             <Link to="/login">
-              <Button variant="outline" size="sm" className="text-xs font-bold uppercase tracking-wider">
+              <Button variant="outline" size="sm" className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4">
                 Sign In
               </Button>
             </Link>
-            <Link to="/get-started">
+            <Link to="/get-started" className="hidden sm:inline-flex">
               <Button size="sm" className="text-xs font-bold uppercase tracking-wider">
                 Get Started
               </Button>
@@ -171,12 +171,12 @@ const Landing = () => {
             transition={{ delay: 0.4, type: "spring", damping: 20 }}
             className="space-y-4"
           >
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-[0.9]">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-[0.9]">
               Your Class.
               <br />
               <span className="text-primary">Your Rules.</span>
             </h1>
-            <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
               The command center for student communities. Manage courses, resources, 
               discussions, and assessments — with military-grade isolation between every classroom.
             </p>
@@ -208,7 +208,7 @@ const Landing = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="flex items-center justify-center gap-8 sm:gap-16 pt-8 border-t border-border/50"
+            className="flex items-center justify-center gap-6 sm:gap-16 pt-8 border-t border-border/50"
           >
             <StatBlock value="100%" label="Privacy" />
             <div className="h-8 w-px bg-border" />
@@ -338,7 +338,7 @@ const Landing = () => {
 
       {/* ── Footer ── */}
       <footer className="border-t border-border py-8">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 bg-primary/10 border border-primary/30 flex items-center justify-center">
               <Lock className="h-3 w-3 text-primary" />
@@ -347,9 +347,18 @@ const Landing = () => {
               SKOLA
             </span>
           </div>
-          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">
+          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest text-center">
             © {new Date().getFullYear()} SKOLA · Privacy-First Education Platform
           </p>
+          <a
+            href="https://github.com/hmyunis"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground/50 hover:text-primary transition-colors"
+          >
+            <Github className="h-3.5 w-3.5" />
+            Made by @hmyunis
+          </a>
         </div>
       </footer>
     </div>
