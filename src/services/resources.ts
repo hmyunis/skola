@@ -16,6 +16,7 @@ export interface Resource {
   totalRatings: number;
   upvotes: number;
   downvotes: number;
+  downloads: number;
   description: string;
   tags: string[];
 }
@@ -53,6 +54,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 23,
       upvotes: 31,
       downvotes: 2,
+      downloads: 47,
       description: "Comprehensive notes covering binary trees, BST, AVL trees, and B-trees with diagrams and complexity analysis.",
       tags: ["trees", "bst", "avl", "data-structures"],
     },
@@ -69,6 +71,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 15,
       upvotes: 18,
       downvotes: 3,
+      downloads: 28,
       description: "Slide deck covering ER diagrams, relationships, cardinality, and mapping to relational schemas.",
       tags: ["er-diagram", "database", "schema"],
     },
@@ -85,6 +88,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 12,
       upvotes: 14,
       downvotes: 4,
+      downloads: 19,
       description: "Lab manual covering TCP/IP socket programming, Wireshark captures, and packet analysis exercises.",
       tags: ["tcp", "ip", "wireshark", "sockets"],
     },
@@ -101,6 +105,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 8,
       upvotes: 22,
       downvotes: 0,
+      downloads: 35,
       description: "Python-based simulator for FCFS, SJF, Round Robin, and Priority scheduling algorithms with Gantt chart output.",
       tags: ["scheduling", "fcfs", "sjf", "python"],
     },
@@ -117,6 +122,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 34,
       upvotes: 45,
       downvotes: 1,
+      downloads: 82,
       description: "Collection of 5 previous year mid-semester papers with solutions for Data Structures & Algorithms.",
       tags: ["previous-year", "mid-sem", "solutions"],
     },
@@ -133,6 +139,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 19,
       upvotes: 26,
       downvotes: 2,
+      downloads: 41,
       description: "Recorded lecture covering functional dependencies, 1NF through BCNF normalization with worked examples.",
       tags: ["normalization", "3nf", "bcnf", "functional-dependencies"],
     },
@@ -149,6 +156,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 28,
       upvotes: 38,
       downvotes: 1,
+      downloads: 56,
       description: "Quick reference for subnet masks, CIDR notation, and IP address class ranges with practice problems.",
       tags: ["subnetting", "cidr", "ip-addressing"],
     },
@@ -165,6 +173,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 11,
       upvotes: 15,
       downvotes: 2,
+      downloads: 24,
       description: "Step-by-step walkthrough of Banker's algorithm and deadlock detection using resource allocation graphs.",
       tags: ["deadlock", "bankers-algorithm", "rag"],
     },
@@ -181,6 +190,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 16,
       upvotes: 20,
       downvotes: 3,
+      downloads: 0,
       description: "Interactive web tool for visualizing BFS, DFS, Dijkstra's, and Kruskal's algorithms on custom graphs.",
       tags: ["graphs", "bfs", "dfs", "dijkstra", "visualization"],
     },
@@ -197,6 +207,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 9,
       upvotes: 12,
       downvotes: 1,
+      downloads: 15,
       description: "30 practice problems on SQL joins (INNER, LEFT, RIGHT, FULL) with expected output tables and solutions.",
       tags: ["sql", "joins", "practice"],
     },

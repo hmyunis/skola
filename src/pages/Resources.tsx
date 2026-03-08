@@ -57,6 +57,7 @@ import {
   Pencil,
   Trash2,
   Flag,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -183,7 +184,7 @@ function ResourceFormDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => void;
+  onSubmit: (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => void;
   initial?: Resource | null;
 }) {
   const [title, setTitle] = useState(initial?.title || "");
@@ -344,10 +345,12 @@ function ResourceDetailDialog({
   resource,
   userRating,
   userVote,
+  downloadCount,
   isOwner,
   isAdmin,
   onRate,
   onVote,
+  onDownload,
   onEdit,
   onDelete,
   onClose,
@@ -355,10 +358,12 @@ function ResourceDetailDialog({
   resource: Resource | null;
   userRating?: number;
   userVote?: "up" | "down";
+  downloadCount: number;
   isOwner: boolean;
   isAdmin: boolean;
   onRate: (id: string, stars: number) => void;
   onVote: (id: string, dir: "up" | "down") => void;
+  onDownload: (id: string) => void;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -443,6 +448,24 @@ function ResourceDetailDialog({
               onRate={(stars) => onRate(resource.id, stars)}
               size="md"
             />
+          </div>
+
+          {/* Download / Open button */}
+          <div className="flex items-center justify-between">
+            {resource.type === "link" ? (
+              <Button size="sm" className="gap-1.5" onClick={() => { onDownload(resource.id); window.open("#", "_blank"); }}>
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open Link
+              </Button>
+            ) : (
+              <Button size="sm" className="gap-1.5" onClick={() => { onDownload(resource.id); toast({ title: "Downloading…", description: resource.title }); }}>
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </Button>
+            )}
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider tabular-nums">
+              <Download className="h-3 w-3 inline mr-1" />{downloadCount} downloads
+            </span>
           </div>
 
           {/* Votes */}
@@ -533,6 +556,11 @@ function ResourceCard({
             <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", categoryColors[resource.category])}>
               {catLabel}
             </span>
+            {resource.type !== "link" && (
+              <span className="text-[10px] text-muted-foreground tabular-nums flex items-center gap-0.5">
+                <Download className="h-2.5 w-2.5" />{resource.downloads}
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <StarRating rating={resource.rating} totalRatings={resource.totalRatings} />
@@ -573,6 +601,7 @@ const Resources = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadCounts, setDownloadCounts] = useState<Record<string, number>>({});
 
   // Merge fetched + local, apply edits, remove deleted
   const allResources = useMemo(() => {
@@ -590,7 +619,13 @@ const Resources = () => {
     setRatings((prev) => ({ ...prev, [id]: stars }));
   };
 
-  const handleAddResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => {
+  const handleDownload = (id: string) => {
+    setDownloadCounts((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  };
+
+  const getDownloadCount = (r: Resource) => r.downloads + (downloadCounts[r.id] || 0);
+
+  const handleAddResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => {
     const newResource: Resource = {
       ...data,
       id: `local-${Date.now()}`,
@@ -600,12 +635,13 @@ const Resources = () => {
       totalRatings: 0,
       upvotes: 0,
       downvotes: 0,
+      downloads: 0,
     };
     setLocalResources((prev) => [newResource, ...prev]);
     toast({ title: "Resource Added!", description: `"${newResource.title}" is now available.` });
   };
 
-  const handleEditResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => {
+  const handleEditResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => {
     if (!editingResource) return;
     const id = editingResource.id;
 
@@ -863,10 +899,12 @@ const Resources = () => {
         resource={detailResource}
         userRating={detailResource ? ratings[detailResource.id] : undefined}
         userVote={detailResource ? votes[detailResource.id] : undefined}
+        downloadCount={detailResource ? getDownloadCount(detailResource) : 0}
         isOwner={detailResource ? isOwner(detailResource) : false}
         isAdmin={isAdmin}
         onRate={handleRate}
         onVote={handleVote}
+        onDownload={handleDownload}
         onEdit={() => {
           setEditingResource(detailResource);
           setDetailResource(null);
