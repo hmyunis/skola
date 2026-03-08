@@ -221,10 +221,13 @@ function RepliesSection({
 
       {expanded && (
         <div className="ml-2 border-l-2 border-border pl-3 space-y-1">
-          {isLoading ? (
+            {isLoading ? (
             <div className="py-2 space-y-2">
               {[1, 2].map((i) => (
-                <div key={i} className="h-8 bg-muted animate-pulse" />
+                <div key={i} className="flex items-center gap-2 py-1">
+                  <div className="h-2.5 w-16 bg-muted animate-pulse" />
+                  <div className="h-2.5 w-full bg-muted animate-pulse" />
+                </div>
               ))}
             </div>
           ) : allReplies.length === 0 ? (
@@ -883,7 +886,23 @@ const Lounge = () => {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-muted animate-pulse" />
+            <div key={i} className="border border-border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-14 bg-muted animate-pulse" />
+                <div className="h-4 w-10 bg-muted animate-pulse" />
+                <div className="flex-1" />
+                <div className="h-3 w-12 bg-muted animate-pulse" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="h-3.5 w-full bg-muted animate-pulse" />
+                <div className="h-3.5 w-2/3 bg-muted animate-pulse" />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-12 bg-muted animate-pulse" />
+                <div className="h-6 w-12 bg-muted animate-pulse" />
+                <div className="h-6 w-16 bg-muted animate-pulse" />
+              </div>
+            </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (

@@ -799,7 +799,22 @@ const Resources = () => {
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-muted animate-pulse" />
+            <div key={i} className="border border-border p-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-40 bg-muted animate-pulse" />
+                  <div className="h-2.5 w-56 bg-muted animate-pulse" />
+                </div>
+                <div className="h-5 w-12 bg-muted animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-14 bg-muted animate-pulse" />
+                <div className="h-4 w-10 bg-muted animate-pulse" />
+                <div className="flex-1" />
+                <div className="h-3 w-20 bg-muted animate-pulse" />
+              </div>
+            </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (

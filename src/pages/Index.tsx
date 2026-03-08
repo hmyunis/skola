@@ -59,7 +59,10 @@ const Index = () => {
           </div>
         )}
         {semLoading && (
-          <div className="h-10 w-40 bg-muted animate-pulse" />
+          <div className="space-y-1">
+            <div className="h-3 w-24 bg-muted animate-pulse" />
+            <div className="h-8 w-44 bg-muted animate-pulse" />
+          </div>
         )}
       </div>
 
