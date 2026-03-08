@@ -6,8 +6,9 @@ import type { BatchTheme } from "@/lib/themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { X, Plus, Sun, Moon, Type } from "lucide-react";
+import { X, Plus, Sun, Moon, Type, Send, Save } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "@/hooks/use-toast";
 
 function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
   const { addCustomTheme } = useTheme();
