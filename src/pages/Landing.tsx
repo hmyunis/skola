@@ -208,7 +208,7 @@ const Landing = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="flex items-center justify-center gap-8 sm:gap-16 pt-8 border-t border-border/50"
+            className="flex items-center justify-center gap-6 sm:gap-16 pt-8 border-t border-border/50"
           >
             <StatBlock value="100%" label="Privacy" />
             <div className="h-8 w-px bg-border" />
