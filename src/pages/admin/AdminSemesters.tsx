@@ -1,9 +1,9 @@
 import { useState } from "react";
 import {
-  loadSemesters,
-  saveSemesters,
   type Semester,
 } from "@/services/admin";
+import { useAuth } from "@/stores/authStore";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,16 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -39,6 +29,8 @@ import {
   Archive,
   CheckCircle2,
   Clock,
+  AlertTriangle,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -160,24 +152,112 @@ function SemesterFormDialog({
   );
 }
 
+// ─── Secure Delete Dialog ───
+function DeleteSemesterDialog({
+  open,
+  semesterName,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  semesterName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { user } = useAuth();
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleConfirm = () => {
+    // Verify using the owner's code as password
+    if (password === user?.code) {
+      setPassword("");
+      setError("");
+      onConfirm();
+    } else {
+      setError("Incorrect verification code. Please try again.");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setPassword(""); setError(""); onCancel(); } }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="uppercase tracking-wider text-sm flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            Delete Semester
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="bg-destructive/10 border border-destructive/30 p-3 space-y-2">
+            <p className="text-sm font-bold text-destructive">⚠️ This action is irreversible</p>
+            <p className="text-xs text-muted-foreground">
+              Deleting <strong>"{semesterName}"</strong> will permanently remove the semester and all associated configuration.
+              All data scoped to this semester will no longer be accessible.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Enter your verification code to confirm
+            </label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              placeholder="Enter your code"
+              className="h-9 text-sm"
+              onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
+            />
+            {error && <p className="text-xs text-destructive">{error}</p>}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setPassword(""); setError(""); onCancel(); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!password}
+              onClick={handleConfirm}
+            >
+              <Trash2 className="h-3 w-3" /> Delete Permanently
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const AdminSemesters = () => {
-  const [semesters, setSemesters] = useState<Semester[]>(loadSemesters);
+  const { isOwner } = useAuth();
+  const { semesters, activeSemester, setActiveSemester, addSemester, updateSemester, deleteSemester } = useSemesterStore();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Semester | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const save = (updated: Semester[]) => {
-    setSemesters(updated);
-    saveSemesters(updated);
-  };
+  const deletingSem = deletingId ? semesters.find((s) => s.id === deletingId) : null;
+
+  if (!isOwner) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl">
+        <div className="border border-destructive/30 bg-destructive/5 p-6 text-center space-y-2">
+          <AlertTriangle className="h-6 w-6 text-destructive mx-auto" />
+          <p className="text-sm font-bold text-destructive uppercase tracking-wider">Access Denied</p>
+          <p className="text-xs text-muted-foreground">Only the owner can manage semesters.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSave = (sem: Semester) => {
     const exists = semesters.find((s) => s.id === sem.id);
     if (exists) {
-      save(semesters.map((s) => (s.id === sem.id ? sem : s)));
+      updateSemester(sem);
       toast({ title: "Updated", description: `${sem.name} has been updated.` });
     } else {
-      save([sem, ...semesters]);
+      addSemester(sem);
       toast({ title: "Created", description: `${sem.name} has been added.` });
     }
     setEditing(null);
@@ -185,16 +265,17 @@ const AdminSemesters = () => {
 
   const handleDelete = () => {
     if (!deletingId) return;
-    save(semesters.filter((s) => s.id !== deletingId));
+    const name = deletingSem?.name || "Semester";
+    deleteSemester(deletingId);
     setDeletingId(null);
-    toast({ title: "Deleted", description: "Semester removed." });
+    toast({ title: "Deleted", description: `${name} has been permanently removed.` });
   };
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-4xl">
       <div className="border-b border-border pb-4 flex items-end justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Admin</p>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Owner</p>
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Semesters</h1>
         </div>
         <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }}>
@@ -206,8 +287,12 @@ const AdminSemesters = () => {
         {semesters.map((sem) => {
           const cfg = statusConfig[sem.status];
           const StatusIcon = cfg.icon;
+          const isActive = activeSemester?.id === sem.id;
           return (
-            <div key={sem.id} className="border border-border p-4 space-y-2 hover:bg-accent/20 transition-colors">
+            <div key={sem.id} className={cn(
+              "border p-4 space-y-2 hover:bg-accent/20 transition-colors",
+              isActive ? "border-primary/50 bg-primary/5" : "border-border"
+            )}>
               <div className="flex items-center gap-3">
                 <CalendarDays className="h-5 w-5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -217,6 +302,11 @@ const AdminSemesters = () => {
                       <StatusIcon className="h-2.5 w-2.5" />
                       {cfg.label}
                     </span>
+                    {isActive && (
+                      <span className="px-1.5 py-0.5 bg-primary/15 text-primary border border-primary/30 text-[10px] font-bold uppercase tracking-wider">
+                        Viewing
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Year {sem.year} · Term {sem.term} · {sem.startDate} → {sem.endDate}
@@ -227,6 +317,14 @@ const AdminSemesters = () => {
                     </p>
                   )}
                 </div>
+                {!isActive && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
+                    setActiveSemester(sem);
+                    toast({ title: "Switched", description: `Now viewing ${sem.name}` });
+                  }}>
+                    <Play className="h-3 w-3" /> View
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditing(sem); setFormOpen(true); }}>
                   <Pencil className="h-3 w-3" />
                 </Button>
@@ -246,18 +344,12 @@ const AdminSemesters = () => {
         onSave={handleSave}
       />
 
-      <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Semester</AlertDialogTitle>
-            <AlertDialogDescription>This semester and its configuration will be permanently removed.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteSemesterDialog
+        open={!!deletingId}
+        semesterName={deletingSem?.name || ""}
+        onConfirm={handleDelete}
+        onCancel={() => setDeletingId(null)}
+      />
     </div>
   );
 };
