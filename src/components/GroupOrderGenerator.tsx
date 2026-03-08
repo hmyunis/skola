@@ -14,7 +14,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export function GroupOrderGenerator() {
+export function GroupOrderGenerator({ embedded }: { embedded?: boolean } = {}) {
   const [count, setCount] = useState("");
   const [order, setOrder] = useState<number[]>([]);
   const [rolling, setRolling] = useState(false);
