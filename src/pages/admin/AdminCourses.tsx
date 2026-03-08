@@ -127,6 +127,7 @@ function CourseFormDialog({
 }
 
 const AdminCourses = () => {
+  const { isOwner } = useAuth();
   const semesters = loadSemesters();
   const activeSemester = semesters.find((s) => s.status === "active");
   const [courses, setCourses] = useState<AdminCourse[]>(loadCourses);
