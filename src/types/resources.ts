@@ -19,4 +19,8 @@ export interface Resource {
   downloads: number;
   description: string;
   tags: string[];
+  /** Data URL of uploaded file (client-side only) */
+  fileDataUrl?: string;
+  /** Original file name */
+  fileName?: string;
 }
