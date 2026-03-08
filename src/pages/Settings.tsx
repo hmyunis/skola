@@ -5,7 +5,7 @@ import type { BatchTheme } from "@/lib/themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Sun, Moon } from "lucide-react";
 
 function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
   const { addCustomTheme } = useTheme();
@@ -104,7 +104,11 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
 }
 
 const SettingsPage = () => {
-  const { batchTheme, setBatchTheme, userAccent, setUserAccent, isAdmin, setIsAdmin, customThemes, removeCustomTheme } = useTheme();
+  const {
+    batchTheme, setBatchTheme, userAccent, setUserAccent,
+    isAdmin, setIsAdmin, customThemes, removeCustomTheme,
+    colorMode, setColorMode,
+  } = useTheme();
   const [showCreator, setShowCreator] = useState(false);
 
   const allThemes = [...batchThemes, ...customThemes];
@@ -115,6 +119,39 @@ const SettingsPage = () => {
         <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Configuration</p>
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Settings</h1>
       </div>
+
+      {/* Appearance Mode */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xs">Appearance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setColorMode("light")}
+              className={`flex items-center gap-2 px-4 py-2.5 border text-xs font-bold uppercase tracking-wider transition-colors ${
+                colorMode === "light"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border hover:bg-accent text-foreground"
+              }`}
+            >
+              <Sun className="h-4 w-4" />
+              Light
+            </button>
+            <button
+              onClick={() => setColorMode("dark")}
+              className={`flex items-center gap-2 px-4 py-2.5 border text-xs font-bold uppercase tracking-wider transition-colors ${
+                colorMode === "dark"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border hover:bg-accent text-foreground"
+              }`}
+            >
+              <Moon className="h-4 w-4" />
+              Dark
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Batch Theme selector */}
       <Card>
