@@ -112,7 +112,54 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-const SettingsPage = () => {
+const TELEGRAM_GROUP_ID_KEY = "scola-telegram-group-id";
+
+function TelegramGroupIdSetting() {
+  const [groupId, setGroupId] = useState(() => localStorage.getItem(TELEGRAM_GROUP_ID_KEY) || "");
+  const [saved, setSaved] = useState(groupId);
+
+  const handleSave = () => {
+    localStorage.setItem(TELEGRAM_GROUP_ID_KEY, groupId.trim());
+    setSaved(groupId.trim());
+    toast({ title: "Saved", description: "Telegram Group ID updated." });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xs flex items-center gap-2">
+          <Send className="h-3.5 w-3.5" />
+          Telegram Group ID
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          Only users who are members of this Telegram group will be able to log in.
+          Your bot must be an admin in the group.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={groupId}
+            onChange={(e) => setGroupId(e.target.value)}
+            placeholder="e.g. -1001234567890"
+            className="max-w-xs h-9 text-sm font-mono"
+          />
+          <Button size="sm" onClick={handleSave} disabled={groupId.trim() === saved}>
+            <Save className="h-3 w-3" />
+            Save
+          </Button>
+        </div>
+        {saved && (
+          <p className="text-[10px] text-muted-foreground">
+            Current: <code className="font-mono font-bold text-foreground">{saved}</code>
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
   const {
     batchTheme, setBatchTheme, userAccent, setUserAccent,
     customThemes, removeCustomTheme,
