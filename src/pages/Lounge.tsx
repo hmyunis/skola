@@ -492,7 +492,12 @@ function PostCard({
           </span>
           <span className="opacity-50">·</span>
           <Clock className="h-3 w-3" />
-          <span>{timeAgo(post.timestamp)}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">{timeAgo(post.timestamp)}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top"><span>{formatExactTime(post.timestamp)}</span></TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
