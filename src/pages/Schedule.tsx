@@ -454,6 +454,7 @@ function DailyAgenda({
 // ─── Main Schedule Page ───
 const Schedule = () => {
   const { isAdmin } = useAuth();
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const isMobile = useIsMobile();
   const [editMode, setEditMode] = useState(false);
   const [localSchedule, setLocalSchedule] = useState<Record<string, ClassSlot[]>>({});
@@ -461,8 +462,8 @@ const Schedule = () => {
   const [deletingSlot, setDeletingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
 
   const { data: fetchedSchedule, isLoading } = useQuery({
-    queryKey: ["weeklySchedule"],
-    queryFn: fetchWeeklySchedule,
+    queryKey: ["weeklySchedule", semId],
+    queryFn: () => fetchWeeklySchedule(semId),
   });
 
   // Sync fetched data → local state when not editing

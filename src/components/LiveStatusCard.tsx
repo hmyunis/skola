@@ -51,9 +51,10 @@ function computeState(schedule: ClassSlot[]): LiveState {
 }
 
 export function LiveStatusCard() {
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const { data: schedule } = useQuery({
-    queryKey: ["todaySchedule"],
-    queryFn: fetchTodaySchedule,
+    queryKey: ["todaySchedule", semId],
+    queryFn: () => fetchTodaySchedule(semId),
   });
 
   const [state, setState] = useState<LiveState>({ status: "free" });

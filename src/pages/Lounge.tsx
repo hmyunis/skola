@@ -665,9 +665,10 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
 // ─── Main Page ───
 const Lounge = () => {
   const { isAdmin, userName } = useAuth();
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const { data: fetchedPosts, isLoading } = useQuery({
-    queryKey: ["loungePosts"],
-    queryFn: fetchLoungePosts,
+    queryKey: ["loungePosts", semId],
+    queryFn: () => fetchLoungePosts(semId),
   });
 
   const [localPosts, setLocalPosts] = useState<LoungePost[]>([]);

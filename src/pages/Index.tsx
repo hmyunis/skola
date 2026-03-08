@@ -19,6 +19,7 @@ function DaysRemaining({ endDate }: { endDate: string }) {
 
 const Index = () => {
   const { isAdmin } = useAuth();
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
 
   const { data: semester, isLoading: semLoading } = useQuery({
     queryKey: ["semester"],
@@ -26,8 +27,8 @@ const Index = () => {
   });
 
   const { data: stats } = useQuery({
-    queryKey: ["quickStats"],
-    queryFn: fetchQuickStats,
+    queryKey: ["quickStats", semId],
+    queryFn: () => fetchQuickStats(semId),
   });
 
   return (

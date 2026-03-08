@@ -580,9 +580,10 @@ function ResourceCard({
 // ─── Main Page ───
 const Resources = () => {
   const { isAdmin, userName } = useAuth();
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const { data: fetchedResources, isLoading } = useQuery({
-    queryKey: ["resources"],
-    queryFn: fetchResources,
+    queryKey: ["resources", semId],
+    queryFn: () => fetchResources(semId),
   });
 
   const [localResources, setLocalResources] = useState<Resource[]>([]);

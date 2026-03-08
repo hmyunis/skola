@@ -325,9 +325,10 @@ function AssignmentRow({
 
 // ─── Main Page ───
 const Academics = () => {
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const { data: assignments, isLoading } = useQuery({
-    queryKey: ["assignments"],
-    queryFn: fetchAssignments,
+    queryKey: ["assignments", semId],
+    queryFn: () => fetchAssignments(semId),
   });
 
   const [search, setSearch] = useState("");
