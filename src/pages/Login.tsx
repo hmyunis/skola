@@ -127,7 +127,7 @@ const Login = () => {
     }
     login(account);
     setView("success");
-    setTimeout(() => navigate("/"), 1200);
+    setTimeout(() => navigate("/dashboard"), 1200);
   };
 
   const handleQuickLogin = (accountIdx: number) => {

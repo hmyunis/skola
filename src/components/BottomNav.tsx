@@ -31,7 +31,7 @@ import { useState } from "react";
 import { useAuth } from "@/stores/authStore";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Schedule", url: "/schedule", icon: Calendar },
   { title: "Assessments", url: "/academics", icon: BookOpen },
   { title: "Lounge", url: "/lounge", icon: MessageSquare },
