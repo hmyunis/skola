@@ -27,7 +27,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 // Owner pages
 import OwnerFeatures from "./pages/owner/OwnerFeatures";
-import OwnerDataExport from "./pages/owner/OwnerDataExport";
+import OwnerGeneral from "./pages/owner/OwnerGeneral";
 import JoinPage from "./pages/Join";
 
 const queryClient = new QueryClient();
