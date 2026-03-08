@@ -74,8 +74,9 @@ export async function fetchTodaySchedule(semesterId?: string): Promise<ClassSlot
   ];
 }
 
-export async function fetchWeeklySchedule(): Promise<WeeklySchedule> {
+export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySchedule> {
   await delay(400);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [] };
   const ref = new Date();
   const dayOffset = ref.getDay();
   const monday = new Date(ref);
