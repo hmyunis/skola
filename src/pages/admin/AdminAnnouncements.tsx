@@ -4,7 +4,7 @@ import {
   saveAnnouncements,
   type Announcement,
 } from "@/services/admin";
-import { MOCK_USER_NAME } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

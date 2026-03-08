@@ -20,7 +20,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
-import { IS_ADMIN, IS_OWNER } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,

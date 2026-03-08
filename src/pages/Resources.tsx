@@ -61,7 +61,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
-import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { ReportDialog } from "@/components/ReportDialog";
 
 // ─── Type icon map ───

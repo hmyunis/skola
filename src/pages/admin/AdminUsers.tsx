@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { IS_OWNER } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 
 const roleConfig = {
   owner: { label: "Owner", icon: Crown, color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },

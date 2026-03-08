@@ -11,7 +11,7 @@ import {
   type AcademicReaction,
 } from "@/services/lounge";
 import { COURSES } from "@/services/api";
-import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
