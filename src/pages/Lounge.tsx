@@ -12,6 +12,7 @@ import {
 } from "@/services/lounge";
 import { COURSES } from "@/services/api";
 import { useAuth } from "@/stores/authStore";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -665,9 +666,10 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
 // ─── Main Page ───
 const Lounge = () => {
   const { isAdmin, userName } = useAuth();
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const { data: fetchedPosts, isLoading } = useQuery({
-    queryKey: ["loungePosts"],
-    queryFn: fetchLoungePosts,
+    queryKey: ["loungePosts", semId],
+    queryFn: () => fetchLoungePosts(semId),
   });
 
   const [localPosts, setLocalPosts] = useState<LoungePost[]>([]);

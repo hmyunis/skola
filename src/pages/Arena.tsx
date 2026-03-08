@@ -67,6 +67,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/stores/authStore";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { toast } from "@/hooks/use-toast";
 import { ReportDialog } from "@/components/ReportDialog";
 
@@ -876,9 +877,10 @@ const Arena = () => {
   const [customQuizRefresh, setCustomQuizRefresh] = useState(0);
   const [playingCustomQuiz, setPlayingCustomQuiz] = useState<CustomQuiz | null>(null);
 
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const { data: leaderboard, isLoading } = useQuery({
-    queryKey: ["leaderboard"],
-    queryFn: fetchLeaderboard,
+    queryKey: ["leaderboard", semId],
+    queryFn: () => fetchLeaderboard(semId),
   });
 
   const [leaderboardSearch, setLeaderboardSearch] = useState("");

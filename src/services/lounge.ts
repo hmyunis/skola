@@ -68,8 +68,11 @@ const MOCK_REPLIES: Record<string, LoungeReply[]> = {
   ],
 };
 
-export async function fetchLoungePosts(): Promise<LoungePost[]> {
+const MOCK_SEMESTER_ID = "sem-2";
+
+export async function fetchLoungePosts(semesterId?: string): Promise<LoungePost[]> {
   await delay(300);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   return [
     {
       id: "p1",

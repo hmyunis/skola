@@ -5,7 +5,8 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { useTheme } from "@/stores/themeStore";
 import { useAuth } from "@/stores/authStore";
-import { Sun, Moon, LogOut, Mail, GraduationCap, Shield, Crown, User } from "lucide-react";
+import { useSemesterStore } from "@/stores/semesterStore";
+import { Sun, Moon, LogOut, Mail, GraduationCap, Shield, Crown, User, CalendarDays } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -125,6 +126,7 @@ function UserMenu() {
 
 export function AppLayout() {
   const { batchTheme, colorMode, toggleColorMode } = useTheme();
+  const activeSemester = useSemesterStore((s) => s.activeSemester);
 
   return (
     <SidebarProvider>
@@ -148,6 +150,20 @@ export function AppLayout() {
               <span className="text-[10px] uppercase tracking-widest opacity-60 hidden sm:inline">
                 {batchTheme.name} Division
               </span>
+
+              {activeSemester && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/10 text-[10px] uppercase tracking-wider font-bold cursor-default">
+                      <CalendarDays className="h-2.5 w-2.5" />
+                      {activeSemester.name}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <span>Active semester: {activeSemester.name}</span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
 
               <div className="flex-1" />
 

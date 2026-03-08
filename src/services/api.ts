@@ -51,13 +51,16 @@ export const COURSES = [
   { code: "HU101", name: "Professional Ethics" },
 ];
 
+const MOCK_SEMESTER_ID = "sem-2";
+
 export async function fetchSemesterInfo(): Promise<SemesterInfo> {
   await delay(200);
   return { year: 3, semester: 2, startDate: "2026-01-15", endDate: "2026-05-30" };
 }
 
-export async function fetchTodaySchedule(): Promise<ClassSlot[]> {
+export async function fetchTodaySchedule(semesterId?: string): Promise<ClassSlot[]> {
   await delay(300);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   const now = new Date();
   const h = now.getHours();
   const today = (hour: number, minute: number) =>
@@ -71,8 +74,9 @@ export async function fetchTodaySchedule(): Promise<ClassSlot[]> {
   ];
 }
 
-export async function fetchWeeklySchedule(): Promise<WeeklySchedule> {
+export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySchedule> {
   await delay(400);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [] };
   const ref = new Date();
   const dayOffset = ref.getDay();
   const monday = new Date(ref);
@@ -114,13 +118,15 @@ export async function fetchWeeklySchedule(): Promise<WeeklySchedule> {
   };
 }
 
-export async function fetchQuickStats(): Promise<QuickStats> {
+export async function fetchQuickStats(semesterId?: string): Promise<QuickStats> {
   await delay(150);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return { remainingClasses: 0, pendingAssignments: 0, upcomingExams: 0 };
   return { remainingClasses: 3, pendingAssignments: 5, upcomingExams: 2 };
 }
 
-export async function fetchAssignments(): Promise<Assignment[]> {
+export async function fetchAssignments(semesterId?: string): Promise<Assignment[]> {
   await delay(350);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   return [
     { id: "a1", title: "Binary Tree Implementation", course: "CS301", dueDate: "2026-03-12", source: "classroom", status: "pending" },
     { id: "a2", title: "ER Diagram - Library System", course: "CS302", dueDate: "2026-03-14", source: "direct", status: "pending" },
