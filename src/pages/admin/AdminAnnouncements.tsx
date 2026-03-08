@@ -89,7 +89,7 @@ function AnnouncementFormDialog({
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Content</label>
             <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Write your announcement..." className="min-h-[100px] text-sm resize-none" rows={4} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Priority</label>
               <Select value={priority} onValueChange={(v) => setPriority(v as Announcement["priority"])}>
@@ -125,9 +125,9 @@ function AnnouncementFormDialog({
             <Pin className={cn("h-3.5 w-3.5", pinned && "fill-primary")} />
             {pinned ? "Pinned to top" : "Pin this announcement"}
           </button>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button disabled={!isValid} onClick={() => {
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button className="w-full sm:w-auto" disabled={!isValid} onClick={() => {
               onSave({
                 id: initial?.id || `ann-${Date.now()}`,
                 title: title.trim(),
@@ -202,7 +202,7 @@ const AdminAnnouncements = () => {
         {sorted.map((a) => {
           const pCfg = priorityConfig[a.priority];
           return (
-            <div key={a.id} className={cn("border p-4 space-y-2 hover:bg-accent/20 transition-colors", a.pinned ? "border-primary/30 bg-primary/5" : "border-border")}>
+            <div key={a.id} className={cn("border p-3 sm:p-4 space-y-2 hover:bg-accent/20 transition-colors", a.pinned ? "border-primary/30 bg-primary/5" : "border-border")}>
               <div className="flex items-center gap-2 flex-wrap">
                 {a.pinned && <Pin className="h-3 w-3 text-primary fill-primary" />}
                 <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", pCfg.color)}>{pCfg.label}</span>
