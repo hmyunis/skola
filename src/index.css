@@ -128,3 +128,7 @@
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+html, body, * {
+  font-family: var(--font-family) !important;
+}
