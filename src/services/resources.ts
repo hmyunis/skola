@@ -207,6 +207,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 9,
       upvotes: 12,
       downvotes: 1,
+      downloads: 15,
       description: "30 practice problems on SQL joins (INNER, LEFT, RIGHT, FULL) with expected output tables and solutions.",
       tags: ["sql", "joins", "practice"],
     },
