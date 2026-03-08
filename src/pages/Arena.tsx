@@ -55,6 +55,8 @@ import {
   Search,
   Plus,
   Trash2,
+  Eye,
+  EyeOff,
   Play,
   BookOpen,
 } from "lucide-react";
@@ -468,12 +470,14 @@ function CreateQuizDialog({
 }) {
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("CS301");
+  const [isAnonymous, setIsAnonymous] = useState(true);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
   const [currentQ, setCurrentQ] = useState(0);
 
   const resetForm = () => {
     setTitle("");
     setCourse("CS301");
+    setIsAnonymous(true);
     setQuestions([emptyDraftQuestion()]);
     setCurrentQ(0);
   };
@@ -531,7 +535,7 @@ function CreateQuizDialog({
         difficulty: q.difficulty,
       })),
       createdAt: new Date().toISOString(),
-      anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
+      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : "Arjun Patel",
     };
 
     saveCustomQuiz(quiz);
@@ -576,6 +580,30 @@ function CreateQuizDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Anonymous toggle */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Post As</label>
+              <button
+                type="button"
+                onClick={() => setIsAnonymous((prev) => !prev)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-2.5 border transition-colors text-left",
+                  isAnonymous ? "border-border bg-muted/50" : "border-primary/40 bg-primary/5"
+                )}
+              >
+                {isAnonymous ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <Eye className="h-4 w-4 text-primary shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : "Arjun Patel"}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isAnonymous ? "Your name will be hidden" : "Your name will be visible"}
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
 
