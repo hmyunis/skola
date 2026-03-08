@@ -270,9 +270,9 @@ const Landing = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { step: "01", title: "Sign Up", desc: "Create your account and become the owner of your classroom." },
-              { step: "02", title: "Invite", desc: "Share a join link or Telegram bot — classmates join instantly." },
-              { step: "03", title: "Command", desc: "Manage courses, post resources, run polls, and track everything." },
+              { step: "01", title: "Create or Join", desc: "Sign up as an owner to create your classroom, or enter an invite code to join one as a student." },
+              { step: "02", title: "Invite via Code", desc: "Owners generate invite codes with expiry & usage limits. Share the code — classmates sign up instantly." },
+              { step: "03", title: "Command", desc: "Manage courses, post resources, run polls, track analytics — all isolated per classroom." },
             ].map((s, i) => {
               const ref = useRef(null);
               const isInView = useInView(ref, { once: true, margin: "-40px" });
