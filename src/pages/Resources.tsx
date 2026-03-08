@@ -595,7 +595,7 @@ const Resources = () => {
       ...data,
       id: `local-${Date.now()}`,
       uploadedAt: new Date().toISOString().split("T")[0],
-      uploadedBy: MOCK_USER_NAME,
+      uploadedBy: userName,
       rating: 0,
       totalRatings: 0,
       upvotes: 0,
