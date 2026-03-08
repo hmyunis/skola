@@ -46,7 +46,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS301",
       type: "pdf",
       category: "lecture",
-      uploadedBy: "Prof. Sharma",
+      uploadedBy: "Prof. Tigist",
       uploadedAt: "2026-02-28",
       size: "2.4 MB",
       rating: 4.7,
