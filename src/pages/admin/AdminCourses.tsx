@@ -59,7 +59,7 @@ function CourseFormDialog({
   const [name, setName] = useState(initial?.name || "");
   const [credits, setCredits] = useState(String(initial?.credits || 3));
   const [instructor, setInstructor] = useState(initial?.instructor || "");
-  const [department, setDepartment] = useState(initial?.department || "Computer Science");
+  
   const [semesterId, setSemesterId] = useState(initial?.semesterId || semesters[0]?.id || "");
   
 
