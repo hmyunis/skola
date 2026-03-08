@@ -183,7 +183,7 @@ function ResourceFormDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => void;
+  onSubmit: (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => void;
   initial?: Resource | null;
 }) {
   const [title, setTitle] = useState(initial?.title || "");
