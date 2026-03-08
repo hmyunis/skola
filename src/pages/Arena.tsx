@@ -749,7 +749,7 @@ function CustomQuizzesList({
   onPlay: (quiz: CustomQuiz) => void;
   refreshKey: number;
 }) {
-  const [quizzes, setQuizzes] = useState<CustomQuiz[]>([]);
+  const { isAdmin } = useAuth();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reportQuiz, setReportQuiz] = useState<CustomQuiz | null>(null);
 
