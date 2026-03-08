@@ -97,7 +97,7 @@ const Login = () => {
       // Successful login — data.user should match MockAccount shape
       login(data.user);
       setView("success");
-      setTimeout(() => navigate("/"), 1200);
+      setTimeout(() => navigate("/dashboard"), 1200);
     } catch (err) {
       console.error("Telegram auth error:", err);
       toast({
