@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Schedule", url: "/schedule", icon: Calendar },
   { title: "Assessments", url: "/academics", icon: BookOpen },
   { title: "Resources", url: "/resources", icon: FolderOpen },

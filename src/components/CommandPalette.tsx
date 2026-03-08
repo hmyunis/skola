@@ -31,7 +31,7 @@ import { COURSES } from "@/services/api";
 import { MOCK_ACCOUNTS } from "@/stores/authStore";
 
 const pages = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "pages" },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "pages" },
   { title: "Schedule", url: "/schedule", icon: Calendar, group: "pages" },
   { title: "Assessments", url: "/academics", icon: BookOpen, group: "pages" },
   { title: "Resources", url: "/resources", icon: FolderOpen, group: "pages" },

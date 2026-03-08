@@ -66,7 +66,7 @@ const NotFound = () => {
           className="flex flex-col sm:flex-row items-center justify-center gap-3"
         >
           <Button asChild size="sm" className="gap-2 w-full sm:w-auto">
-            <Link to="/">
+            <Link to="/dashboard">
               <Home className="h-3.5 w-3.5" />
               Back to Dashboard
             </Link>
