@@ -109,11 +109,19 @@ export function addMembership(userId: string, classroomId: string, role: ClassMe
 }
 
 export function joinClassByCode(code: string, userId: string): { success: boolean; classroom?: Classroom; error?: string } {
-  const classroom = getClassroomByCode(code);
-  if (!classroom) return { success: false, error: "Invalid class code. Please check and try again." };
+  // Look up invite link by code
+  const invite = getInviteByCode(code);
+  if (!invite) return { success: false, error: "Invalid or expired invite code." };
+
+  const classroom = getClassroomById(invite.classroomId);
+  if (!classroom) return { success: false, error: "The classroom for this invite no longer exists." };
 
   const existing = getUserMembership(userId, classroom.id);
   if (existing) return { success: false, error: "You're already a member of this class." };
+
+  // Consume invite
+  const used = useInviteLink(code);
+  if (!used) return { success: false, error: "This invite code has reached its limit or expired." };
 
   addMembership(userId, classroom.id, "student");
   return { success: true, classroom };
