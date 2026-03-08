@@ -636,7 +636,7 @@ const Resources = () => {
     toast({ title: "Resource Added!", description: `"${newResource.title}" is now available.` });
   };
 
-  const handleEditResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes">) => {
+  const handleEditResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => {
     if (!editingResource) return;
     const id = editingResource.id;
 
