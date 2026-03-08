@@ -21,6 +21,7 @@ import {
   BookOpen,
   FileText,
   Filter,
+  Search,
   ThumbsUp,
   ThumbsDown,
   Minus,
@@ -30,6 +31,7 @@ import {
   CheckCircle2,
   Clock,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 // ─── Source styling ───
