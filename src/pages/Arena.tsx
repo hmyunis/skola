@@ -877,9 +877,10 @@ const Arena = () => {
   const [customQuizRefresh, setCustomQuizRefresh] = useState(0);
   const [playingCustomQuiz, setPlayingCustomQuiz] = useState<CustomQuiz | null>(null);
 
+  const semId = useSemesterStore((s) => s.activeSemester?.id);
   const { data: leaderboard, isLoading } = useQuery({
-    queryKey: ["leaderboard"],
-    queryFn: fetchLeaderboard,
+    queryKey: ["leaderboard", semId],
+    queryFn: () => fetchLeaderboard(semId),
   });
 
   const [leaderboardSearch, setLeaderboardSearch] = useState("");

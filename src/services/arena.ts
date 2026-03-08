@@ -59,8 +59,11 @@ export function deleteCustomQuiz(id: string) {
   localStorage.setItem(CUSTOM_QUIZZES_KEY, JSON.stringify(existing));
 }
 
-export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
+const MOCK_SEMESTER_ID = "sem-2";
+
+export async function fetchLeaderboard(semesterId?: string): Promise<LeaderboardEntry[]> {
   await delay(300);
+  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   return [
     { rank: 1, anonymous_id: "Anon#4821", xp: 2340, wins: 47, streak: 12, accuracy: 91, title: "Legend" },
     { rank: 2, anonymous_id: "Anon#7733", xp: 1980, wins: 39, streak: 8, accuracy: 87, title: "Champion" },
