@@ -30,10 +30,6 @@ const AdminAnalytics = () => {
       </div>
     );
   }
-  const { data, isLoading } = useQuery({
-    queryKey: ["adminAnalytics"],
-    queryFn: fetchAnalytics,
-  });
 
   if (isLoading || !data) {
     return (
