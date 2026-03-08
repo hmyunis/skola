@@ -124,6 +124,9 @@ function RankIcon({ rank }: { rank: number }) {
 
 // ─── Leaderboard Table ───
 function Leaderboard({ data, search }: { data: LeaderboardEntry[]; search: string }) {
+  const { user } = useAuth();
+  const currentAnonId = user?.anonymous_id;
+
   const filtered = data.filter((e) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -143,30 +146,40 @@ function Leaderboard({ data, search }: { data: LeaderboardEntry[]; search: strin
       {filtered.length === 0 ? (
         <div className="p-6 text-center text-sm text-muted-foreground">No players match your search</div>
       ) : (
-        filtered.map((entry) => (
-          <div
-            key={entry.rank}
-            className={cn(
-              "grid grid-cols-[40px_1fr_60px_50px_50px_60px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2.5 border-b border-border last:border-b-0 items-center",
-              entry.rank <= 3 && "bg-accent/30"
-            )}
-          >
-            <div className="flex items-center justify-center">
-              <RankIcon rank={entry.rank} />
+        filtered.map((entry) => {
+          const isCurrentUser = currentAnonId === entry.anonymous_id;
+          return (
+            <div
+              key={entry.rank}
+              className={cn(
+                "grid grid-cols-[40px_1fr_60px_50px_50px_60px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2.5 border-b border-border last:border-b-0 items-center",
+                isCurrentUser
+                  ? "bg-primary/10 border-l-2 border-l-primary"
+                  : entry.rank <= 3 && "bg-accent/30"
+              )}
+            >
+              <div className="flex items-center justify-center">
+                <RankIcon rank={entry.rank} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold truncate">
+                  {entry.anonymous_id}
+                  {isCurrentUser && (
+                    <span className="ml-1.5 text-[10px] font-bold text-primary uppercase tracking-wider">(You)</span>
+                  )}
+                </p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{entry.title}</p>
+              </div>
+              <p className="text-xs font-black tabular-nums text-right">{entry.xp.toLocaleString()}</p>
+              <p className="text-xs tabular-nums text-right text-muted-foreground">{entry.wins}</p>
+              <p className="text-xs tabular-nums text-right text-muted-foreground hidden sm:block">{entry.accuracy}%</p>
+              <div className="flex items-center justify-end gap-1">
+                {entry.streak > 0 && <Flame className="h-3 w-3 text-amber-500" />}
+                <span className="text-xs tabular-nums font-medium">{entry.streak}</span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold truncate">{entry.anonymous_id}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{entry.title}</p>
-            </div>
-            <p className="text-xs font-black tabular-nums text-right">{entry.xp.toLocaleString()}</p>
-            <p className="text-xs tabular-nums text-right text-muted-foreground">{entry.wins}</p>
-            <p className="text-xs tabular-nums text-right text-muted-foreground hidden sm:block">{entry.accuracy}%</p>
-            <div className="flex items-center justify-end gap-1">
-              {entry.streak > 0 && <Flame className="h-3 w-3 text-amber-500" />}
-              <span className="text-xs tabular-nums font-medium">{entry.streak}</span>
-            </div>
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );

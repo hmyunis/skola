@@ -13,6 +13,8 @@ export interface MockAccount {
   year: number;
   semester: number;
   batch: string;
+  anonymous_id: string;
+  telegramUsername: string;
 }
 
 export const MOCK_ACCOUNTS: MockAccount[] = [
@@ -27,6 +29,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
     year: 4,
     semester: 2,
     batch: "Software",
+    anonymous_id: "Anon#4821",
+    telegramUsername: "dawit_t",
   },
   {
     id: "u2",
@@ -39,6 +43,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
     year: 3,
     semester: 2,
     batch: "Software",
+    anonymous_id: "Anon#7733",
+    telegramUsername: "meron_k",
   },
   {
     id: "u3",
@@ -51,6 +57,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
     year: 2,
     semester: 2,
     batch: "Software",
+    anonymous_id: "Anon#2156",
+    telegramUsername: "bereket_w",
   },
 ];
 
