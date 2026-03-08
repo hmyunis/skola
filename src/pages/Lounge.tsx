@@ -429,13 +429,17 @@ function PostCard({
         {/* Edit / Delete actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover/post:opacity-100 transition-opacity">
           {isOwner && (
-            <button
-              onClick={onEdit}
-              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-              title="Edit post"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onEdit}
+                  className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>Edit post</span></TooltipContent>
+            </Tooltip>
           )}
           {(isOwner || isAdmin) && (
             <button
