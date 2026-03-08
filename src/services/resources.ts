@@ -158,7 +158,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS304",
       type: "notes",
       category: "exam-prep",
-      uploadedBy: "Sneha R.",
+      uploadedBy: "Selam B.",
       uploadedAt: "2026-03-06",
       size: "280 KB",
       rating: 4.3,
