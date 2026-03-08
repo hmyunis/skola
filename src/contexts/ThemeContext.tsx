@@ -8,14 +8,29 @@ import {
   generateSurfaceColors,
 } from "@/lib/themes";
 
+export const FONT_FAMILIES = [
+  { id: "system", name: "System Default", value: "ui-sans-serif, system-ui, sans-serif" },
+  { id: "inter", name: "Inter", value: "'Inter', sans-serif" },
+  { id: "dm-sans", name: "DM Sans", value: "'DM Sans', sans-serif" },
+  { id: "space-grotesk", name: "Space Grotesk", value: "'Space Grotesk', sans-serif" },
+  { id: "jetbrains", name: "JetBrains Mono", value: "'JetBrains Mono', monospace" },
+  { id: "playfair", name: "Playfair Display", value: "'Playfair Display', serif" },
+  { id: "outfit", name: "Outfit", value: "'Outfit', sans-serif" },
+  { id: "sora", name: "Sora", value: "'Sora', sans-serif" },
+  { id: "manrope", name: "Manrope", value: "'Manrope', sans-serif" },
+  { id: "ibm-plex", name: "IBM Plex Sans", value: "'IBM Plex Sans', sans-serif" },
+];
+
 interface ThemeContextType {
   batchTheme: BatchTheme;
   userAccent: UserAccent | null;
   colorMode: ColorMode;
+  fontFamily: string;
   setBatchTheme: (theme: BatchTheme) => void;
   setUserAccent: (accent: UserAccent | null) => void;
   toggleColorMode: () => void;
   setColorMode: (mode: ColorMode) => void;
+  setFontFamily: (id: string) => void;
   isAdmin: boolean;
   setIsAdmin: (v: boolean) => void;
   customThemes: BatchTheme[];
@@ -27,6 +42,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 const CUSTOM_THEMES_KEY = "scola-custom-themes";
 const COLOR_MODE_KEY = "scola-color-mode";
+const FONT_FAMILY_KEY = "scola-font-family";
 
 function loadCustomThemes(): BatchTheme[] {
   try {
@@ -55,6 +71,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(true);
   const [customThemes, setCustomThemes] = useState<BatchTheme[]>(loadCustomThemes);
   const [colorMode, setColorModeState] = useState<ColorMode>(loadColorMode);
+  const [fontFamily, setFontFamilyState] = useState<string>(() => {
+    try { return localStorage.getItem(FONT_FAMILY_KEY) || "system"; } catch { return "system"; }
+  });
 
   const setColorMode = useCallback((mode: ColorMode) => {
     setColorModeState(mode);
@@ -64,6 +83,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggleColorMode = useCallback(() => {
     setColorMode(colorMode === "light" ? "dark" : "light");
   }, [colorMode, setColorMode]);
+
+  const setFontFamily = useCallback((id: string) => {
+    setFontFamilyState(id);
+    localStorage.setItem(FONT_FAMILY_KEY, id);
+    const font = FONT_FAMILIES.find(f => f.id === id);
+    if (font) document.documentElement.style.setProperty("font-family", font.value);
+  }, []);
 
   const addCustomTheme = useCallback((theme: BatchTheme) => {
     setCustomThemes((prev) => {
@@ -119,13 +145,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     applyTheme();
+    // Apply saved font on mount
+    const font = FONT_FAMILIES.find(f => f.id === fontFamily);
+    if (font) document.documentElement.style.setProperty("font-family", font.value);
   }, [applyTheme]);
 
   return (
     <ThemeContext.Provider
       value={{
-        batchTheme, userAccent, colorMode,
-        setBatchTheme, setUserAccent, toggleColorMode, setColorMode,
+        batchTheme, userAccent, colorMode, fontFamily,
+        setBatchTheme, setUserAccent, toggleColorMode, setColorMode, setFontFamily,
         isAdmin, setIsAdmin, customThemes, addCustomTheme, removeCustomTheme,
       }}
     >
