@@ -246,8 +246,14 @@ function PostCard({
         )}
         <div className="flex-1" />
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <User className="h-3 w-3" />
-          <span className="font-medium">{post.anonymous_id}</span>
+          {post.isAnonymous ? (
+            <User className="h-3 w-3" />
+          ) : (
+            <UserCheck className="h-3 w-3 text-primary" />
+          )}
+          <span className={cn("font-medium", !post.isAnonymous && "text-foreground")}>
+            {post.isAnonymous ? post.anonymous_id : post.displayName}
+          </span>
           <span className="opacity-50">·</span>
           <Clock className="h-3 w-3" />
           <span>{timeAgo(post.timestamp)}</span>
