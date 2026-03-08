@@ -457,6 +457,7 @@ const Schedule = () => {
   const [editMode, setEditMode] = useState(false);
   const [localSchedule, setLocalSchedule] = useState<Record<string, ClassSlot[]>>({});
   const [editingSlot, setEditingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
+  const [deletingSlot, setDeletingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
 
   const { data: fetchedSchedule, isLoading } = useQuery({
     queryKey: ["weeklySchedule"],
