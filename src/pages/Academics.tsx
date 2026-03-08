@@ -54,9 +54,7 @@ import {
   Shuffle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
 import { GroupOrderGenerator } from "@/components/GroupOrderGenerator";
-import { Dialog, DialogContent as GroupDialogContent, DialogHeader as GroupDialogHeader, DialogTitle as GroupDialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Source styling ───
