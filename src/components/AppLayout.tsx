@@ -23,9 +23,12 @@ const roleIcons = { owner: Crown, admin: Shield, student: User };
 
 function UserMenu() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const RoleIcon = roleIcons[user?.role || "student"];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
