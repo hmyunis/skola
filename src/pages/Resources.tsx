@@ -56,11 +56,13 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
+import { ReportDialog } from "@/components/ReportDialog";
 
 // ─── Type icon map ───
 const typeIcons: Record<ResourceType, typeof FileText> = {
