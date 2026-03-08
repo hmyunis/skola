@@ -82,57 +82,6 @@ const SettingsPage = () => {
         </CardContent>
       </Card>
 
-      {/* Batch Theme selector — Owner only */}
-      {isOwner && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs">Batch Theme</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setShowCreator(!showCreator)}>
-                {showCreator ? "Cancel" : <><Plus className="h-3 w-3" /> Custom</>}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {showCreator && <CustomThemeCreator onCreated={() => setShowCreator(false)} />}
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {allThemes.map((theme) => (
-                <div key={theme.id} className="relative group">
-                  <button
-                    onClick={() => setBatchTheme(theme)}
-                    className={`w-full p-3 border text-left text-xs font-bold uppercase tracking-wider transition-colors ${
-                      batchTheme.id === theme.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:bg-accent text-foreground"
-                    } ${theme.isCustom ? "border-dashed" : ""}`}
-                  >
-                    {theme.name}
-                    {theme.isCustom && <span className="block text-[9px] font-normal tracking-normal opacity-60 mt-0.5">Custom</span>}
-                  </button>
-                  {theme.isCustom && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => removeCustomTheme(theme.id)}
-                          className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top"><span>Delete</span></TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Telegram Group ID — Owner only */}
-      {isOwner && <TelegramGroupIdSetting />}
-
       {/* User Accent selector */}
       <Card>
         <CardHeader>

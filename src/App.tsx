@@ -63,7 +63,7 @@ const App = () => (
 
             {/* Owner routes */}
             <Route path="/owner/features" element={<OwnerFeatures />} />
-            <Route path="/owner/data-export" element={<OwnerDataExport />} />
+            <Route path="/owner/general" element={<OwnerGeneral />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
