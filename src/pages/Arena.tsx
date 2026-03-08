@@ -60,6 +60,8 @@ import {
   Play,
   BookOpen,
   Shield,
+  User,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IS_ADMIN, MOCK_USER_NAME } from "@/lib/user";
@@ -777,7 +779,16 @@ function CustomQuizzesList({
                     <span className="text-[10px] text-muted-foreground">·</span>
                     <span className="text-[10px] text-muted-foreground tabular-nums">{quiz.questions.length} Q</span>
                     <span className="text-[10px] text-muted-foreground">·</span>
-                    <span className="text-[10px] text-muted-foreground">{quiz.anonymous_id}</span>
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      {quiz.anonymous_id.startsWith("Anon#") ? (
+                        <User className="h-2.5 w-2.5" />
+                      ) : (
+                        <UserCheck className="h-2.5 w-2.5 text-primary" />
+                      )}
+                      <span className={cn(!quiz.anonymous_id.startsWith("Anon#") && "text-foreground font-medium")}>
+                        {quiz.anonymous_id}
+                      </span>
+                    </span>
                   </div>
                 </div>
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onPlay(quiz)}>
