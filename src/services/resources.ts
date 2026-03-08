@@ -190,6 +190,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 16,
       upvotes: 20,
       downvotes: 3,
+      downloads: 0,
       description: "Interactive web tool for visualizing BFS, DFS, Dijkstra's, and Kruskal's algorithms on custom graphs.",
       tags: ["graphs", "bfs", "dfs", "dijkstra", "visualization"],
     },
