@@ -199,23 +199,25 @@ const AdminUsers = () => {
             const status = statusConfig[user.status];
             const RoleIcon = role.icon;
             return (
-              <div key={user.id} className="border border-border p-3 flex items-center gap-3 hover:bg-accent/20 transition-colors">
-                <div className={cn("p-2 border", role.color)}>
-                  <RoleIcon className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs font-bold">{user.name}</p>
-                    <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", role.color)}>{role.label}</span>
-                    <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", status.color)}>{status.label}</span>
-                    {user.status === "suspended" && user.suspendedUntil && (
-                      <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
-                        <Clock className="h-2.5 w-2.5" />
-                        {formatRemaining(user.suspendedUntil)}
-                      </span>
-                    )}
+              <div key={user.id} className="border border-border p-3 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-accent/20 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("p-2 border shrink-0", role.color)}>
+                    <RoleIcon className="h-4 w-4" />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{user.email} · Joined {user.joinedAt} · Last active {user.lastActive}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-bold">{user.name}</p>
+                      <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", role.color)}>{role.label}</span>
+                      <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", status.color)}>{status.label}</span>
+                      {user.status === "suspended" && user.suspendedUntil && (
+                        <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatRemaining(user.suspendedUntil)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground truncate">{user.email} · Joined {user.joinedAt}</p>
+                  </div>
                 </div>
                 {user.role !== "owner" && (
                   <div className="flex items-center gap-1 flex-wrap">
