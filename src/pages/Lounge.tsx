@@ -521,6 +521,14 @@ function PostCard({
         onEditReply={onEditReply}
         onDeleteReply={onDeleteReply}
       />
+      <ReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        contentType="post"
+        contentId={post.id}
+        contentPreview={post.content}
+        contentAuthor={post.isAnonymous ? post.anonymous_id : (post.displayName || post.anonymous_id)}
+      />
     </div>
   );
 }
