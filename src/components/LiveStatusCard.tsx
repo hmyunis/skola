@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchTodaySchedule, type ClassSlot } from "@/services/api";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Clock, Coffee } from "lucide-react";

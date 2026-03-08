@@ -63,6 +63,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 import { useAuth } from "@/stores/authStore";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { ReportDialog } from "@/components/ReportDialog";
 
 // ─── Type icon map ───
