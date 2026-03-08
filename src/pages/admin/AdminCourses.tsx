@@ -42,6 +42,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/stores/authStore";
+import { ShieldAlert } from "lucide-react";
 
 function CourseFormDialog({
   open,

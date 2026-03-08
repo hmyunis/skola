@@ -55,6 +55,7 @@ const adminItems = [
 
 const ownerItems = [
   { title: "Semesters", url: "/admin/semesters", icon: CalendarDays },
+  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
   { title: "Features", url: "/owner/features", icon: ToggleLeft },
   { title: "Data Export", url: "/owner/data-export", icon: Download },
 ];
