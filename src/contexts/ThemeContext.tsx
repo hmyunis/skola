@@ -145,6 +145,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     applyTheme();
+    // Apply saved font on mount
+    const font = FONT_FAMILIES.find(f => f.id === fontFamily);
+    if (font) document.documentElement.style.setProperty("font-family", font.value);
   }, [applyTheme]);
 
   return (
