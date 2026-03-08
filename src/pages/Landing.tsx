@@ -176,7 +176,7 @@ const Landing = () => {
               <br />
               <span className="text-primary">Your Rules.</span>
             </h1>
-            <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
               The command center for student communities. Manage courses, resources, 
               discussions, and assessments — with military-grade isolation between every classroom.
             </p>
