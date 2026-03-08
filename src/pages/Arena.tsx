@@ -813,8 +813,6 @@ function CustomQuizzesList({
                     </TooltipTrigger>
                     <TooltipContent side="top"><span>{quiz.createdByUser ? "Delete quiz" : "Delete quiz (admin)"}</span></TooltipContent>
                   </Tooltip>
-                    {quiz.createdByUser ? <Trash2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
-                  </Button>
                 )}
               </div>
             );
