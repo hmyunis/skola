@@ -1,21 +1,8 @@
 import { create } from "zustand";
+import type { UserRole, MockAccount } from "@/types/auth";
 
-export type UserRole = "student" | "admin" | "owner";
-
-export interface MockAccount {
-  id: string;
-  name: string;
-  email: string;
-  initials: string;
-  phone: string;
-  role: UserRole;
-  code: string;
-  year: number;
-  semester: number;
-  batch: string;
-  anonymous_id: string;
-  telegramUsername: string;
-}
+// Re-export types for backward compatibility
+export type { UserRole, MockAccount } from "@/types/auth";
 
 export const MOCK_ACCOUNTS: MockAccount[] = [
   {

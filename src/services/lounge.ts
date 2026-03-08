@@ -1,7 +1,9 @@
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import type { PostTag, AcademicReaction, LoungeReply, LoungePost } from "@/types/lounge";
 
-export type PostTag = "question" | "rant" | "tip" | "meme" | "confession" | "discussion";
-export type AcademicReaction = "🧠" | "💀" | "🔥" | "📚" | "😭" | "🤝";
+// Re-export types for backward compatibility
+export type { PostTag, AcademicReaction, LoungeReply, LoungePost } from "@/types/lounge";
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const POST_TAGS: { value: PostTag; label: string; color: string }[] = [
   { value: "question", label: "Question", color: "bg-primary/10 text-primary border-primary/30" },
@@ -20,26 +22,6 @@ export const REACTIONS: { emoji: AcademicReaction; label: string }[] = [
   { emoji: "😭", label: "Pain" },
   { emoji: "🤝", label: "Relatable" },
 ];
-
-export interface LoungeReply {
-  id: string;
-  content: string;
-  timestamp: string;
-  anonymous_id: string;
-}
-
-export interface LoungePost {
-  id: string;
-  content: string;
-  tag: PostTag;
-  course?: string;
-  timestamp: string;
-  reactions: Record<AcademicReaction, number>;
-  replies: number;
-  anonymous_id: string;
-  displayName?: string;
-  isAnonymous: boolean;
-}
 
 const MOCK_REPLIES: Record<string, LoungeReply[]> = {
   p1: [

@@ -1,33 +1,7 @@
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import type { QuizQuestion, CustomQuiz, LeaderboardEntry } from "@/types/arena";
 
-export interface QuizQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correctIndex: number;
-  course: string;
-  difficulty: "easy" | "medium" | "hard";
-}
-
-export interface CustomQuiz {
-  id: string;
-  title: string;
-  course: string;
-  questions: QuizQuestion[];
-  createdAt: string;
-  anonymous_id: string;
-  createdByUser?: boolean;
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  anonymous_id: string;
-  xp: number;
-  wins: number;
-  streak: number;
-  accuracy: number;
-  title: string;
-}
+// Re-export types for backward compatibility
+export type { QuizQuestion, CustomQuiz, LeaderboardEntry } from "@/types/arena";
 
 export const ARENA_TITLES: Record<string, { label: string; minXp: number }> = {
   rookie: { label: "Rookie", minXp: 0 },
@@ -36,6 +10,8 @@ export const ARENA_TITLES: Record<string, { label: string; minXp: number }> = {
   champion: { label: "Champion", minXp: 1000 },
   legend: { label: "Legend", minXp: 2000 },
 };
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ─── Custom quiz localStorage ───
 const CUSTOM_QUIZZES_KEY = "scola-arena-custom-quizzes";

@@ -1,46 +1,12 @@
+import type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, Course } from "@/types/api";
+
+// Re-export types for backward compatibility
+export type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, Course, DayOfWeek } from "@/types/api";
+
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export interface SemesterInfo {
-  year: number;
-  semester: number;
-  startDate: string;
-  endDate: string;
-}
-
-export interface ClassSlot {
-  id: string;
-  name: string;
-  code: string;
-  room: string;
-  type: "lecture" | "lab" | "exam";
-  startTime: Date;
-  endTime: Date;
-  draft?: boolean;
-}
-
-export interface Assignment {
-  id: string;
-  title: string;
-  course: string;
-  dueDate: string;
-  source: "classroom" | "direct" | "notice";
-  status: "pending" | "submitted" | "graded";
-}
-
-export interface QuickStats {
-  remainingClasses: number;
-  pendingAssignments: number;
-  upcomingExams: number;
-}
-
-export type DayOfWeek = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday";
-
-export interface WeeklySchedule {
-  [key: string]: ClassSlot[];
-}
-
 /** Preconfigured course list */
-export const COURSES = [
+export const COURSES: Course[] = [
   { code: "CS301", name: "Data Structures & Algorithms" },
   { code: "CS302", name: "Database Management Systems" },
   { code: "CS303", name: "Computer Networks" },

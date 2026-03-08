@@ -1,25 +1,9 @@
+import type { Resource, ResourceType, ResourceCategory } from "@/types/resources";
+
+// Re-export types for backward compatibility
+export type { Resource, ResourceType, ResourceCategory } from "@/types/resources";
+
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-export type ResourceType = "pdf" | "slides" | "notes" | "video" | "code" | "link";
-export type ResourceCategory = "lecture" | "lab" | "reference" | "exam-prep" | "project";
-
-export interface Resource {
-  id: string;
-  title: string;
-  course: string;
-  type: ResourceType;
-  category: ResourceCategory;
-  uploadedBy: string;
-  uploadedAt: string;
-  size: string;
-  rating: number;
-  totalRatings: number;
-  upvotes: number;
-  downvotes: number;
-  downloads: number;
-  description: string;
-  tags: string[];
-}
 
 export const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
   { value: "pdf", label: "PDF" },
