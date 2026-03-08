@@ -128,7 +128,7 @@ export function BottomNav() {
                 );
               })}
 
-              {IS_ADMIN && (
+              {isAdmin && (
                 <>
                   <div className="flex items-center gap-2 pt-3 pb-1 px-1">
                     <Shield className="h-3 w-3 text-muted-foreground" />
