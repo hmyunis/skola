@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Flag } from "lucide-react";
 import { saveUserReport, type UserReport } from "@/services/admin";
-import { MOCK_USER_NAME } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
 const REPORT_REASONS = [
@@ -49,6 +49,8 @@ export function ReportDialog({
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
 
+  const { userName } = useAuth();
+
   const handleSubmit = () => {
     if (!reason) return;
     saveUserReport({
@@ -58,7 +60,7 @@ export function ReportDialog({
       content: contentPreview.slice(0, 200),
       author: contentAuthor,
       reason: reason === "Other" && details.trim() ? details.trim() : reason,
-      reportedBy: MOCK_USER_NAME,
+      reportedBy: userName,
       reportedAt: new Date().toISOString(),
       status: "pending",
     });

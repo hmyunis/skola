@@ -61,7 +61,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
-import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { ReportDialog } from "@/components/ReportDialog";
 
 // ─── Type icon map ───
@@ -551,6 +551,7 @@ function ResourceCard({
 
 // ─── Main Page ───
 const Resources = () => {
+  const { isAdmin, userName } = useAuth();
   const { data: fetchedResources, isLoading } = useQuery({
     queryKey: ["resources"],
     queryFn: fetchResources,
@@ -594,7 +595,7 @@ const Resources = () => {
       ...data,
       id: `local-${Date.now()}`,
       uploadedAt: new Date().toISOString().split("T")[0],
-      uploadedBy: MOCK_USER_NAME,
+      uploadedBy: userName,
       rating: 0,
       totalRatings: 0,
       upvotes: 0,
@@ -678,7 +679,7 @@ const Resources = () => {
     };
   }, [allResources]);
 
-  const isOwner = (resource: Resource) => resource.uploadedBy === MOCK_USER_NAME;
+  const isOwner = (resource: Resource) => resource.uploadedBy === userName;
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
@@ -863,7 +864,7 @@ const Resources = () => {
         userRating={detailResource ? ratings[detailResource.id] : undefined}
         userVote={detailResource ? votes[detailResource.id] : undefined}
         isOwner={detailResource ? isOwner(detailResource) : false}
-        isAdmin={IS_ADMIN}
+        isAdmin={isAdmin}
         onRate={handleRate}
         onVote={handleVote}
         onEdit={() => {

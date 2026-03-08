@@ -20,7 +20,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
-import { IS_ADMIN, IS_OWNER } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -113,6 +113,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { batchTheme } = useTheme();
+  const { isAdmin, isOwner } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -140,7 +141,7 @@ export function AppSidebar() {
           currentPath={location.pathname}
         />
 
-        {IS_ADMIN && (
+        {isAdmin && (
           <>
             <div className="px-4">
               <Separator className="bg-sidebar-border" />
@@ -155,7 +156,7 @@ export function AppSidebar() {
           </>
         )}
 
-        {IS_OWNER && (
+        {isOwner && (
           <>
             <div className="px-4">
               <Separator className="bg-sidebar-border" />

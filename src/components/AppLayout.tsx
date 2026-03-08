@@ -4,7 +4,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Sun, Moon, LogOut, Mail, GraduationCap, Shield } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Sun, Moon, LogOut, Mail, GraduationCap, Shield, Crown, User } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -17,22 +18,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const MOCK_USER = {
-  name: "Dawit Tadesse",
-  email: "dawit.tadesse@university.edu",
-  avatar: null as string | null,
-  initials: "DT",
-  year: 3,
-  semester: 2,
-  batch: "Software",
-  role: "Student",
-};
+const roleLabels = { owner: "Owner", admin: "Admin", student: "Student" };
+const roleIcons = { owner: Crown, admin: Shield, student: User };
 
 function UserMenu() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const RoleIcon = roleIcons[user?.role || "student"];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -50,10 +46,10 @@ function UserMenu() {
             onClick={() => setOpen((p) => !p)}
             className="h-8 w-8 flex items-center justify-center bg-white/15 hover:bg-white/25 transition-colors text-[10px] font-black uppercase tracking-wider"
           >
-            {MOCK_USER.initials}
+            {user?.initials || "?"}
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom"><span>{MOCK_USER.name}</span></TooltipContent>
+        <TooltipContent side="bottom"><span>{user?.name || "Guest"}</span></TooltipContent>
       </Tooltip>
 
       {open && (
@@ -62,11 +58,11 @@ function UserMenu() {
           <div className="p-4 border-b border-border space-y-2">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-primary/15 border border-primary/30 flex items-center justify-center text-sm font-black text-primary">
-                {MOCK_USER.initials}
+                {user?.initials || "?"}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold truncate">{MOCK_USER.name}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{MOCK_USER.role}</p>
+                <p className="text-sm font-bold truncate">{user?.name || "Guest"}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{roleLabels[user?.role || "student"]}</p>
               </div>
             </div>
           </div>
@@ -75,15 +71,15 @@ function UserMenu() {
           <div className="p-3 space-y-2 border-b border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Mail className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{MOCK_USER.email}</span>
+              <span className="truncate">{user?.email || "—"}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <GraduationCap className="h-3.5 w-3.5 shrink-0" />
-              <span>Year {MOCK_USER.year}, Semester {MOCK_USER.semester}</span>
+              <span>Year {user?.year || "—"}, Semester {user?.semester || "—"}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Shield className="h-3.5 w-3.5 shrink-0" />
-              <span>{MOCK_USER.batch} Division</span>
+              <RoleIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>{user?.batch || "—"} Division</span>
             </div>
           </div>
 
@@ -112,7 +108,10 @@ function UserMenu() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => navigate("/login")}
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Log Out

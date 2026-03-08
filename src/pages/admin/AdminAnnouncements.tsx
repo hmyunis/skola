@@ -4,7 +4,7 @@ import {
   saveAnnouncements,
   type Announcement,
 } from "@/services/admin";
-import { MOCK_USER_NAME } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,7 @@ function AnnouncementFormDialog({
   initial?: Announcement | null;
   onSave: (a: Announcement) => void;
 }) {
+  const { userName } = useAuth();
   const [title, setTitle] = useState(initial?.title || "");
   const [content, setContent] = useState(initial?.content || "");
   const [priority, setPriority] = useState<Announcement["priority"]>(initial?.priority || "normal");
@@ -134,7 +135,7 @@ function AnnouncementFormDialog({
                 priority,
                 createdAt: initial?.createdAt || new Date().toISOString(),
                 expiresAt: expiresAt || undefined,
-                createdBy: initial?.createdBy || MOCK_USER_NAME,
+                createdBy: initial?.createdBy || userName,
                 targetAudience: target,
                 pinned,
               });

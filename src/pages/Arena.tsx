@@ -66,7 +66,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { IS_ADMIN, MOCK_USER_NAME } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { ReportDialog } from "@/components/ReportDialog";
 
@@ -475,6 +475,7 @@ function CreateQuizDialog({
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
 }) {
+  const { userName } = useAuth();
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("CS301");
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -542,7 +543,7 @@ function CreateQuizDialog({
         difficulty: q.difficulty,
       })),
       createdAt: new Date().toISOString(),
-      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : MOCK_USER_NAME,
+      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : userName,
       createdByUser: true,
     };
 
@@ -606,7 +607,7 @@ function CreateQuizDialog({
                   <Eye className="h-4 w-4 text-primary shrink-0" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : MOCK_USER_NAME}</p>
+                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : userName}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {isAnonymous ? "Your name will be hidden" : "Your name will be visible"}
                   </p>
@@ -749,6 +750,7 @@ function CustomQuizzesList({
   onPlay: (quiz: CustomQuiz) => void;
   refreshKey: number;
 }) {
+  const { isAdmin } = useAuth();
   const [quizzes, setQuizzes] = useState<CustomQuiz[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reportQuiz, setReportQuiz] = useState<CustomQuiz | null>(null);
@@ -817,7 +819,7 @@ function CustomQuizzesList({
                     <TooltipContent side="top"><span>Report quiz</span></TooltipContent>
                   </Tooltip>
                 )}
-                {(quiz.createdByUser || IS_ADMIN) && (
+                {(quiz.createdByUser || isAdmin) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button

@@ -11,7 +11,7 @@ import {
   type AcademicReaction,
 } from "@/services/lounge";
 import { COURSES } from "@/services/api";
-import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -192,6 +192,7 @@ function RepliesSection({
   onEditReply: (postId: string, replyId: string, newContent: string) => void;
   onDeleteReply: (postId: string, replyId: string) => void;
 }) {
+  const { isAdmin } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [replyText, setReplyText] = useState("");
 
@@ -253,7 +254,7 @@ function RepliesSection({
                 key={r.id}
                 reply={r}
                 isOwner={isReplyOwner(r)}
-                isAdmin={IS_ADMIN}
+                isAdmin={isAdmin}
                 onEdit={() => {
                   const newContent = prompt("Edit reply:", r.content);
                   if (newContent && newContent.trim()) {
@@ -535,6 +536,7 @@ function PostCard({
 
 // ─── Compose Box ───
 function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => void }) {
+  const { userName } = useAuth();
   const [content, setContent] = useState("");
   const [tag, setTag] = useState<PostTag>("discussion");
   const [course, setCourse] = useState<string>("none");
@@ -566,7 +568,7 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
             )}
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {isAnonymous ? "Posting Anonymously" : `Posting as ${MOCK_USER_NAME}`}
+            {isAnonymous ? "Posting Anonymously" : `Posting as ${userName}`}
           </span>
           <div className="flex-1" />
           <div className="flex items-center gap-1.5">
@@ -640,6 +642,7 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
 
 // ─── Main Page ───
 const Lounge = () => {
+  const { isAdmin, userName } = useAuth();
   const { data: fetchedPosts, isLoading } = useQuery({
     queryKey: ["loungePosts"],
     queryFn: fetchLoungePosts,
@@ -697,7 +700,7 @@ const Lounge = () => {
       reactions: { "🧠": 0, "💀": 0, "🔥": 0, "📚": 0, "😭": 0, "🤝": 0 },
       replies: 0,
       anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
-      displayName: isAnonymous ? undefined : MOCK_USER_NAME,
+      displayName: isAnonymous ? undefined : userName,
       isAnonymous: !!isAnonymous,
     };
     setLocalPosts((prev) => [newPost, ...prev]);
@@ -965,7 +968,7 @@ const Lounge = () => {
               userReactions={userReactions[post.id] || new Set()}
               localReplies={localReplies[post.id] || []}
               isOwner={isPostOwner(post)}
-              isAdmin={IS_ADMIN}
+              isAdmin={isAdmin}
               onReact={handleReact}
               onAddReply={handleAddReply}
               onEditReply={handleEditReply}

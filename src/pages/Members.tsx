@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { IS_ADMIN, IS_OWNER } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 
 const roleConfig = {
   owner: { label: "Owner", icon: Crown, color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
@@ -46,6 +46,7 @@ const statusDot: Record<string, string> = {
 };
 
 const Members = () => {
+  const { isAdmin, isOwner } = useAuth();
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["managedUsers"],
     queryFn: fetchManagedUsers,
@@ -96,7 +97,7 @@ const Members = () => {
             {users.length} members · {online} active
           </p>
         </div>
-        {IS_ADMIN && (
+        {isAdmin && (
           <Button size="sm" onClick={() => setInviteOpen(true)}>
             <UserPlus className="h-3 w-3" /> Invite
           </Button>
@@ -166,7 +167,7 @@ const Members = () => {
                 </div>
 
                 {/* Admin: remove button (owner-granted) */}
-                {IS_OWNER && user.role !== "owner" && (
+                {isOwner && user.role !== "owner" && (
                   <Button
                     size="sm"
                     variant="ghost"

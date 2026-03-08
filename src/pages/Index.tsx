@@ -4,6 +4,7 @@ import { LiveStatusCard } from "@/components/LiveStatusCard";
 import { PanicButton } from "@/components/PanicButton";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, FileText, ClipboardList } from "lucide-react";
 
@@ -17,7 +18,7 @@ function DaysRemaining({ endDate }: { endDate: string }) {
 }
 
 const Index = () => {
-  const { isAdmin } = useTheme();
+  const { isAdmin } = useAuth();
 
   const { data: semester, isLoading: semLoading } = useQuery({
     queryKey: ["semester"],

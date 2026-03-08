@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import { IS_ADMIN, IS_OWNER } from "@/lib/user";
+import { useAuth } from "@/contexts/AuthContext";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -62,11 +62,12 @@ export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { isAdmin, isOwner } = useAuth();
 
   const allMoreItems = [
     ...moreItems,
-    ...(IS_ADMIN ? adminItems : []),
-    ...(IS_OWNER ? ownerItems : []),
+    ...(isAdmin ? adminItems : []),
+    ...(isOwner ? ownerItems : []),
   ];
   const isMoreActive = allMoreItems.some((i) => location.pathname === i.url);
 
@@ -127,7 +128,7 @@ export function BottomNav() {
                 );
               })}
 
-              {IS_ADMIN && (
+              {isAdmin && (
                 <>
                   <div className="flex items-center gap-2 pt-3 pb-1 px-1">
                     <Shield className="h-3 w-3 text-muted-foreground" />
@@ -157,7 +158,7 @@ export function BottomNav() {
                 </>
               )}
 
-              {IS_OWNER && (
+              {isOwner && (
                 <>
                   <div className="flex items-center gap-2 pt-3 pb-1 px-1">
                     <Crown className="h-3 w-3 text-amber-500" />
