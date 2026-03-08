@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth, MOCK_ACCOUNTS } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,13 +14,28 @@ import {
   ArrowRight,
   Loader2,
   XOctagon,
+  Crown,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type AuthView = "login" | "verifying" | "denied" | "success";
 
+const roleIcon = {
+  owner: Crown,
+  admin: Shield,
+  student: User,
+};
+
+const roleColor = {
+  owner: "border-amber-500/40 bg-amber-500/5 text-amber-600",
+  admin: "border-primary/40 bg-primary/5 text-primary",
+  student: "border-border bg-muted/50 text-muted-foreground",
+};
+
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [view, setView] = useState<AuthView>("login");
   const [phone, setPhone] = useState("+251 ");
   const [code, setCode] = useState("");
@@ -28,7 +44,6 @@ const Login = () => {
   const [error, setError] = useState("");
 
   const handleSendCode = () => {
-    // Strip spaces and validate Ethiopian format: +251 followed by 9 digits starting with 7 or 9
     const cleaned = phone.replace(/\s/g, "");
     const ethRegex = /^\+251[79]\d{8}$/;
     if (!ethRegex.test(cleaned)) {
@@ -38,7 +53,6 @@ const Login = () => {
     setError("");
     setView("verifying");
 
-    // Mock sending code
     setTimeout(() => {
       setView("login");
       setStep("code");
@@ -54,10 +68,17 @@ const Login = () => {
     setView("verifying");
 
     setTimeout(() => {
-      // Mock: "00000" triggers ACCESS DENIED, anything else succeeds
+      // Check against mock accounts
+      const account = MOCK_ACCOUNTS.find((a) => a.code === code);
       if (code === "00000") {
         setView("denied");
+      } else if (account) {
+        login(account);
+        setView("success");
+        setTimeout(() => navigate("/"), 1200);
       } else {
+        // Any other code: default to student login
+        login(MOCK_ACCOUNTS[2]); // Bereket (student)
         setView("success");
         setTimeout(() => navigate("/"), 1200);
       }
@@ -72,18 +93,23 @@ const Login = () => {
     setError("");
   };
 
+  // ─── Quick Login (dev helper) ───
+  const handleQuickLogin = (accountIdx: number) => {
+    login(MOCK_ACCOUNTS[accountIdx]);
+    setView("success");
+    setTimeout(() => navigate("/"), 800);
+  };
+
   // ─── ACCESS DENIED state ───
   if (view === "denied") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-6">
-          {/* Glitch header */}
           <div className="text-center space-y-4">
             <div className="relative inline-block">
               <XOctagon className="h-16 w-16 text-destructive mx-auto animate-pulse" />
               <div className="absolute inset-0 h-16 w-16 mx-auto border-2 border-destructive/30 animate-ping rounded-full" />
             </div>
-
             <div className="space-y-2">
               <h1 className="text-3xl md:text-4xl font-black uppercase tracking-[0.3em] text-destructive">
                 ACCESS DENIED
@@ -92,7 +118,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Error details */}
           <Card className="border-destructive/40 bg-destructive/5">
             <CardContent className="p-5 space-y-4">
               <div className="flex items-start gap-3">
@@ -108,9 +133,6 @@ const Login = () => {
                 </div>
               </div>
 
-
-
-              {/* Actions */}
               <div className="flex flex-col gap-2 pt-2">
                 <Button variant="outline" onClick={resetToLogin} className="w-full">
                   <ArrowRight className="h-3 w-3 rotate-180" />
@@ -129,7 +151,6 @@ const Login = () => {
             </CardContent>
           </Card>
 
-          {/* Footer */}
           <p className="text-center text-[10px] text-muted-foreground/50 uppercase tracking-widest">
             Error 403 · Unauthorized · {new Date().toISOString().split("T")[0]}
           </p>
@@ -220,11 +241,9 @@ const Login = () => {
                     value={phone}
                     onChange={(e) => {
                       let val = e.target.value;
-                      // Ensure +251 prefix is always present
                       if (!val.startsWith("+251")) {
                         val = "+251 ";
                       }
-                      // Only allow digits after +251 (and spaces)
                       const afterPrefix = val.slice(4).replace(/[^\d\s]/g, "");
                       const digitsOnly = afterPrefix.replace(/\s/g, "");
                       if (digitsOnly.length > 9) return;
@@ -247,13 +266,6 @@ const Login = () => {
                   <Send className="h-3 w-3" />
                   Send Verification Code
                 </Button>
-
-                <p className="text-[10px] text-muted-foreground/60 text-center leading-relaxed">
-                  We'll send a 5-digit code to your Telegram account.
-                  <br />
-                  Use <span className="font-mono font-bold text-muted-foreground">00000</span> to
-                  test the ACCESS DENIED state.
-                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -310,6 +322,37 @@ const Login = () => {
                 </button>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Login — Dev accounts */}
+        <Card className="border-dashed">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
+              Quick Login (Demo)
+            </p>
+            <div className="space-y-2">
+              {MOCK_ACCOUNTS.map((account, idx) => {
+                const RoleIcon = roleIcon[account.role];
+                return (
+                  <button
+                    key={account.id}
+                    onClick={() => handleQuickLogin(idx)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 border transition-colors hover:opacity-80",
+                      roleColor[account.role]
+                    )}
+                  >
+                    <RoleIcon className="h-4 w-4 shrink-0" />
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs font-bold">{account.name}</p>
+                      <p className="text-[10px] opacity-70 uppercase tracking-wider">{account.role} · Code: {account.code}</p>
+                    </div>
+                    <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
+                  </button>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
