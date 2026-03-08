@@ -38,6 +38,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+
+const MOCK_USER_NAME = "Arjun Patel";
 
 // ─── Time ago helper ───
 function timeAgo(timestamp: string): string {
