@@ -330,6 +330,7 @@ const Academics = () => {
     queryFn: fetchAssignments,
   });
 
+  const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSource, setFilterSource] = useState<string>("all");
