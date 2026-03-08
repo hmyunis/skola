@@ -551,6 +551,7 @@ function ResourceCard({
 
 // ─── Main Page ───
 const Resources = () => {
+  const { isAdmin, userName } = useAuth();
   const { data: fetchedResources, isLoading } = useQuery({
     queryKey: ["resources"],
     queryFn: fetchResources,
