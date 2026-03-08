@@ -13,7 +13,6 @@ import {
   ArrowRight,
   Loader2,
   XOctagon,
-  Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
