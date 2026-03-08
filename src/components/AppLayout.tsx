@@ -44,13 +44,17 @@ function UserMenu() {
 
   return (
     <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className="h-8 w-8 flex items-center justify-center bg-white/15 hover:bg-white/25 transition-colors text-[10px] font-black uppercase tracking-wider"
-        title={MOCK_USER.name}
-      >
-        {MOCK_USER.initials}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => setOpen((p) => !p)}
+            className="h-8 w-8 flex items-center justify-center bg-white/15 hover:bg-white/25 transition-colors text-[10px] font-black uppercase tracking-wider"
+          >
+            {MOCK_USER.initials}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom"><span>{MOCK_USER.name}</span></TooltipContent>
+      </Tooltip>
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-64 bg-card border border-border shadow-lg z-50 text-foreground">
