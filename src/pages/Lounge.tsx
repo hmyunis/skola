@@ -566,7 +566,7 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
             )}
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {isAnonymous ? "Posting Anonymously" : `Posting as ${MOCK_USER_NAME}`}
+            {isAnonymous ? "Posting Anonymously" : `Posting as ${userName}`}
           </span>
           <div className="flex-1" />
           <div className="flex items-center gap-1.5">
