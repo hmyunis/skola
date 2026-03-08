@@ -220,7 +220,7 @@ const AdminCourses = () => {
                 <span className="px-1.5 py-0.5 bg-muted border border-border text-[10px] font-bold tabular-nums">{c.credits} cr</span>
               </div>
               <p className="text-xs text-muted-foreground truncate">{c.name}</p>
-              <p className="text-[10px] text-muted-foreground">{c.instructor} · {c.department}</p>
+              <p className="text-[10px] text-muted-foreground">{c.instructor}</p>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Users className="h-3 w-3" />
