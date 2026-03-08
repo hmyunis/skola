@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, MOCK_ACCOUNTS } from "@/stores/authStore";
+import { getUserStatus } from "@/services/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +43,8 @@ const Login = () => {
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [showCode, setShowCode] = useState(false);
   const [error, setError] = useState("");
+  const [deniedReason, setDeniedReason] = useState<"unregistered" | "banned" | "suspended">("unregistered");
+  const [suspendedUntil, setSuspendedUntil] = useState("");
 
   const handleSendCode = () => {
     const cleaned = phone.replace(/\s/g, "");
@@ -59,6 +62,27 @@ const Login = () => {
     }, 1500);
   };
 
+  const tryLogin = (account: typeof MOCK_ACCOUNTS[0]) => {
+    const saved = getUserStatus(account.id);
+    if (saved?.status === "banned") {
+      setView("denied");
+      setDeniedReason("banned");
+      return;
+    }
+    if (saved?.status === "suspended" && saved.suspendedUntil) {
+      const until = new Date(saved.suspendedUntil);
+      if (until > new Date()) {
+        setView("denied");
+        setDeniedReason("suspended");
+        setSuspendedUntil(until.toLocaleString());
+        return;
+      }
+    }
+    login(account);
+    setView("success");
+    setTimeout(() => navigate("/"), 1200);
+  };
+
   const handleVerifyCode = () => {
     if (!code.trim() || code.length < 5) {
       setError("Enter the 5-digit code");
@@ -68,19 +92,14 @@ const Login = () => {
     setView("verifying");
 
     setTimeout(() => {
-      // Check against mock accounts
       const account = MOCK_ACCOUNTS.find((a) => a.code === code);
       if (code === "00000") {
         setView("denied");
+        setDeniedReason("unregistered");
       } else if (account) {
-        login(account);
-        setView("success");
-        setTimeout(() => navigate("/"), 1200);
+        tryLogin(account);
       } else {
-        // Any other code: default to student login
-        login(MOCK_ACCOUNTS[2]); // Bereket (student)
-        setView("success");
-        setTimeout(() => navigate("/"), 1200);
+        tryLogin(MOCK_ACCOUNTS[2]);
       }
     }, 2000);
   };
@@ -95,9 +114,7 @@ const Login = () => {
 
   // ─── Quick Login (dev helper) ───
   const handleQuickLogin = (accountIdx: number) => {
-    login(MOCK_ACCOUNTS[accountIdx]);
-    setView("success");
-    setTimeout(() => navigate("/"), 800);
+    tryLogin(MOCK_ACCOUNTS[accountIdx]);
   };
 
   // ─── ACCESS DENIED state ───
@@ -124,11 +141,14 @@ const Login = () => {
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-destructive uppercase tracking-wider">
-                    Authentication Failed
+                    {deniedReason === "banned" ? "Account Banned" : deniedReason === "suspended" ? "Account Suspended" : "Authentication Failed"}
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Your Telegram account is not linked to any registered student profile.
-                    Contact your academic administrator for access provisioning.
+                    {deniedReason === "banned"
+                      ? "Your account has been permanently banned. You cannot access the platform. Contact your administrator if you believe this is an error."
+                      : deniedReason === "suspended"
+                      ? `Your account is temporarily suspended until ${suspendedUntil}. Please try again after the suspension period ends.`
+                      : "Your Telegram account is not linked to any registered student profile. Contact your academic administrator for access provisioning."}
                   </p>
                 </div>
               </div>
