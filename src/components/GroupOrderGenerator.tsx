@@ -114,7 +114,20 @@ export function GroupOrderGenerator({ embedded }: { embedded?: boolean } = {}) {
             </motion.div>
           )}
         </AnimatePresence>
-      </CardContent>
+      </div>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Shuffle className="h-4 w-4 text-primary" />
+          <CardTitle className="text-xs">Group Order Generator</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>{content}</CardContent>
     </Card>
   );
 }
