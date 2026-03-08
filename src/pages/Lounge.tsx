@@ -294,19 +294,21 @@ function PostCard({
 }
 
 // ─── Compose Box ───
-function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course?: string) => void }) {
+function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => void }) {
   const [content, setContent] = useState("");
   const [tag, setTag] = useState<PostTag>("discussion");
   const [course, setCourse] = useState<string>("none");
   const [expanded, setExpanded] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const handleSubmit = () => {
     if (!content.trim()) return;
-    onPost(content.trim(), tag, course === "none" ? undefined : course);
+    onPost(content.trim(), tag, course === "none" ? undefined : course, isAnonymous);
     setContent("");
     setTag("discussion");
     setCourse("none");
     setExpanded(false);
+    setIsAnonymous(false);
   };
 
   const charCount = content.length;
