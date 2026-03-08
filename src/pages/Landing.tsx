@@ -112,7 +112,7 @@ const Landing = () => {
             <span className="text-sm font-black uppercase tracking-[0.2em]">SKOLA</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={toggleColorMode}
               className="p-2 border border-border hover:bg-accent transition-colors"
@@ -125,11 +125,11 @@ const Landing = () => {
               )}
             </button>
             <Link to="/login">
-              <Button variant="outline" size="sm" className="text-xs font-bold uppercase tracking-wider">
+              <Button variant="outline" size="sm" className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4">
                 Sign In
               </Button>
             </Link>
-            <Link to="/get-started">
+            <Link to="/get-started" className="hidden sm:inline-flex">
               <Button size="sm" className="text-xs font-bold uppercase tracking-wider">
                 Get Started
               </Button>
