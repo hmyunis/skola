@@ -11,6 +11,7 @@ import {
   type AcademicReaction,
 } from "@/services/lounge";
 import { COURSES } from "@/services/api";
+import { MOCK_USER_NAME, IS_ADMIN } from "@/lib/user";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +23,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   MessageSquare,
   Send,
@@ -35,12 +52,13 @@ import {
   ChevronDown,
   ChevronUp,
   CornerDownRight,
+  Pencil,
+  Trash2,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
-
-const MOCK_USER_NAME = "Arjun Patel";
 
 // ─── Time ago helper ───
 function timeAgo(timestamp: string): string {
@@ -91,9 +109,21 @@ function ReactionButton({
 }
 
 // ─── Reply Item ───
-function ReplyItem({ reply }: { reply: LoungeReply }) {
+function ReplyItem({
+  reply,
+  isOwner,
+  isAdmin,
+  onEdit,
+  onDelete,
+}: {
+  reply: LoungeReply;
+  isOwner: boolean;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <div className="flex gap-2 py-2">
+    <div className="flex gap-2 py-2 group">
       <CornerDownRight className="h-3 w-3 text-muted-foreground mt-1 shrink-0" />
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -101,6 +131,29 @@ function ReplyItem({ reply }: { reply: LoungeReply }) {
           <span className="font-medium">{reply.anonymous_id}</span>
           <span className="opacity-50">·</span>
           <span>{timeAgo(reply.timestamp)}</span>
+          <div className="flex-1" />
+          {/* Owner actions */}
+          {isOwner && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+              title="Edit reply"
+            >
+              <Pencil className="h-2.5 w-2.5" />
+            </button>
+          )}
+          {(isOwner || isAdmin) && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className={cn(
+                "opacity-0 group-hover:opacity-100 transition-opacity",
+                isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
+              )}
+              title={isOwner ? "Delete reply" : "Delete reply (admin)"}
+            >
+              {!isOwner && isAdmin ? <Shield className="h-2.5 w-2.5" /> : <Trash2 className="h-2.5 w-2.5" />}
+            </button>
+          )}
         </div>
         <p className="text-xs leading-relaxed">{reply.content}</p>
       </div>
@@ -114,11 +167,15 @@ function RepliesSection({
   replyCount,
   localReplies,
   onAddReply,
+  onEditReply,
+  onDeleteReply,
 }: {
   postId: string;
   replyCount: number;
   localReplies: LoungeReply[];
   onAddReply: (postId: string, content: string) => void;
+  onEditReply: (postId: string, replyId: string, newContent: string) => void;
+  onDeleteReply: (postId: string, replyId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [replyText, setReplyText] = useState("");
@@ -138,6 +195,11 @@ function RepliesSection({
     if (!replyText.trim()) return;
     onAddReply(postId, replyText.trim());
     setReplyText("");
+  };
+
+  const isReplyOwner = (reply: LoungeReply) => {
+    // Local replies created by user
+    return localReplies.some((r) => r.id === reply.id);
   };
 
   return (
@@ -168,7 +230,21 @@ function RepliesSection({
           ) : allReplies.length === 0 ? (
             <p className="text-[10px] text-muted-foreground py-2">No replies yet. Be the first!</p>
           ) : (
-            allReplies.map((r) => <ReplyItem key={r.id} reply={r} />)
+            allReplies.map((r) => (
+              <ReplyItem
+                key={r.id}
+                reply={r}
+                isOwner={isReplyOwner(r)}
+                isAdmin={IS_ADMIN}
+                onEdit={() => {
+                  const newContent = prompt("Edit reply:", r.content);
+                  if (newContent && newContent.trim()) {
+                    onEditReply(postId, r.id, newContent.trim());
+                  }
+                }}
+                onDelete={() => onDeleteReply(postId, r.id)}
+              />
+            ))
           )}
 
           {/* Reply input */}
@@ -201,19 +277,107 @@ function RepliesSection({
   );
 }
 
+// ─── Edit Post Dialog ───
+function EditPostDialog({
+  post,
+  open,
+  onOpenChange,
+  onSave,
+}: {
+  post: LoungePost | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (id: string, content: string, tag: PostTag) => void;
+}) {
+  const [content, setContent] = useState(post?.content || "");
+  const [tag, setTag] = useState<PostTag>(post?.tag || "discussion");
+
+  // Sync when post changes
+  useState(() => {
+    if (post) {
+      setContent(post.content);
+      setTag(post.tag);
+    }
+  });
+
+  const maxChars = 500;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="uppercase tracking-wider text-sm">Edit Post</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value.slice(0, maxChars))}
+            className="min-h-[100px] text-sm resize-none"
+            rows={4}
+          />
+          <div className="flex items-center gap-3">
+            <Select value={tag} onValueChange={(v) => setTag(v as PostTag)}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {POST_TAGS.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <span className={cn("text-[10px] tabular-nums", content.length > maxChars * 0.9 ? "text-destructive" : "text-muted-foreground")}>
+              {content.length}/{maxChars}
+            </span>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (post && content.trim()) {
+                  onSave(post.id, content.trim(), tag);
+                  onOpenChange(false);
+                }
+              }}
+              disabled={!content.trim()}
+            >
+              <Pencil className="h-3 w-3" /> Save Changes
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Post Card ───
 function PostCard({
   post,
   userReactions,
   localReplies,
+  isOwner,
+  isAdmin,
   onReact,
   onAddReply,
+  onEditReply,
+  onDeleteReply,
+  onEdit,
+  onDelete,
 }: {
   post: LoungePost;
   userReactions: Set<AcademicReaction>;
   localReplies: LoungeReply[];
+  isOwner: boolean;
+  isAdmin: boolean;
   onReact: (postId: string, reaction: AcademicReaction) => void;
   onAddReply: (postId: string, content: string) => void;
+  onEditReply: (postId: string, replyId: string, newContent: string) => void;
+  onDeleteReply: (postId: string, replyId: string) => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const tagConfig = POST_TAGS.find((t) => t.value === post.tag);
   const courseName = post.course
@@ -226,7 +390,7 @@ function PostCard({
   })).sort((a, b) => b.count - a.count);
 
   return (
-    <div className="border border-border p-4 space-y-3 hover:bg-accent/20 transition-colors">
+    <div className="border border-border p-4 space-y-3 hover:bg-accent/20 transition-colors group/post">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2">
         {tagConfig && (
@@ -245,6 +409,32 @@ function PostCard({
           </span>
         )}
         <div className="flex-1" />
+
+        {/* Edit / Delete actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover/post:opacity-100 transition-opacity">
+          {isOwner && (
+            <button
+              onClick={onEdit}
+              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+              title="Edit post"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {(isOwner || isAdmin) && (
+            <button
+              onClick={onDelete}
+              className={cn(
+                "p-1 transition-colors",
+                isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
+              )}
+              title={isOwner ? "Delete post" : "Delete post (admin)"}
+            >
+              {!isOwner && isAdmin ? <Shield className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
+            </button>
+          )}
+        </div>
+
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           {post.isAnonymous ? (
             <User className="h-3 w-3" />
@@ -288,6 +478,8 @@ function PostCard({
         replyCount={post.replies}
         localReplies={localReplies}
         onAddReply={onAddReply}
+        onEditReply={onEditReply}
+        onDeleteReply={onDeleteReply}
       />
     </div>
   );
@@ -406,16 +598,34 @@ const Lounge = () => {
   });
 
   const [localPosts, setLocalPosts] = useState<LoungePost[]>([]);
+  const [deletedPostIds, setDeletedPostIds] = useState<Set<string>>(new Set());
+  const [editedPosts, setEditedPosts] = useState<Record<string, { content: string; tag: PostTag }>>({});
   const [localReplies, setLocalReplies] = useState<Record<string, LoungeReply[]>>({});
+  const [deletedReplyIds, setDeletedReplyIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [filterCourse, setFilterCourse] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [userReactions, setUserReactions] = useState<Record<string, Set<AcademicReaction>>>({});
 
+  // Edit/delete state
+  const [editingPost, setEditingPost] = useState<LoungePost | null>(null);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+  const [deletingReply, setDeletingReply] = useState<{ postId: string; replyId: string } | null>(null);
+
   const allPosts = useMemo(() => {
-    return [...localPosts, ...(fetchedPosts || [])];
-  }, [fetchedPosts, localPosts]);
+    const fetched = (fetchedPosts || [])
+      .filter((p) => !deletedPostIds.has(p.id))
+      .map((p) => editedPosts[p.id] ? { ...p, ...editedPosts[p.id] } : p);
+    const local = localPosts.filter((p) => !deletedPostIds.has(p.id))
+      .map((p) => editedPosts[p.id] ? { ...p, ...editedPosts[p.id] } : p);
+    return [...local, ...fetched];
+  }, [fetchedPosts, localPosts, deletedPostIds, editedPosts]);
+
+  const isPostOwner = (post: LoungePost) => {
+    // Local posts are owned by the user
+    return localPosts.some((p) => p.id === post.id);
+  };
 
   const handleReact = (postId: string, reaction: AcademicReaction) => {
     setUserReactions((prev) => {
@@ -443,7 +653,30 @@ const Lounge = () => {
       isAnonymous: !!isAnonymous,
     };
     setLocalPosts((prev) => [newPost, ...prev]);
-    toast({ title: "Posted!", description: "Your anonymous post is live." });
+    toast({ title: "Posted!", description: "Your post is live." });
+  };
+
+  const handleEditPost = (id: string, content: string, tag: PostTag) => {
+    // For local posts, update directly
+    const isLocal = localPosts.some((p) => p.id === id);
+    if (isLocal) {
+      setLocalPosts((prev) => prev.map((p) => p.id === id ? { ...p, content, tag } : p));
+    } else {
+      setEditedPosts((prev) => ({ ...prev, [id]: { content, tag } }));
+    }
+    toast({ title: "Updated!", description: "Your post has been edited." });
+  };
+
+  const handleDeletePost = () => {
+    if (!deletingPostId) return;
+    const isLocal = localPosts.some((p) => p.id === deletingPostId);
+    if (isLocal) {
+      setLocalPosts((prev) => prev.filter((p) => p.id !== deletingPostId));
+    } else {
+      setDeletedPostIds((prev) => new Set([...prev, deletingPostId]));
+    }
+    setDeletingPostId(null);
+    toast({ title: "Deleted", description: "Post has been removed." });
   };
 
   const handleAddReply = (postId: string, content: string) => {
@@ -458,6 +691,33 @@ const Lounge = () => {
       [postId]: [...(prev[postId] || []), newReply],
     }));
     toast({ title: "Replied!", description: "Your reply has been posted." });
+  };
+
+  const handleEditReply = (postId: string, replyId: string, newContent: string) => {
+    setLocalReplies((prev) => ({
+      ...prev,
+      [postId]: (prev[postId] || []).map((r) =>
+        r.id === replyId ? { ...r, content: newContent } : r
+      ),
+    }));
+    toast({ title: "Updated!", description: "Reply has been edited." });
+  };
+
+  const handleDeleteReply = () => {
+    if (!deletingReply) return;
+    const { postId, replyId } = deletingReply;
+    // Remove from local replies if exists
+    const isLocal = (localReplies[postId] || []).some((r) => r.id === replyId);
+    if (isLocal) {
+      setLocalReplies((prev) => ({
+        ...prev,
+        [postId]: (prev[postId] || []).filter((r) => r.id !== replyId),
+      }));
+    } else {
+      setDeletedReplyIds((prev) => new Set([...prev, replyId]));
+    }
+    setDeletingReply(null);
+    toast({ title: "Deleted", description: "Reply has been removed." });
   };
 
   const coursesInData = useMemo(() => {
@@ -640,8 +900,14 @@ const Lounge = () => {
               post={post}
               userReactions={userReactions[post.id] || new Set()}
               localReplies={localReplies[post.id] || []}
+              isOwner={isPostOwner(post)}
+              isAdmin={IS_ADMIN}
               onReact={handleReact}
               onAddReply={handleAddReply}
+              onEditReply={handleEditReply}
+              onDeleteReply={(postId, replyId) => setDeletingReply({ postId, replyId })}
+              onEdit={() => setEditingPost(post)}
+              onDelete={() => setDeletingPostId(post.id)}
             />
           ))}
         </div>
@@ -655,6 +921,50 @@ const Lounge = () => {
           </span>
         ))}
       </div>
+
+      {/* Edit Post Dialog */}
+      <EditPostDialog
+        post={editingPost}
+        open={!!editingPost}
+        onOpenChange={(open) => !open && setEditingPost(null)}
+        onSave={handleEditPost}
+      />
+
+      {/* Delete Post Confirmation */}
+      <AlertDialog open={!!deletingPostId} onOpenChange={(open) => !open && setDeletingPostId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              This post will be permanently removed. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Reply Confirmation */}
+      <AlertDialog open={!!deletingReply} onOpenChange={(open) => !open && setDeletingReply(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Reply</AlertDialogTitle>
+            <AlertDialogDescription>
+              This reply will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteReply} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -453,13 +453,17 @@ function ResourceDetailDialog({
             />
           </div>
 
-          {/* Owner actions */}
-          {isOwner && (
+          {/* Owner / Admin actions */}
+          {(isOwner || isAdmin) && (
             <div className="flex items-center gap-2 border-t border-border pt-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">Your resource</p>
-              <Button size="sm" variant="outline" onClick={onEdit}>
-                <Pencil className="h-3 w-3" /> Edit
-              </Button>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">
+                {isOwner ? "Your resource" : "Admin moderation"}
+              </p>
+              {isOwner && (
+                <Button size="sm" variant="outline" onClick={onEdit}>
+                  <Pencil className="h-3 w-3" /> Edit
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onDelete}>
                 <Trash2 className="h-3 w-3" /> Delete
               </Button>
