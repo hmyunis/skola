@@ -461,12 +461,6 @@ const Lounge = () => {
           )}
         </div>
       </div>
-          >
-            Clear
-          </Button>
-        )}
-      </div>
-
       {/* Feed */}
       {isLoading ? (
         <div className="space-y-3">
