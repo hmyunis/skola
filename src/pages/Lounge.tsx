@@ -698,7 +698,7 @@ const Lounge = () => {
       reactions: { "🧠": 0, "💀": 0, "🔥": 0, "📚": 0, "😭": 0, "🤝": 0 },
       replies: 0,
       anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
-      displayName: isAnonymous ? undefined : MOCK_USER_NAME,
+      displayName: isAnonymous ? undefined : userName,
       isAnonymous: !!isAnonymous,
     };
     setLocalPosts((prev) => [newPost, ...prev]);
