@@ -51,7 +51,7 @@ const Announcements = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-4xl">
-      <div className="border-b border-border pb-4 flex items-end justify-between">
+      <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Updates</p>
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Announcements</h1>
@@ -59,6 +59,7 @@ const Announcements = () => {
         <Button
           size="sm"
           variant={showDismissed ? "default" : "outline"}
+          className="w-full sm:w-auto"
           onClick={() => setShowDismissed(!showDismissed)}
         >
           {showDismissed ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
