@@ -126,7 +126,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS302",
       type: "video",
       category: "lecture",
-      uploadedBy: "Prof. Mehta",
+      uploadedBy: "Prof. Hana",
       uploadedAt: "2026-02-25",
       size: "180 MB",
       rating: 4.5,
