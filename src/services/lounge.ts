@@ -124,6 +124,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 7, "💀": 19, "🔥": 14, "📚": 1, "😭": 3, "🤝": 6 },
       replies: 15,
       anonymous_id: "Anon#5544",
+      isAnonymous: true,
     },
     {
       id: "p6",
