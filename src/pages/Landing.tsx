@@ -129,7 +129,7 @@ const Landing = () => {
                 Sign In
               </Button>
             </Link>
-            <Link to="/login">
+            <Link to="/get-started">
               <Button size="sm" className="text-xs font-bold uppercase tracking-wider">
                 Get Started
               </Button>
