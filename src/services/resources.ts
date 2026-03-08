@@ -174,7 +174,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS301",
       type: "link",
       category: "reference",
-      uploadedBy: "Karan P.",
+      uploadedBy: "Nahom T.",
       uploadedAt: "2026-03-04",
       size: "—",
       rating: 4.4,

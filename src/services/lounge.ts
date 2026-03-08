@@ -156,7 +156,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 18, "💀": 2, "🔥": 9, "📚": 12, "😭": 1, "🤝": 7 },
       replies: 4,
       anonymous_id: "Anon#6120",
-      displayName: "Priya Nair",
+      displayName: "Amina Hassan",
       isAnonymous: false,
     },
   ];
