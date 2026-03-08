@@ -6,10 +6,22 @@ import {
   MessageSquare,
   Swords,
   Settings,
+  CalendarDays,
+  GraduationCap,
+  Users,
+  ShieldAlert,
+  Megaphone,
+  BarChart3,
+  ToggleLeft,
+  Download,
+  Crown,
+  Shield,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
+import { IS_ADMIN, IS_OWNER } from "@/lib/user";
+import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +43,69 @@ const navItems = [
   { title: "Arena", url: "/arena", icon: Swords },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
+
+const adminItems = [
+  { title: "Semesters", url: "/admin/semesters", icon: CalendarDays },
+  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
+  { title: "Users", url: "/admin/users", icon: Users },
+  { title: "Moderation", url: "/admin/moderation", icon: ShieldAlert },
+  { title: "Announcements", url: "/admin/announcements", icon: Megaphone },
+  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+];
+
+const ownerItems = [
+  { title: "Features", url: "/owner/features", icon: ToggleLeft },
+  { title: "Data Export", url: "/owner/data-export", icon: Download },
+];
+
+function NavSection({
+  items,
+  label,
+  icon: LabelIcon,
+  collapsed,
+  currentPath,
+}: {
+  items: typeof navItems;
+  label: string;
+  icon?: typeof Shield;
+  collapsed: boolean;
+  currentPath: string;
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel className="uppercase tracking-widest text-[10px] text-sidebar-foreground/50 flex items-center gap-1.5">
+        {LabelIcon && <LabelIcon className="h-3 w-3" />}
+        {!collapsed && label}
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => {
+            const isActive = currentPath === item.url;
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to={item.url}
+                    end
+                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium uppercase tracking-wide transition-colors ${
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-primary-foreground border-l-2 border-sidebar-primary"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    }`}
+                    activeClassName=""
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span>{item.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -57,37 +132,42 @@ export function AppSidebar() {
           )}
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="uppercase tracking-widest text-[10px] text-sidebar-foreground/50">
-            Navigation
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={`flex items-center gap-3 px-3 py-2 text-sm font-medium uppercase tracking-wide transition-colors ${
-                          isActive
-                            ? "bg-sidebar-accent text-sidebar-primary-foreground border-l-2 border-sidebar-primary"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent/50"
-                        }`}
-                        activeClassName=""
-                      >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavSection
+          items={navItems}
+          label="Navigation"
+          collapsed={collapsed}
+          currentPath={location.pathname}
+        />
+
+        {IS_ADMIN && (
+          <>
+            <div className="px-4">
+              <Separator className="bg-sidebar-border" />
+            </div>
+            <NavSection
+              items={adminItems}
+              label="Admin"
+              icon={Shield}
+              collapsed={collapsed}
+              currentPath={location.pathname}
+            />
+          </>
+        )}
+
+        {IS_OWNER && (
+          <>
+            <div className="px-4">
+              <Separator className="bg-sidebar-border" />
+            </div>
+            <NavSection
+              items={ownerItems}
+              label="Owner"
+              icon={Crown}
+              collapsed={collapsed}
+              currentPath={location.pathname}
+            />
+          </>
+        )}
       </SidebarContent>
     </Sidebar>
   );
