@@ -61,7 +61,7 @@ function CourseFormDialog({
   const [instructor, setInstructor] = useState(initial?.instructor || "");
   const [department, setDepartment] = useState(initial?.department || "Computer Science");
   const [semesterId, setSemesterId] = useState(initial?.semesterId || semesters[0]?.id || "");
-  const [maxCapacity, setMaxCapacity] = useState(String(initial?.maxCapacity || 80));
+  
 
   const isValid = code.trim() && name.trim() && instructor.trim();
 
