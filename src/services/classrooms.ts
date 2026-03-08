@@ -40,7 +40,7 @@ export function createClassroom(
   year: number,
   semester: number,
   ownerId: string
-): Classroom {
+): { classroom: Classroom; inviteCode: string } {
   const classrooms = getClassrooms();
   const classroom: Classroom = {
     id: `cls-${Date.now()}`,
@@ -59,7 +59,10 @@ export function createClassroom(
   // Auto-add owner as member
   addMembership(ownerId, classroom.id, "owner");
 
-  return classroom;
+  // Auto-create a default invite link (unlimited uses, no expiry)
+  const invite = createInviteLink(classroom.id, 0, ownerId);
+
+  return { classroom, inviteCode: invite.code };
 }
 
 /* ── Membership ── */
