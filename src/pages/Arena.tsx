@@ -601,7 +601,7 @@ function CreateQuizDialog({
                   <Eye className="h-4 w-4 text-primary shrink-0" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : "Arjun Patel"}</p>
+                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : MOCK_USER_NAME}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {isAnonymous ? "Your name will be hidden" : "Your name will be visible"}
                   </p>
