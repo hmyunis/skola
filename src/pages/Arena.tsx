@@ -762,7 +762,7 @@ function CustomQuizzesList({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-bold uppercase tracking-wider">Your Quizzes</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider">Community Quizzes</h2>
         </div>
 
         <div className="space-y-2">
