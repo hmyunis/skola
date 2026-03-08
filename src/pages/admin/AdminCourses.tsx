@@ -119,7 +119,6 @@ function CourseFormDialog({
                 department: department.trim(),
                 semesterId,
                 enrolled: initial?.enrolled || 0,
-                maxCapacity: Number(maxCapacity),
               });
               onOpenChange(false);
             }}>
