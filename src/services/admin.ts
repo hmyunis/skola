@@ -104,9 +104,31 @@ export interface ManagedUser {
   email: string;
   role: "student" | "admin" | "owner";
   status: "active" | "banned" | "suspended";
+  suspendedUntil?: string; // ISO date string
   joinedAt: string;
   lastActive: string;
   telegramUsername?: string;
+}
+
+const USER_STATUS_KEY = "scola-user-statuses";
+
+export function loadUserStatuses(): Record<string, { status: string; suspendedUntil?: string }> {
+  try {
+    const s = localStorage.getItem(USER_STATUS_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  return {};
+}
+
+export function saveUserStatus(userId: string, status: string, suspendedUntil?: string) {
+  const all = loadUserStatuses();
+  all[userId] = { status, suspendedUntil };
+  localStorage.setItem(USER_STATUS_KEY, JSON.stringify(all));
+}
+
+export function getUserStatus(userId: string): { status: string; suspendedUntil?: string } | null {
+  const all = loadUserStatuses();
+  return all[userId] || null;
 }
 
 export async function fetchManagedUsers(): Promise<ManagedUser[]> {
