@@ -114,7 +114,7 @@ function AnnouncementFormDialog({
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Expires</label>
-              <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className="h-9 text-xs" />
+              <DatePicker value={expiresAt} onChange={setExpiresAt} placeholder="No expiry" />
             </div>
           </div>
           <button

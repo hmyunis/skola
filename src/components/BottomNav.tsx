@@ -93,12 +93,12 @@ export function BottomNav() {
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <button
-              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[10px] uppercase tracking-wider font-medium transition-colors ${
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[9px] uppercase tracking-wider font-medium transition-colors ${
                 isMoreActive ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <MoreHorizontal className="h-5 w-5" />
-              <span>More</span>
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="leading-none">More</span>
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="border-t border-border max-h-[70vh] overflow-y-auto">
