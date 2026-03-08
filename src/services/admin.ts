@@ -70,7 +70,6 @@ export interface AdminCourse {
   name: string;
   credits: number;
   instructor: string;
-  department: string;
   semesterId: string;
   enrolled: number;
 }
@@ -78,12 +77,12 @@ export interface AdminCourse {
 const COURSES_KEY = "scola-admin-courses";
 
 const DEFAULT_COURSES: AdminCourse[] = [
-  { id: "c1", code: "CS301", name: "Data Structures & Algorithms", credits: 4, instructor: "Dr. Rajesh Kumar", department: "Computer Science", semesterId: "sem-2", enrolled: 68 },
-  { id: "c2", code: "CS302", name: "Database Management Systems", credits: 4, instructor: "Prof. Meena Iyer", department: "Computer Science", semesterId: "sem-2", enrolled: 72 },
-  { id: "c3", code: "CS303", name: "Computer Networks", credits: 3, instructor: "Dr. Anil Verma", department: "Computer Science", semesterId: "sem-2", enrolled: 65 },
-  { id: "c4", code: "CS304", name: "Operating Systems", credits: 4, instructor: "Prof. Sunita Rao", department: "Computer Science", semesterId: "sem-2", enrolled: 70 },
-  { id: "c5", code: "MA201", name: "Engineering Mathematics", credits: 3, instructor: "Dr. Vikram Singh", department: "Mathematics", semesterId: "sem-2", enrolled: 120 },
-  { id: "c6", code: "EC201", name: "Digital Electronics", credits: 3, instructor: "Dr. Priya Nair", department: "Electronics", semesterId: "sem-2", enrolled: 55 },
+  { id: "c1", code: "CS301", name: "Data Structures & Algorithms", credits: 4, instructor: "Dr. Rajesh Kumar", semesterId: "sem-2", enrolled: 68 },
+  { id: "c2", code: "CS302", name: "Database Management Systems", credits: 4, instructor: "Prof. Meena Iyer", semesterId: "sem-2", enrolled: 72 },
+  { id: "c3", code: "CS303", name: "Computer Networks", credits: 3, instructor: "Dr. Anil Verma", semesterId: "sem-2", enrolled: 65 },
+  { id: "c4", code: "CS304", name: "Operating Systems", credits: 4, instructor: "Prof. Sunita Rao", semesterId: "sem-2", enrolled: 70 },
+  { id: "c5", code: "MA201", name: "Engineering Mathematics", credits: 3, instructor: "Dr. Vikram Singh", semesterId: "sem-2", enrolled: 120 },
+  { id: "c6", code: "EC201", name: "Digital Electronics", credits: 3, instructor: "Dr. Priya Nair", semesterId: "sem-2", enrolled: 55 },
 ];
 
 export function loadCourses(): AdminCourse[] {

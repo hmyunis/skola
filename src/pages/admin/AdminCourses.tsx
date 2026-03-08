@@ -59,7 +59,7 @@ function CourseFormDialog({
   const [name, setName] = useState(initial?.name || "");
   const [credits, setCredits] = useState(String(initial?.credits || 3));
   const [instructor, setInstructor] = useState(initial?.instructor || "");
-  const [department, setDepartment] = useState(initial?.department || "Computer Science");
+  
   const [semesterId, setSemesterId] = useState(initial?.semesterId || semesters[0]?.id || "");
   
 
@@ -93,10 +93,6 @@ function CourseFormDialog({
             <Input value={instructor} onChange={(e) => setInstructor(e.target.value)} placeholder="Dr. Name" className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Department</label>
-            <Input value={department} onChange={(e) => setDepartment(e.target.value)} className="h-9 text-sm" />
-          </div>
-          <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Semester</label>
             <Select value={semesterId} onValueChange={setSemesterId}>
               <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
@@ -116,7 +112,6 @@ function CourseFormDialog({
                 name: name.trim(),
                 credits: Number(credits),
                 instructor: instructor.trim(),
-                department: department.trim(),
                 semesterId,
                 enrolled: initial?.enrolled || 0,
               });
@@ -184,14 +179,10 @@ const AdminCourses = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Card><CardContent className="p-3">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total</p>
           <p className="text-2xl font-black tabular-nums mt-1">{filtered.length}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-3">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Departments</p>
-          <p className="text-2xl font-black tabular-nums mt-1">{new Set(filtered.map((c) => c.department)).size}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Enrolled</p>
@@ -229,7 +220,7 @@ const AdminCourses = () => {
                 <span className="px-1.5 py-0.5 bg-muted border border-border text-[10px] font-bold tabular-nums">{c.credits} cr</span>
               </div>
               <p className="text-xs text-muted-foreground truncate">{c.name}</p>
-              <p className="text-[10px] text-muted-foreground">{c.instructor} · {c.department}</p>
+              <p className="text-[10px] text-muted-foreground">{c.instructor}</p>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Users className="h-3 w-3" />
