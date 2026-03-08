@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
 import { useAuth, MOCK_ACCOUNTS } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
