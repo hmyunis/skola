@@ -29,8 +29,11 @@ const Login = () => {
   const [error, setError] = useState("");
 
   const handleSendCode = () => {
-    if (!phone.trim() || phone.length < 6) {
-      setError("Enter a valid phone number");
+    // Strip spaces and validate Ethiopian format: +251 followed by 9 digits starting with 7 or 9
+    const cleaned = phone.replace(/\s/g, "");
+    const ethRegex = /^\+251[79]\d{8}$/;
+    if (!ethRegex.test(cleaned)) {
+      setError("Enter a valid Ethiopian number: +251 (7 or 9) followed by 8 digits");
       return;
     }
     setError("");
