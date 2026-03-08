@@ -45,15 +45,15 @@ const moreItems = [
 ];
 
 const adminItems = [
-  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Moderation", url: "/admin/moderation", icon: ShieldAlert },
   { title: "Announcements", url: "/admin/announcements", icon: Megaphone },
-  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
 ];
 
 const ownerItems = [
   { title: "Semesters", url: "/admin/semesters", icon: CalendarDays },
+  { title: "Courses", url: "/admin/courses", icon: GraduationCap },
+  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Features", url: "/owner/features", icon: ToggleLeft },
   { title: "Data Export", url: "/owner/data-export", icon: Download },
 ];
