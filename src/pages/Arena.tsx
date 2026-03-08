@@ -802,6 +802,21 @@ function CustomQuizzesList({
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onPlay(quiz)}>
                   <Play className="h-3 w-3" /> Play
                 </Button>
+                {!quiz.createdByUser && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setReportQuiz(quiz)}
+                      >
+                        <Flag className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><span>Report quiz</span></TooltipContent>
+                  </Tooltip>
+                )}
                 {(quiz.createdByUser || IS_ADMIN) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
