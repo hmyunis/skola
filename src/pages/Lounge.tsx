@@ -193,6 +193,7 @@ function RepliesSection({
   onDeleteReply: (postId: string, replyId: string) => void;
 }) {
   const { isAdmin } = useAuth();
+  const [expanded, setExpanded] = useState(false);
   const [replyText, setReplyText] = useState("");
 
   const { data: fetchedReplies, isLoading } = useQuery({
