@@ -58,11 +58,11 @@ function UserMenu() {
           <div className="p-4 border-b border-border space-y-2">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-primary/15 border border-primary/30 flex items-center justify-center text-sm font-black text-primary">
-                {MOCK_USER.initials}
+                {user?.initials || "?"}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold truncate">{MOCK_USER.name}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{MOCK_USER.role}</p>
+                <p className="text-sm font-bold truncate">{user?.name || "Guest"}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{roleLabels[user?.role || "student"]}</p>
               </div>
             </div>
           </div>
