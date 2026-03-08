@@ -210,6 +210,7 @@ export function AppLayout() {
           </div>
 
           <BottomNav />
+          <PWAInstallPrompt />
         </div>
       </TooltipProvider>
     </SidebarProvider>
