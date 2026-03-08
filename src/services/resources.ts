@@ -94,7 +94,7 @@ export async function fetchResources(): Promise<Resource[]> {
       course: "CS304",
       type: "code",
       category: "project",
-      uploadedBy: "Arjun K.",
+      uploadedBy: "Dawit T.",
       uploadedAt: "2026-03-03",
       size: "340 KB",
       rating: 4.8,
