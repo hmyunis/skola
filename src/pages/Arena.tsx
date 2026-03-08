@@ -67,6 +67,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/stores/authStore";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { toast } from "@/hooks/use-toast";
 import { ReportDialog } from "@/components/ReportDialog";
 
