@@ -679,7 +679,7 @@ const Resources = () => {
     };
   }, [allResources]);
 
-  const isOwner = (resource: Resource) => resource.uploadedBy === MOCK_USER_NAME;
+  const isOwner = (resource: Resource) => resource.uploadedBy === userName;
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
