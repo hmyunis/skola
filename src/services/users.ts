@@ -5,7 +5,7 @@ export type { ManagedUser } from "@/types/admin";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const USER_STATUS_KEY = "scola-user-statuses";
+const USER_STATUS_KEY = "skola-user-statuses";
 
 export function loadUserStatuses(): Record<string, { status: string; suspendedUntil?: string }> {
   try {
