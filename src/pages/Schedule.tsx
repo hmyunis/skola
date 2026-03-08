@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWeeklySchedule, COURSES, type ClassSlot, type DayOfWeek } from "@/services/api";
 import { useAuth } from "@/stores/authStore";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
