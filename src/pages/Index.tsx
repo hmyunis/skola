@@ -3,7 +3,6 @@ import { fetchSemesterInfo, fetchQuickStats } from "@/services/api";
 import { LiveStatusCard } from "@/components/LiveStatusCard";
 import { PanicButton } from "@/components/PanicButton";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
-import { GroupOrderGenerator } from "@/components/GroupOrderGenerator";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,19 +77,16 @@ const Index = () => {
 
       {/* Admin Panic Button */}
       {isAdmin && (
-        <div className="space-y-4">
-          <div className="border border-dashed border-destructive/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-destructive font-bold">
-                Admin Only
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Trigger an emergency assessment notification
-              </p>
-            </div>
-            <PanicButton />
+        <div className="border border-dashed border-destructive/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-destructive font-bold">
+              Admin Only
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Trigger an emergency assessment notification
+            </p>
           </div>
-          <GroupOrderGenerator />
+          <PanicButton />
         </div>
       )}
 

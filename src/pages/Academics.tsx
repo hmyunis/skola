@@ -51,8 +51,10 @@ import {
   ClipboardList,
   Beaker,
   FolderKanban,
+  Shuffle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GroupOrderGenerator } from "@/components/GroupOrderGenerator";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Source styling ───
@@ -454,6 +456,7 @@ const Academics = () => {
   const [assessFormOpen, setAssessFormOpen] = useState(false);
   const [editingAssess, setEditingAssess] = useState<AdminAssessment | null>(null);
   const [deletingAssessId, setDeletingAssessId] = useState<string | null>(null);
+  const [groupOrderOpen, setGroupOrderOpen] = useState(false);
 
   // Reload assessments when semester changes
   useMemo(() => {
@@ -528,9 +531,14 @@ const Academics = () => {
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Assessments</h1>
         </div>
         {isAdmin && (
-          <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingAssess(null); setAssessFormOpen(true); }}>
-            <Plus className="h-3 w-3" /> Add Assessment
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setGroupOrderOpen(true)}>
+              <Shuffle className="h-3 w-3" /> Group Order
+            </Button>
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingAssess(null); setAssessFormOpen(true); }}>
+              <Plus className="h-3 w-3" /> Add Assessment
+            </Button>
+          </div>
         )}
       </div>
 
@@ -674,13 +682,23 @@ const Academics = () => {
 
       {/* Assessment form dialog */}
       {isAdmin && (
-        <AssessmentFormDialog
-          open={assessFormOpen}
-          onOpenChange={(o) => { setAssessFormOpen(o); if (!o) setEditingAssess(null); }}
-          initial={editingAssess}
-          semesterId={semId || ""}
-          onSave={handleSaveAssessment}
-        />
+        <>
+          <AssessmentFormDialog
+            open={assessFormOpen}
+            onOpenChange={(o) => { setAssessFormOpen(o); if (!o) setEditingAssess(null); }}
+            initial={editingAssess}
+            semesterId={semId || ""}
+            onSave={handleSaveAssessment}
+          />
+          <Dialog open={groupOrderOpen} onOpenChange={setGroupOrderOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="uppercase tracking-wider text-sm">Group Order Generator</DialogTitle>
+              </DialogHeader>
+              <GroupOrderGenerator embedded />
+            </DialogContent>
+          </Dialog>
+        </>
       )}
 
       {/* Delete assessment confirmation */}
