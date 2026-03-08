@@ -581,6 +581,30 @@ function CreateQuizDialog({
                 </SelectContent>
               </Select>
             </div>
+            {/* Anonymous toggle */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Post As</label>
+              <button
+                type="button"
+                onClick={() => setIsAnonymous((prev) => !prev)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-2.5 border transition-colors text-left",
+                  isAnonymous ? "border-border bg-muted/50" : "border-primary/40 bg-primary/5"
+                )}
+              >
+                {isAnonymous ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <Eye className="h-4 w-4 text-primary shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : "Arjun Patel"}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isAnonymous ? "Your name will be hidden" : "Your name will be visible"}
+                  </p>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Question tabs */}
