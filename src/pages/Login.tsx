@@ -58,6 +58,8 @@ const Login = () => {
   const [view, setView] = useState<AuthView>("login");
   const [error, setError] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [inviteStatus, setInviteStatus] = useState<InviteStatus>("idle");
+  const [inviteError, setInviteError] = useState("");
   const [deniedReason, setDeniedReason] = useState<
     "unregistered" | "banned" | "suspended" | "not_in_group" | "invalid_invite"
   >("unregistered");
