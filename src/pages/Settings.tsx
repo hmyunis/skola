@@ -1,8 +1,5 @@
-import { useState } from "react";
 import { useTheme, FONT_FAMILIES } from "@/stores/themeStore";
-import { useAuth } from "@/stores/authStore";
-import { batchThemes, userAccents, primaryPresets, headerPresets, patternTemplates } from "@/lib/themes";
-import type { BatchTheme } from "@/lib/themes";
+import { userAccents } from "@/lib/themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon, Type } from "lucide-react";
