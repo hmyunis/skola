@@ -22,6 +22,7 @@ import { useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sidebar,
   SidebarContent,
@@ -82,22 +83,32 @@ function NavSection({
         <SidebarMenu>
           {items.map((item) => {
             const isActive = currentPath === item.url;
+            const link = (
+              <NavLink
+                to={item.url}
+                end
+                className={`flex items-center gap-3 px-3 py-2 text-sm font-medium uppercase tracking-wide transition-colors ${
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-primary-foreground border-l-2 border-sidebar-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                }`}
+                activeClassName=""
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>{item.title}</span>}
+              </NavLink>
+            );
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild>
-                  <NavLink
-                    to={item.url}
-                    end
-                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium uppercase tracking-wide transition-colors ${
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-primary-foreground border-l-2 border-sidebar-primary"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/50"
-                    }`}
-                    activeClassName=""
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span>{item.title}</span>}
-                  </NavLink>
+                  {collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>{link}</TooltipTrigger>
+                      <TooltipContent side="right"><span>{item.title}</span></TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    link
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );
