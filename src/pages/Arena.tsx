@@ -783,14 +783,17 @@ function CustomQuizzesList({
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onPlay(quiz)}>
                   <Play className="h-3 w-3" /> Play
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  onClick={() => setDeletingId(quiz.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                {(quiz.createdByUser || IS_ADMIN) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={cn("h-7 w-7 p-0", quiz.createdByUser ? "text-destructive hover:text-destructive" : "text-amber-500 hover:text-destructive")}
+                    onClick={() => setDeletingId(quiz.id)}
+                    title={quiz.createdByUser ? "Delete quiz" : "Delete quiz (admin)"}
+                  >
+                    {quiz.createdByUser ? <Trash2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                  </Button>
+                )}
               </div>
             );
           })}
