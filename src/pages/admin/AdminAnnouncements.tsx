@@ -40,7 +40,9 @@ import {
   Trash2,
   Pin,
   AlertTriangle,
+  Send,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 

@@ -3,6 +3,8 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
+import { CommandPalette } from "@/components/CommandPalette";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { useTheme } from "@/stores/themeStore";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
