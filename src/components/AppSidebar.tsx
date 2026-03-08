@@ -13,7 +13,7 @@ import {
   Megaphone,
   BarChart3,
   ToggleLeft,
-  Download,
+  
   Crown,
   Shield,
 } from "lucide-react";
@@ -57,7 +57,7 @@ const ownerItems = [
   { title: "Courses", url: "/admin/courses", icon: GraduationCap },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Features", url: "/owner/features", icon: ToggleLeft },
-  { title: "Data Export", url: "/owner/data-export", icon: Download },
+  { title: "General", url: "/owner/general", icon: Settings },
 ];
 
 function NavSection({
