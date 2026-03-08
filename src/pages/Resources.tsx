@@ -343,6 +343,7 @@ function ResourceDetailDialog({
   userRating,
   userVote,
   isOwner,
+  isAdmin,
   onRate,
   onVote,
   onEdit,
@@ -353,6 +354,7 @@ function ResourceDetailDialog({
   userRating?: number;
   userVote?: "up" | "down";
   isOwner: boolean;
+  isAdmin: boolean;
   onRate: (id: string, stars: number) => void;
   onVote: (id: string, dir: "up" | "down") => void;
   onEdit: () => void;
