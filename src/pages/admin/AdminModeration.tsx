@@ -50,7 +50,7 @@ const statusConfig = {
 const AdminModeration = () => {
   const { data: flaggedItems, isLoading } = useQuery({
     queryKey: ["flaggedContent"],
-    queryFn: fetchFlaggedContent,
+    queryFn: fetchAllFlaggedContent,
   });
 
   const [localChanges, setLocalChanges] = useState<Record<string, FlaggedContent["status"]>>({});

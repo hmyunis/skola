@@ -70,6 +70,9 @@ const Index = () => {
       {/* Live Status */}
       <LiveStatusCard />
 
+      {/* Announcements */}
+      <AnnouncementsBanner />
+
       {/* Admin Panic Button */}
       {isAdmin && (
         <div className="border border-dashed border-destructive/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

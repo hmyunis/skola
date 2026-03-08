@@ -456,22 +456,39 @@ function ResourceDetailDialog({
             />
           </div>
 
-          {/* Owner / Admin actions */}
-          {(isOwner || isAdmin) && (
-            <div className="flex items-center gap-2 border-t border-border pt-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">
-                {isOwner ? "Your resource" : "Admin moderation"}
-              </p>
-              {isOwner && (
-                <Button size="sm" variant="outline" onClick={onEdit}>
-                  <Pencil className="h-3 w-3" /> Edit
+          {/* Owner / Admin / Report actions */}
+          <div className="flex items-center gap-2 border-t border-border pt-3">
+            {(isOwner || isAdmin) ? (
+              <>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">
+                  {isOwner ? "Your resource" : "Admin moderation"}
+                </p>
+                {isOwner && (
+                  <Button size="sm" variant="outline" onClick={onEdit}>
+                    <Pencil className="h-3 w-3" /> Edit
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onDelete}>
+                  <Trash2 className="h-3 w-3" /> Delete
                 </Button>
-              )}
-              <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onDelete}>
-                <Trash2 className="h-3 w-3" /> Delete
-              </Button>
-            </div>
-          )}
+              </>
+            ) : (
+              <>
+                <div className="flex-1" />
+                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => setReportOpen(true)}>
+                  <Flag className="h-3 w-3" /> Report
+                </Button>
+              </>
+            )}
+          </div>
+          <ReportDialog
+            open={reportOpen}
+            onOpenChange={setReportOpen}
+            contentType="resource"
+            contentId={resource.id}
+            contentPreview={resource.title + " — " + resource.description}
+            contentAuthor={resource.uploadedBy}
+          />
         </div>
       </DialogContent>
     </Dialog>

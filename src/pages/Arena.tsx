@@ -852,6 +852,17 @@ function CustomQuizzesList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {reportQuiz && (
+        <ReportDialog
+          open={!!reportQuiz}
+          onOpenChange={(o) => !o && setReportQuiz(null)}
+          contentType="quiz"
+          contentId={reportQuiz.id}
+          contentPreview={reportQuiz.title + " (" + reportQuiz.questions.length + " questions)"}
+          contentAuthor={reportQuiz.anonymous_id}
+        />
+      )}
     </>
   );
 }
