@@ -78,16 +78,19 @@ const Index = () => {
 
       {/* Admin Panic Button */}
       {isAdmin && (
-        <div className="border border-dashed border-destructive/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-destructive font-bold">
-              Admin Only
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Trigger an emergency assessment notification
-            </p>
+        <div className="space-y-4">
+          <div className="border border-dashed border-destructive/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-destructive font-bold">
+                Admin Only
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Trigger an emergency assessment notification
+              </p>
+            </div>
+            <PanicButton />
           </div>
-          <PanicButton />
+          <GroupOrderGenerator />
         </div>
       )}
 
