@@ -43,6 +43,8 @@ const Login = () => {
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [showCode, setShowCode] = useState(false);
   const [error, setError] = useState("");
+  const [deniedReason, setDeniedReason] = useState<"unregistered" | "banned" | "suspended">("unregistered");
+  const [suspendedUntil, setSuspendedUntil] = useState("");
 
   const handleSendCode = () => {
     const cleaned = phone.replace(/\s/g, "");
