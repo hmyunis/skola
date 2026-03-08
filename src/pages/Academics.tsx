@@ -684,13 +684,23 @@ const Academics = () => {
 
       {/* Assessment form dialog */}
       {isAdmin && (
-        <AssessmentFormDialog
-          open={assessFormOpen}
-          onOpenChange={(o) => { setAssessFormOpen(o); if (!o) setEditingAssess(null); }}
-          initial={editingAssess}
-          semesterId={semId || ""}
-          onSave={handleSaveAssessment}
-        />
+        <>
+          <AssessmentFormDialog
+            open={assessFormOpen}
+            onOpenChange={(o) => { setAssessFormOpen(o); if (!o) setEditingAssess(null); }}
+            initial={editingAssess}
+            semesterId={semId || ""}
+            onSave={handleSaveAssessment}
+          />
+          <Dialog open={groupOrderOpen} onOpenChange={setGroupOrderOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="uppercase tracking-wider text-sm">Group Order Generator</DialogTitle>
+              </DialogHeader>
+              <GroupOrderGenerator embedded />
+            </DialogContent>
+          </Dialog>
+        </>
       )}
 
       {/* Delete assessment confirmation */}
