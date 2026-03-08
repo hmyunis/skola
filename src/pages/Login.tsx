@@ -18,6 +18,8 @@ import {
   XOctagon,
   Crown,
   User,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
