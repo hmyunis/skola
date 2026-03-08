@@ -397,6 +397,7 @@ function PostCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const [reportOpen, setReportOpen] = useState(false);
   const tagConfig = POST_TAGS.find((t) => t.value === post.tag);
   const courseName = post.course
     ? COURSES.find((c) => c.code === post.course)?.name
