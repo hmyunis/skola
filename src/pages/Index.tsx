@@ -4,6 +4,7 @@ import { LiveStatusCard } from "@/components/LiveStatusCard";
 import { PanicButton } from "@/components/PanicButton";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { useAuth } from "@/stores/authStore";
+import { useSemesterStore } from "@/stores/semesterStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, FileText, ClipboardList } from "lucide-react";
 
