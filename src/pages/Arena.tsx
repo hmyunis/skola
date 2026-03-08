@@ -134,15 +134,16 @@ function Leaderboard({ data, search }: { data: LeaderboardEntry[]; search: strin
   });
 
   return (
-    <div className="border border-border overflow-hidden">
-      <div className="grid grid-cols-[40px_1fr_60px_50px_50px_60px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2 bg-muted/50 border-b border-border text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-        <span>#</span>
-        <span>Player</span>
-        <span className="text-right">XP</span>
-        <span className="text-right">Wins</span>
-        <span className="text-right hidden sm:block">Acc%</span>
-        <span className="text-right">Streak</span>
-      </div>
+    <div className="border border-border overflow-x-auto">
+      <div className="min-w-[400px]">
+        <div className="grid grid-cols-[36px_1fr_56px_44px_56px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2 bg-muted/50 border-b border-border text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+          <span>#</span>
+          <span>Player</span>
+          <span className="text-right">XP</span>
+          <span className="text-right">Wins</span>
+          <span className="text-right hidden sm:block">Acc%</span>
+          <span className="text-right">Streak</span>
+        </div>
       {filtered.length === 0 ? (
         <div className="p-6 text-center text-sm text-muted-foreground">No players match your search</div>
       ) : (
