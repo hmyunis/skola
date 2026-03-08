@@ -18,7 +18,7 @@ function DaysRemaining({ endDate }: { endDate: string }) {
 }
 
 const Index = () => {
-  const { isAdmin } = useTheme();
+  const { isAdmin } = useAuth();
 
   const { data: semester, isLoading: semLoading } = useQuery({
     queryKey: ["semester"],
