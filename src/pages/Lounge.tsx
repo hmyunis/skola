@@ -319,11 +319,20 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2 mb-1">
           <div className="h-7 w-7 bg-muted border border-border flex items-center justify-center">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            {isAnonymous ? (
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : (
+              <UserCheck className="h-3.5 w-3.5 text-primary" />
+            )}
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Posting Anonymously
+            {isAnonymous ? "Posting Anonymously" : `Posting as ${MOCK_USER_NAME}`}
           </span>
+          <div className="flex-1" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">Anonymous</span>
+            <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} className="scale-75" />
+          </div>
         </div>
 
         <Textarea
