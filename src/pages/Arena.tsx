@@ -711,7 +711,6 @@ function CreateQuizDialog({
                       </TooltipTrigger>
                       <TooltipContent side="left"><span>{q.correctIndex === i ? "Correct answer" : "Mark as correct"}</span></TooltipContent>
                     </Tooltip>
-                    </button>
                     <Input
                       placeholder={`Option ${String.fromCharCode(65 + i)}`}
                       value={opt}
