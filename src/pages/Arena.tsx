@@ -751,6 +751,7 @@ function CustomQuizzesList({
   refreshKey: number;
 }) {
   const { isAdmin } = useAuth();
+  const [quizzes, setQuizzes] = useState<CustomQuiz[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reportQuiz, setReportQuiz] = useState<CustomQuiz | null>(null);
 
