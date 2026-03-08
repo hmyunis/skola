@@ -345,10 +345,12 @@ function ResourceDetailDialog({
   resource,
   userRating,
   userVote,
+  downloadCount,
   isOwner,
   isAdmin,
   onRate,
   onVote,
+  onDownload,
   onEdit,
   onDelete,
   onClose,
@@ -356,10 +358,12 @@ function ResourceDetailDialog({
   resource: Resource | null;
   userRating?: number;
   userVote?: "up" | "down";
+  downloadCount: number;
   isOwner: boolean;
   isAdmin: boolean;
   onRate: (id: string, stars: number) => void;
   onVote: (id: string, dir: "up" | "down") => void;
+  onDownload: (id: string) => void;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
