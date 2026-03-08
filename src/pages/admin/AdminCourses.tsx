@@ -93,10 +93,6 @@ function CourseFormDialog({
             <Input value={instructor} onChange={(e) => setInstructor(e.target.value)} placeholder="Dr. Name" className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Department</label>
-            <Input value={department} onChange={(e) => setDepartment(e.target.value)} className="h-9 text-sm" />
-          </div>
-          <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Semester</label>
             <Select value={semesterId} onValueChange={setSemesterId}>
               <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
