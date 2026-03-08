@@ -132,11 +132,14 @@ function CourseFormDialog({
 }
 
 const AdminCourses = () => {
+  const semesters = loadSemesters();
+  const activeSemester = semesters.find((s) => s.status === "active");
   const [courses, setCourses] = useState<AdminCourse[]>(loadCourses);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminCourse | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [semesterFilter, setSemesterFilter] = useState(activeSemester?.id || semesters[0]?.id || "all");
 
   const save = (updated: AdminCourse[]) => {
     setCourses(updated);
@@ -163,6 +166,7 @@ const AdminCourses = () => {
   };
 
   const filtered = courses.filter((c) => {
+    if (semesterFilter !== "all" && c.semesterId !== semesterFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q);
@@ -183,21 +187,34 @@ const AdminCourses = () => {
       <div className="grid grid-cols-3 gap-3">
         <Card><CardContent className="p-3">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total</p>
-          <p className="text-2xl font-black tabular-nums mt-1">{courses.length}</p>
+          <p className="text-2xl font-black tabular-nums mt-1">{filtered.length}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Departments</p>
-          <p className="text-2xl font-black tabular-nums mt-1">{new Set(courses.map((c) => c.department)).size}</p>
+          <p className="text-2xl font-black tabular-nums mt-1">{new Set(filtered.map((c) => c.department)).size}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Enrolled</p>
-          <p className="text-2xl font-black tabular-nums mt-1">{courses.reduce((s, c) => s + c.enrolled, 0)}</p>
+          <p className="text-2xl font-black tabular-nums mt-1">{filtered.reduce((s, c) => s + c.enrolled, 0)}</p>
         </CardContent></Card>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search courses..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search courses..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
+        </div>
+        <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+          <SelectTrigger className="h-9 w-44 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Semesters</SelectItem>
+            {semesters.map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
