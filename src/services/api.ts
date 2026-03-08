@@ -39,6 +39,18 @@ export interface WeeklySchedule {
   [key: string]: ClassSlot[];
 }
 
+/** Preconfigured course list */
+export const COURSES = [
+  { code: "CS301", name: "Data Structures & Algorithms" },
+  { code: "CS302", name: "Database Management Systems" },
+  { code: "CS303", name: "Computer Networks" },
+  { code: "CS304", name: "Operating Systems" },
+  { code: "MA201", name: "Engineering Mathematics" },
+  { code: "EC201", name: "Digital Electronics" },
+  { code: "ME101", name: "Engineering Mechanics" },
+  { code: "HU101", name: "Professional Ethics" },
+];
+
 export async function fetchSemesterInfo(): Promise<SemesterInfo> {
   await delay(200);
   return { year: 3, semester: 2, startDate: "2026-01-15", endDate: "2026-05-30" };
@@ -61,9 +73,8 @@ export async function fetchTodaySchedule(): Promise<ClassSlot[]> {
 
 export async function fetchWeeklySchedule(): Promise<WeeklySchedule> {
   await delay(400);
-  // Use a fixed reference week — positions classes at fixed hours
   const ref = new Date();
-  const dayOffset = ref.getDay(); // 0=Sun
+  const dayOffset = ref.getDay();
   const monday = new Date(ref);
   monday.setDate(ref.getDate() - dayOffset + 1);
 
