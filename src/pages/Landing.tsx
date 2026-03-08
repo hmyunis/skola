@@ -129,7 +129,7 @@ const Landing = () => {
                 Sign In
               </Button>
             </Link>
-            <Link to="/login">
+            <Link to="/get-started">
               <Button size="sm" className="text-xs font-bold uppercase tracking-wider">
                 Get Started
               </Button>
@@ -189,7 +189,7 @@ const Landing = () => {
             transition={{ delay: 0.6 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-3"
           >
-            <Link to="/login">
+            <Link to="/get-started">
               <Button size="lg" className="text-sm font-bold uppercase tracking-wider px-8 gap-2">
                 Create Your Class
                 <ArrowRight className="h-4 w-4" />
@@ -326,7 +326,7 @@ const Landing = () => {
           </motion.div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/login">
+            <Link to="/get-started">
               <Button size="lg" className="text-sm font-bold uppercase tracking-wider px-10 gap-2">
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
