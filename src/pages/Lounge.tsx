@@ -139,13 +139,17 @@ function ReplyItem({
           <div className="flex-1" />
           {/* Owner actions */}
           {isOwner && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-              title="Edit reply"
-            >
-              <Pencil className="h-2.5 w-2.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>Edit reply</span></TooltipContent>
+            </Tooltip>
           )}
           {(isOwner || isAdmin) && (
             <button
