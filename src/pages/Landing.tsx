@@ -4,7 +4,7 @@ import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
 import {
   Shield, Lock, Users, BookOpen, MessageSquare, BarChart3,
-  ArrowRight, Sun, Moon, Zap, Eye, Globe, ChevronDown,
+  ArrowRight, Sun, Moon, Zap, Eye, Globe, ChevronDown, Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
