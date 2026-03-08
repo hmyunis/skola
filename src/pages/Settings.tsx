@@ -159,7 +159,7 @@ function TelegramGroupIdSetting() {
   );
 }
 
-
+const SettingsPage = () => {
   const {
     batchTheme, setBatchTheme, userAccent, setUserAccent,
     customThemes, removeCustomTheme,
