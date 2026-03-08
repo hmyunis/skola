@@ -64,6 +64,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { IS_ADMIN, MOCK_USER_NAME } from "@/lib/user";
 import { toast } from "@/hooks/use-toast";
 
@@ -694,18 +695,22 @@ function CreateQuizDialog({
                 </p>
                 {q.options.map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateQuestion(currentQ, { correctIndex: i })}
-                      className={cn(
-                        "h-7 w-7 shrink-0 flex items-center justify-center border text-[10px] font-black transition-all",
-                        q.correctIndex === i
-                          ? "bg-emerald-500 text-white border-emerald-500"
-                          : "border-border text-muted-foreground hover:bg-accent"
-                      )}
-                      title={q.correctIndex === i ? "Correct answer" : "Mark as correct"}
-                    >
-                      {String.fromCharCode(65 + i)}
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => updateQuestion(currentQ, { correctIndex: i })}
+                          className={cn(
+                            "h-7 w-7 shrink-0 flex items-center justify-center border text-[10px] font-black transition-all",
+                            q.correctIndex === i
+                              ? "bg-emerald-500 text-white border-emerald-500"
+                              : "border-border text-muted-foreground hover:bg-accent"
+                          )}
+                        >
+                          {String.fromCharCode(65 + i)}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left"><span>{q.correctIndex === i ? "Correct answer" : "Mark as correct"}</span></TooltipContent>
+                    </Tooltip>
                     <Input
                       placeholder={`Option ${String.fromCharCode(65 + i)}`}
                       value={opt}
@@ -795,15 +800,19 @@ function CustomQuizzesList({
                   <Play className="h-3 w-3" /> Play
                 </Button>
                 {(quiz.createdByUser || IS_ADMIN) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className={cn("h-7 w-7 p-0", quiz.createdByUser ? "text-destructive hover:text-destructive" : "text-amber-500 hover:text-destructive")}
-                    onClick={() => setDeletingId(quiz.id)}
-                    title={quiz.createdByUser ? "Delete quiz" : "Delete quiz (admin)"}
-                  >
-                    {quiz.createdByUser ? <Trash2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={cn("h-7 w-7 p-0", quiz.createdByUser ? "text-destructive hover:text-destructive" : "text-amber-500 hover:text-destructive")}
+                        onClick={() => setDeletingId(quiz.id)}
+                      >
+                        {quiz.createdByUser ? <Trash2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><span>{quiz.createdByUser ? "Delete quiz" : "Delete quiz (admin)"}</span></TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             );

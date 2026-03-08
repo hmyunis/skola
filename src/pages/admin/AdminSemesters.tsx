@@ -7,6 +7,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/DatePicker";
 import {
   Dialog,
   DialogContent,
@@ -114,21 +115,21 @@ function SemesterFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Start Date</label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-xs" />
+              <DatePicker value={startDate} onChange={setStartDate} placeholder="Start date" />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">End Date</label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-xs" />
+              <DatePicker value={endDate} onChange={setEndDate} placeholder="End date" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Exam Start</label>
-              <Input type="date" value={examStart} onChange={(e) => setExamStart(e.target.value)} className="h-9 text-xs" />
+              <DatePicker value={examStart} onChange={setExamStart} placeholder="Exam start" />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Exam End</label>
-              <Input type="date" value={examEnd} onChange={(e) => setExamEnd(e.target.value)} className="h-9 text-xs" />
+              <DatePicker value={examEnd} onChange={setExamEnd} placeholder="Exam end" />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">

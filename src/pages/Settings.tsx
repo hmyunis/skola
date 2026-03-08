@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, Plus, Sun, Moon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
   const { addCustomTheme } = useTheme();
@@ -52,13 +53,16 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 block">Primary Color</label>
         <div className="flex flex-wrap gap-2">
           {primaryPresets.map((p, i) => (
-            <button
-              key={p.name}
-              onClick={() => setPrimaryIdx(i)}
-              className={`w-9 h-9 border-2 transition-all ${i === primaryIdx ? "border-foreground scale-110" : "border-transparent"}`}
-              style={{ backgroundColor: `hsl(${p.hsl})` }}
-              title={p.name}
-            />
+            <Tooltip key={p.name}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setPrimaryIdx(i)}
+                  className={`w-9 h-9 border-2 transition-all ${i === primaryIdx ? "border-foreground scale-110" : "border-transparent"}`}
+                  style={{ backgroundColor: `hsl(${p.hsl})` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{p.name}</span></TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>
@@ -67,13 +71,16 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 block">Header / Sidebar</label>
         <div className="flex flex-wrap gap-2">
           {headerPresets.map((h, i) => (
-            <button
-              key={h.name}
-              onClick={() => setHeaderIdx(i)}
-              className={`w-9 h-9 border-2 transition-all ${i === headerIdx ? "border-foreground scale-110" : "border-transparent"}`}
-              style={{ backgroundColor: `hsl(${h.hsl})` }}
-              title={h.name}
-            />
+            <Tooltip key={h.name}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setHeaderIdx(i)}
+                  className={`w-9 h-9 border-2 transition-all ${i === headerIdx ? "border-foreground scale-110" : "border-transparent"}`}
+                  style={{ backgroundColor: `hsl(${h.hsl})` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{h.name}</span></TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>
@@ -181,13 +188,17 @@ const SettingsPage = () => {
                   {theme.isCustom && <span className="block text-[9px] font-normal tracking-normal opacity-60 mt-0.5">Custom</span>}
                 </button>
                 {theme.isCustom && (
-                  <button
-                    onClick={() => removeCustomTheme(theme.id)}
-                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Delete"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => removeCustomTheme(theme.id)}
+                        className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><span>Delete</span></TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             ))}

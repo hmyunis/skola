@@ -57,6 +57,7 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 
@@ -89,22 +90,26 @@ function ReactionButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      title={label}
-      className={cn(
-        "flex items-center gap-1 px-2 py-1 border text-xs tabular-nums transition-all",
-        active
-          ? "bg-primary/10 border-primary/40 text-primary font-bold"
-          : "border-border text-muted-foreground hover:bg-accent"
-      )}
-    >
-      <span>{emoji}</span>
-      <span>{count + (active ? 1 : 0)}</span>
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick();
+          }}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 border text-xs tabular-nums transition-all",
+            active
+              ? "bg-primary/10 border-primary/40 text-primary font-bold"
+              : "border-border text-muted-foreground hover:bg-accent"
+          )}
+        >
+          <span>{emoji}</span>
+          <span>{count + (active ? 1 : 0)}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top"><span>{label}</span></TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -134,25 +139,33 @@ function ReplyItem({
           <div className="flex-1" />
           {/* Owner actions */}
           {isOwner && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-              title="Edit reply"
-            >
-              <Pencil className="h-2.5 w-2.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>Edit reply</span></TooltipContent>
+            </Tooltip>
           )}
           {(isOwner || isAdmin) && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className={cn(
-                "opacity-0 group-hover:opacity-100 transition-opacity",
-                isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
-              )}
-              title={isOwner ? "Delete reply" : "Delete reply (admin)"}
-            >
-              {!isOwner && isAdmin ? <Shield className="h-2.5 w-2.5" /> : <Trash2 className="h-2.5 w-2.5" />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  className={cn(
+                    "opacity-0 group-hover:opacity-100 transition-opacity",
+                    isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
+                  )}
+                >
+                  {!isOwner && isAdmin ? <Shield className="h-2.5 w-2.5" /> : <Trash2 className="h-2.5 w-2.5" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{isOwner ? "Delete reply" : "Delete reply (admin)"}</span></TooltipContent>
+            </Tooltip>
           )}
         </div>
         <p className="text-xs leading-relaxed">{reply.content}</p>
@@ -416,25 +429,33 @@ function PostCard({
         {/* Edit / Delete actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover/post:opacity-100 transition-opacity">
           {isOwner && (
-            <button
-              onClick={onEdit}
-              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-              title="Edit post"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onEdit}
+                  className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>Edit post</span></TooltipContent>
+            </Tooltip>
           )}
           {(isOwner || isAdmin) && (
-            <button
-              onClick={onDelete}
-              className={cn(
-                "p-1 transition-colors",
-                isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
-              )}
-              title={isOwner ? "Delete post" : "Delete post (admin)"}
-            >
-              {!isOwner && isAdmin ? <Shield className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onDelete}
+                  className={cn(
+                    "p-1 transition-colors",
+                    isOwner ? "text-muted-foreground hover:text-destructive" : "text-amber-500 hover:text-destructive"
+                  )}
+                >
+                  {!isOwner && isAdmin ? <Shield className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>{isOwner ? "Delete post" : "Delete post (admin)"}</span></TooltipContent>
+            </Tooltip>
           )}
         </div>
 
