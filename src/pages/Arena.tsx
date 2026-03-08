@@ -59,8 +59,10 @@ import {
   EyeOff,
   Play,
   BookOpen,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IS_ADMIN } from "@/lib/user";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Player stats (localStorage) ───
