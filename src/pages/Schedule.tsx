@@ -200,9 +200,19 @@ function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogPro
           </label>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" onClick={handleSave}>Save Changes</Button>
+        <DialogFooter className="flex !justify-between">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => slot && onDelete(slot, day)}
+          >
+            <Trash2 className="h-3 w-3" />
+            Remove
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" onClick={handleSave}>Save Changes</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
