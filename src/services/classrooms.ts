@@ -1,5 +1,5 @@
 import type { Classroom, ClassMembership } from "@/types/classroom";
-
+import { createInviteLink, getInviteByCode, useInviteLink } from "@/services/invites";
 const CLASSROOMS_KEY = "skola-classrooms";
 const MEMBERSHIPS_KEY = "skola-memberships";
 
@@ -40,7 +40,7 @@ export function createClassroom(
   year: number,
   semester: number,
   ownerId: string
-): Classroom {
+): { classroom: Classroom; inviteCode: string } {
   const classrooms = getClassrooms();
   const classroom: Classroom = {
     id: `cls-${Date.now()}`,
@@ -59,7 +59,10 @@ export function createClassroom(
   // Auto-add owner as member
   addMembership(ownerId, classroom.id, "owner");
 
-  return classroom;
+  // Auto-create a default invite link (unlimited uses, no expiry)
+  const invite = createInviteLink(classroom.id, 0, ownerId);
+
+  return { classroom, inviteCode: invite.code };
 }
 
 /* ── Membership ── */
@@ -106,11 +109,19 @@ export function addMembership(userId: string, classroomId: string, role: ClassMe
 }
 
 export function joinClassByCode(code: string, userId: string): { success: boolean; classroom?: Classroom; error?: string } {
-  const classroom = getClassroomByCode(code);
-  if (!classroom) return { success: false, error: "Invalid class code. Please check and try again." };
+  // Look up invite link by code
+  const invite = getInviteByCode(code);
+  if (!invite) return { success: false, error: "Invalid or expired invite code." };
+
+  const classroom = getClassroomById(invite.classroomId);
+  if (!classroom) return { success: false, error: "The classroom for this invite no longer exists." };
 
   const existing = getUserMembership(userId, classroom.id);
   if (existing) return { success: false, error: "You're already a member of this class." };
+
+  // Consume invite
+  const used = useInviteLink(code);
+  if (!used) return { success: false, error: "This invite code has reached its limit or expired." };
 
   addMembership(userId, classroom.id, "student");
   return { success: true, classroom };

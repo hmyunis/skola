@@ -62,9 +62,9 @@ const Onboarding = () => {
     const ownerUser = { ...currentUser, role: "owner" as const };
     login(ownerUser);
 
-    const classroom = createClassroom(className.trim(), batch.trim(), parseInt(year), parseInt(semester), ownerUser.id);
+    const { classroom, inviteCode } = createClassroom(className.trim(), batch.trim(), parseInt(year), parseInt(semester), ownerUser.id);
     setActiveClassroom(classroom);
-    toast({ title: "Class Created!", description: `Your class code is ${classroom.code}. Share it with classmates!` });
+    toast({ title: "Class Created!", description: `Your invite code is ${inviteCode}. Share it with classmates!` });
     navigate("/dashboard");
   };
 

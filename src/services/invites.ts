@@ -17,12 +17,13 @@ export function saveInviteLinks(links: InviteLink[]) {
   localStorage.setItem(INVITES_KEY, JSON.stringify(links));
 }
 
-export function createInviteLink(maxUses: number, createdBy: string, expiresAt?: string): InviteLink {
+export function createInviteLink(classroomId: string, maxUses: number, createdBy: string, expiresAt?: string): InviteLink {
   const links = loadInviteLinks();
-  const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
   const link: InviteLink = {
     id: `inv-${Date.now()}`,
     code,
+    classroomId,
     maxUses,
     usedCount: 0,
     createdAt: new Date().toISOString(),
@@ -33,6 +34,10 @@ export function createInviteLink(maxUses: number, createdBy: string, expiresAt?:
   links.push(link);
   saveInviteLinks(links);
   return link;
+}
+
+export function getInvitesByClassroom(classroomId: string): InviteLink[] {
+  return loadInviteLinks().filter((l) => l.classroomId === classroomId);
 }
 
 export function deactivateInviteLink(id: string) {
