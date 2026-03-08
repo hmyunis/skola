@@ -326,7 +326,7 @@ const Landing = () => {
           </motion.div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/login">
+            <Link to="/get-started">
               <Button size="lg" className="text-sm font-bold uppercase tracking-wider px-10 gap-2">
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
