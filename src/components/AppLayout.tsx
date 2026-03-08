@@ -86,7 +86,7 @@ function UserMenu() {
           <button
             onClick={() => {
               setOpen(false);
-              alert("Mock logout — connect Lovable Cloud for real auth");
+              setLogoutOpen(true);
             }}
             className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 transition-colors"
           >
@@ -95,6 +95,26 @@ function UserMenu() {
           </button>
         </div>
       )}
+
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => navigate("/login")}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Log Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
