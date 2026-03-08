@@ -1,0 +1,231 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchManagedUsers, type ManagedUser } from "@/services/admin";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Search,
+  Shield,
+  Crown,
+  User,
+  UserPlus,
+  UserMinus,
+  Circle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import { IS_ADMIN, IS_OWNER } from "@/lib/user";
+
+const roleConfig = {
+  owner: { label: "Owner", icon: Crown, color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+  admin: { label: "Admin", icon: Shield, color: "bg-primary/10 text-primary border-primary/30" },
+  student: { label: "Student", icon: User, color: "bg-muted text-muted-foreground border-border" },
+};
+
+const statusDot: Record<string, string> = {
+  active: "text-emerald-500",
+  suspended: "text-amber-500",
+  banned: "text-destructive",
+};
+
+const Members = () => {
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["managedUsers"],
+    queryFn: fetchManagedUsers,
+  });
+
+  const [search, setSearch] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [removingUser, setRemovingUser] = useState<ManagedUser | null>(null);
+
+  const filtered = users.filter((u) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  });
+
+  // Sort: owners first, then admins, then students; active before others
+  const sorted = [...filtered].sort((a, b) => {
+    const roleOrder = { owner: 0, admin: 1, student: 2 };
+    if (roleOrder[a.role] !== roleOrder[b.role]) return roleOrder[a.role] - roleOrder[b.role];
+    if (a.status === "active" && b.status !== "active") return -1;
+    if (a.status !== "active" && b.status === "active") return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const online = users.filter((u) => u.status === "active").length;
+
+  const handleInvite = () => {
+    if (!inviteEmail.trim()) return;
+    toast({ title: "Invitation Sent", description: `Invite sent to ${inviteEmail}` });
+    setInviteEmail("");
+    setInviteOpen(false);
+  };
+
+  const handleRemove = () => {
+    if (!removingUser) return;
+    toast({ title: "User Removed", description: `${removingUser.name} has been removed from the group.` });
+    setRemovingUser(null);
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-5 max-w-2xl">
+      <div className="border-b border-border pb-4 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Community</p>
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Members</h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            {users.length} members · {online} active
+          </p>
+        </div>
+        {IS_ADMIN && (
+          <Button size="sm" onClick={() => setInviteOpen(true)}>
+            <UserPlus className="h-3 w-3" /> Invite
+          </Button>
+        )}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search members..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 h-9 text-sm"
+        />
+      </div>
+
+      {/* Member List */}
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-14 bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {sorted.map((user) => {
+            const role = roleConfig[user.role];
+            const RoleIcon = role.icon;
+            return (
+              <div
+                key={user.id}
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-accent/30 transition-colors group"
+              >
+                {/* Avatar circle */}
+                <div className="relative">
+                  <div className={cn("h-9 w-9 border flex items-center justify-center shrink-0", role.color)}>
+                    <RoleIcon className="h-4 w-4" />
+                  </div>
+                  <Circle
+                    className={cn(
+                      "h-2.5 w-2.5 absolute -bottom-0.5 -right-0.5 fill-current",
+                      statusDot[user.status] || "text-muted-foreground"
+                    )}
+                  />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold truncate">{user.name}</p>
+                    {user.role !== "student" && (
+                      <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", role.color)}>
+                        {role.label}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    Last active {user.lastActive}
+                  </p>
+                </div>
+
+                {/* Admin: remove button (owner-granted) */}
+                {IS_OWNER && user.role !== "owner" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setRemovingUser(user)}
+                  >
+                    <UserMinus className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+
+          {sorted.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-8">No members found</p>
+          )}
+        </div>
+      )}
+
+      {/* Invite Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-wider text-sm">Invite Member</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Email Address</label>
+              <Input
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="student@scola.edu"
+                className="h-9 text-sm"
+                type="email"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <Button disabled={!inviteEmail.trim()} onClick={handleInvite}>
+                <UserPlus className="h-3 w-3" /> Send Invite
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Confirmation */}
+      <AlertDialog open={!!removingUser} onOpenChange={(o) => !o && setRemovingUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {removingUser?.name} from the platform?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default Members;
