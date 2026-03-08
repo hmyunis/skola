@@ -314,42 +314,99 @@ const Login = () => {
           </Card>
 
           {/* Telegram Login */}
-          <Card className={cn(inviteStatus !== "valid" && "opacity-40 pointer-events-none select-none")}>
-            <CardContent className="p-5 space-y-3">
-              {inviteStatus !== "valid" && (
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center flex items-center justify-center gap-1.5">
-                  <Lock className="h-3 w-3" /> Verify invite code to unlock
-                </p>
-              )}
-              <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
-            </CardContent>
-          </Card>
+          <AnimatePresence mode="wait">
+            {inviteStatus === "valid" ? (
+              <motion.div
+                key="unlocked"
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              >
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardContent className="p-5 space-y-3">
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className="text-[10px] uppercase tracking-widest text-primary font-bold text-center flex items-center justify-center gap-1.5"
+                    >
+                      <CheckCircle2 className="h-3 w-3" /> Unlocked — Sign up with Telegram
+                    </motion.p>
+                    <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div key="locked" initial={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}>
+                <Card className="opacity-40 pointer-events-none select-none">
+                  <CardContent className="p-5 space-y-3">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center flex items-center justify-center gap-1.5">
+                      <Lock className="h-3 w-3" /> Verify invite code to unlock
+                    </p>
+                    <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Demo signup with invite */}
-          <Card className={cn("border-dashed", inviteStatus !== "valid" && "opacity-40 pointer-events-none select-none")}>
-            <CardContent className="p-4 space-y-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
-                Quick Signup (Demo)
-              </p>
-              <div className="space-y-2">
-                {MOCK_ACCOUNTS.filter((a) => a.role === "student").map((account) => (
-                  <button
-                    key={account.id}
-                    onClick={() => handleSignupWithInvite(2)}
-                    disabled={inviteStatus !== "valid"}
-                    className={cn("w-full flex items-center gap-3 p-3 border transition-colors hover:opacity-80", roleColor[account.role])}
-                  >
-                    <User className="h-4 w-4 shrink-0" />
-                    <div className="text-left flex-1 min-w-0">
-                      <p className="text-xs font-bold">Sign up as {account.name}</p>
-                      <p className="text-[10px] opacity-70 uppercase tracking-wider">+ Invite Code</p>
+          <AnimatePresence mode="wait">
+            {inviteStatus === "valid" ? (
+              <motion.div
+                key="demo-unlocked"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300, delay: 0.1 }}
+              >
+                <Card className="border-dashed border-primary/30">
+                  <CardContent className="p-4 space-y-3">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
+                      Quick Signup (Demo)
+                    </p>
+                    <div className="space-y-2">
+                      {MOCK_ACCOUNTS.filter((a) => a.role === "student").map((account) => (
+                        <button
+                          key={account.id}
+                          onClick={() => handleSignupWithInvite(2)}
+                          className={cn("w-full flex items-center gap-3 p-3 border transition-colors hover:opacity-80", roleColor[account.role])}
+                        >
+                          <User className="h-4 w-4 shrink-0" />
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-xs font-bold">Sign up as {account.name}</p>
+                            <p className="text-[10px] opacity-70 uppercase tracking-wider">+ Invite Code</p>
+                          </div>
+                          <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
+                        </button>
+                      ))}
                     </div>
-                    <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div key="demo-locked" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <Card className="border-dashed opacity-40 pointer-events-none select-none">
+                  <CardContent className="p-4 space-y-3">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
+                      Quick Signup (Demo)
+                    </p>
+                    <div className="space-y-2">
+                      {MOCK_ACCOUNTS.filter((a) => a.role === "student").map((account) => (
+                        <button key={account.id} disabled className={cn("w-full flex items-center gap-3 p-3 border", roleColor[account.role])}>
+                          <User className="h-4 w-4 shrink-0" />
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-xs font-bold">Sign up as {account.name}</p>
+                            <p className="text-[10px] opacity-70 uppercase tracking-wider">+ Invite Code</p>
+                          </div>
+                          <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="text-center space-y-2">
             <button onClick={() => setView("login")} className="text-[10px] text-primary uppercase tracking-widest hover:underline">
