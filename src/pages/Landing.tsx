@@ -171,7 +171,7 @@ const Landing = () => {
             transition={{ delay: 0.4, type: "spring", damping: 20 }}
             className="space-y-4"
           >
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-[0.9]">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-[0.9]">
               Your Class.
               <br />
               <span className="text-primary">Your Rules.</span>
