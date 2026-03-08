@@ -311,6 +311,14 @@ const Lounge = () => {
     let result = allPosts.filter((p) => {
       if (filterTag !== "all" && p.tag !== filterTag) return false;
       if (filterCourse !== "all" && p.course !== filterCourse) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          p.content.toLowerCase().includes(q) ||
+          p.anonymous_id.toLowerCase().includes(q) ||
+          (p.course && p.course.toLowerCase().includes(q))
+        );
+      }
       return true;
     });
 
