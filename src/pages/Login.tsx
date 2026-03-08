@@ -13,7 +13,6 @@ import {
   ArrowRight,
   Loader2,
   XOctagon,
-  Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -109,25 +108,7 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Terminal-style error log */}
-              <div className="bg-background border border-border p-3 space-y-1.5 font-mono">
-                <div className="flex items-center gap-2 text-[10px] text-muted-foreground border-b border-border pb-1.5 mb-1.5">
-                  <Terminal className="h-3 w-3" />
-                  <span className="uppercase tracking-widest font-bold">Error Log</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  <span className="text-destructive">ERR</span> auth/student-not-found
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  <span className="text-destructive">ERR</span> telegram_id not in allowlist
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  <span className="text-amber-500">WRN</span> session terminated · 0 retries left
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  <span className="text-muted-foreground/50">INF</span> redirect → /login · code 403
-                </p>
-              </div>
+
 
               {/* Actions */}
               <div className="flex flex-col gap-2 pt-2">
