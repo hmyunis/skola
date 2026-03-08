@@ -132,11 +132,14 @@ function CourseFormDialog({
 }
 
 const AdminCourses = () => {
+  const semesters = loadSemesters();
+  const activeSemester = semesters.find((s) => s.status === "active");
   const [courses, setCourses] = useState<AdminCourse[]>(loadCourses);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminCourse | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [semesterFilter, setSemesterFilter] = useState(activeSemester?.id || semesters[0]?.id || "all");
 
   const save = (updated: AdminCourse[]) => {
     setCourses(updated);
@@ -163,6 +166,7 @@ const AdminCourses = () => {
   };
 
   const filtered = courses.filter((c) => {
+    if (semesterFilter !== "all" && c.semesterId !== semesterFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q);
