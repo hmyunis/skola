@@ -64,6 +64,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { IS_ADMIN, MOCK_USER_NAME } from "@/lib/user";
 import { toast } from "@/hooks/use-toast";
 
