@@ -153,8 +153,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider
       value={{
-        batchTheme, userAccent, colorMode,
-        setBatchTheme, setUserAccent, toggleColorMode, setColorMode,
+        batchTheme, userAccent, colorMode, fontFamily,
+        setBatchTheme, setUserAccent, toggleColorMode, setColorMode, setFontFamily,
         isAdmin, setIsAdmin, customThemes, addCustomTheme, removeCustomTheme,
       }}
     >

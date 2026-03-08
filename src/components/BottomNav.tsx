@@ -41,7 +41,7 @@ const moreItems = [
   { title: "Resources", url: "/resources", icon: FolderOpen },
   { title: "Arena", url: "/arena", icon: Swords },
   { title: "Members", url: "/members", icon: Users },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Appearance", url: "/settings", icon: Settings },
 ];
 
 const adminItems = [
