@@ -535,7 +535,7 @@ function CreateQuizDialog({
         difficulty: q.difficulty,
       })),
       createdAt: new Date().toISOString(),
-      anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
+      anonymous_id: isAnonymous ? `Anon#${Math.floor(1000 + Math.random() * 9000)}` : "Arjun Patel",
     };
 
     saveCustomQuiz(quiz);
