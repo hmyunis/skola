@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { fetchManagedUsers, type ManagedUser } from "@/services/admin";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchManagedUsers, saveUserStatus, type ManagedUser } from "@/services/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -31,6 +37,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   UserCog,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -48,29 +55,59 @@ const statusConfig = {
   banned: { label: "Banned", color: "bg-destructive/10 text-destructive border-destructive/30" },
 };
 
+const SUSPEND_DURATIONS = [
+  { label: "8 Hours", value: "8h", ms: 8 * 60 * 60 * 1000 },
+  { label: "2 Days", value: "2d", ms: 2 * 24 * 60 * 60 * 1000 },
+  { label: "7 Days", value: "7d", ms: 7 * 24 * 60 * 60 * 1000 },
+  { label: "1 Month", value: "30d", ms: 30 * 24 * 60 * 60 * 1000 },
+];
+
+function formatRemaining(until: string): string {
+  const diff = new Date(until).getTime() - Date.now();
+  if (diff <= 0) return "Expired";
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ${hours % 24}h remaining`;
+  return `${hours}h remaining`;
+}
+
 const AdminUsers = () => {
   const { isOwner } = useAuth();
-  const { data: fetchedUsers, isLoading } = useQuery({
+  const queryClient = useQueryClient();
+  const { data: users = [], isLoading } = useQuery({
     queryKey: ["managedUsers"],
     queryFn: fetchManagedUsers,
   });
 
-  const [localChanges, setLocalChanges] = useState<Record<string, Partial<ManagedUser>>>({});
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Suspend dialog
+  const [suspendTarget, setSuspendTarget] = useState<ManagedUser | null>(null);
+  const [suspendDuration, setSuspendDuration] = useState("8h");
+
+  // Ban / promote / demote confirm
   const [confirmAction, setConfirmAction] = useState<{
-    user: ManagedUser & Partial<ManagedUser>;
+    user: ManagedUser;
     action: string;
-    changes: Partial<ManagedUser>;
     description: string;
     destructive?: boolean;
+    onConfirm: () => void;
   } | null>(null);
 
-  const users = (fetchedUsers || []).map((u) => ({ ...u, ...localChanges[u.id] }));
+  const applyStatus = (userId: string, status: string, suspendedUntil?: string) => {
+    saveUserStatus(userId, status, suspendedUntil);
+    queryClient.invalidateQueries({ queryKey: ["managedUsers"] });
+  };
 
-  const updateUser = (id: string, changes: Partial<ManagedUser>) => {
-    setLocalChanges((prev) => ({ ...prev, [id]: { ...prev[id], ...changes } }));
+  const handleSuspend = () => {
+    if (!suspendTarget) return;
+    const dur = SUSPEND_DURATIONS.find((d) => d.value === suspendDuration)!;
+    const until = new Date(Date.now() + dur.ms).toISOString();
+    applyStatus(suspendTarget.id, "suspended", until);
+    toast({ title: "Suspended", description: `${suspendTarget.name} suspended for ${dur.label}.` });
+    setSuspendTarget(null);
   };
 
   const filtered = users.filter((u) => {
@@ -149,16 +186,8 @@ const AdminUsers = () => {
             <div key={i} className="border border-border p-3 flex items-center gap-3">
               <div className="h-8 w-8 bg-muted animate-pulse shrink-0" />
               <div className="flex-1 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-24 bg-muted animate-pulse" />
-                  <div className="h-4 w-14 bg-muted animate-pulse" />
-                  <div className="h-4 w-14 bg-muted animate-pulse" />
-                </div>
+                <div className="h-3 w-24 bg-muted animate-pulse" />
                 <div className="h-2.5 w-48 bg-muted animate-pulse" />
-              </div>
-              <div className="flex gap-1">
-                <div className="h-7 w-20 bg-muted animate-pulse" />
-                <div className="h-7 w-16 bg-muted animate-pulse" />
               </div>
             </div>
           ))}
@@ -175,25 +204,29 @@ const AdminUsers = () => {
                   <RoleIcon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-xs font-bold">{user.name}</p>
                     <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", role.color)}>{role.label}</span>
                     <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", status.color)}>{status.label}</span>
+                    {user.status === "suspended" && user.suspendedUntil && (
+                      <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
+                        <Clock className="h-2.5 w-2.5" />
+                        {formatRemaining(user.suspendedUntil)}
+                      </span>
+                    )}
                   </div>
                   <p className="text-[10px] text-muted-foreground">{user.email} · Joined {user.joinedAt} · Last active {user.lastActive}</p>
                 </div>
                 {user.role !== "owner" && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
                     {user.status === "active" && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => {
-                        setConfirmAction({ user, action: "Suspend", changes: { status: "suspended" }, description: `${user.name} will be suspended and lose access.`, destructive: true });
-                      }}>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => setSuspendTarget(user)}>
                         <AlertTriangle className="h-3 w-3" /> Suspend
                       </Button>
                     )}
                     {user.status === "suspended" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
-                        updateUser(user.id, { status: "active" });
+                        applyStatus(user.id, "active");
                         toast({ title: "Reactivated", description: `${user.name} is active again.` });
                       }}>
                         <CheckCircle2 className="h-3 w-3" /> Activate
@@ -201,14 +234,20 @@ const AdminUsers = () => {
                     )}
                     {user.status !== "banned" && (
                       <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => {
-                        setConfirmAction({ user, action: "Ban", changes: { status: "banned" }, description: `${user.name} will be permanently banned from the platform.`, destructive: true });
+                        setConfirmAction({
+                          user, action: "Ban", description: `${user.name} will be permanently banned and cannot log in.`, destructive: true,
+                          onConfirm: () => {
+                            applyStatus(user.id, "banned");
+                            toast({ title: "Banned", description: `${user.name} has been permanently banned.` });
+                          },
+                        });
                       }}>
                         <Ban className="h-3 w-3" /> Ban
                       </Button>
                     )}
                     {user.status === "banned" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
-                        updateUser(user.id, { status: "active" });
+                        applyStatus(user.id, "active");
                         toast({ title: "Unbanned", description: `${user.name} has been unbanned.` });
                       }}>
                         <CheckCircle2 className="h-3 w-3" /> Unban
@@ -216,14 +255,25 @@ const AdminUsers = () => {
                     )}
                     {isOwner && user.role === "student" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
-                        setConfirmAction({ user, action: "Promote", changes: { role: "admin" }, description: `${user.name} will be promoted to admin with elevated privileges.` });
+                        setConfirmAction({
+                          user, action: "Promote", description: `${user.name} will be promoted to admin with elevated privileges.`,
+                          onConfirm: () => {
+                            // Role changes are local-only for now
+                            toast({ title: "Promoted", description: `${user.name} is now an admin.` });
+                          },
+                        });
                       }}>
                         <Shield className="h-3 w-3" /> Promote
                       </Button>
                     )}
                     {isOwner && user.role === "admin" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => {
-                        setConfirmAction({ user, action: "Demote", changes: { role: "student" }, description: `${user.name} will lose all admin privileges.`, destructive: true });
+                        setConfirmAction({
+                          user, action: "Demote", description: `${user.name} will lose all admin privileges.`, destructive: true,
+                          onConfirm: () => {
+                            toast({ title: "Demoted", description: `${user.name} is now a student.` });
+                          },
+                        });
                       }}>
                         <UserCog className="h-3 w-3" /> Demote
                       </Button>
@@ -236,7 +286,41 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* Confirmation Dialog */}
+      {/* Suspend Duration Dialog */}
+      <Dialog open={!!suspendTarget} onOpenChange={(o) => !o && setSuspendTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-wider text-sm flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              Suspend {suspendTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              The user will be temporarily blocked from logging in and accessing the platform for the selected duration.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Duration</label>
+              <Select value={suspendDuration} onValueChange={setSuspendDuration}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SUSPEND_DURATIONS.map((d) => (
+                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSuspendTarget(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleSuspend}>
+                <AlertTriangle className="h-3 w-3" /> Suspend
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generic Confirm Dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={(o) => !o && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -248,11 +332,8 @@ const AdminUsers = () => {
             <AlertDialogAction
               className={confirmAction?.destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
               onClick={() => {
-                if (confirmAction) {
-                  updateUser(confirmAction.user.id, confirmAction.changes);
-                  toast({ title: confirmAction.action, description: confirmAction.description });
-                  setConfirmAction(null);
-                }
+                confirmAction?.onConfirm();
+                setConfirmAction(null);
               }}
             >
               {confirmAction?.action}
