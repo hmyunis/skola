@@ -51,6 +51,8 @@ export const COURSES = [
   { code: "HU101", name: "Professional Ethics" },
 ];
 
+const MOCK_SEMESTER_ID = "sem-2";
+
 export async function fetchSemesterInfo(): Promise<SemesterInfo> {
   await delay(200);
   return { year: 3, semester: 2, startDate: "2026-01-15", endDate: "2026-05-30" };
