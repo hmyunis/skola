@@ -219,7 +219,7 @@ const AdminUsers = () => {
                     <p className="text-[10px] text-muted-foreground truncate">{user.email} · Joined {user.joinedAt}</p>
                   </div>
                 </div>
-                {user.role !== "owner" && (
+                {user.role !== "owner" && (isOwner || user.role !== "admin") && (
                   <div className="flex items-center gap-1 flex-wrap">
                     {user.status === "active" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => setSuspendTarget(user)}>
