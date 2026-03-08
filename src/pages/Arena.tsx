@@ -695,17 +695,22 @@ function CreateQuizDialog({
                 </p>
                 {q.options.map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateQuestion(currentQ, { correctIndex: i })}
-                      className={cn(
-                        "h-7 w-7 shrink-0 flex items-center justify-center border text-[10px] font-black transition-all",
-                        q.correctIndex === i
-                          ? "bg-emerald-500 text-white border-emerald-500"
-                          : "border-border text-muted-foreground hover:bg-accent"
-                      )}
-                      title={q.correctIndex === i ? "Correct answer" : "Mark as correct"}
-                    >
-                      {String.fromCharCode(65 + i)}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => updateQuestion(currentQ, { correctIndex: i })}
+                          className={cn(
+                            "h-7 w-7 shrink-0 flex items-center justify-center border text-[10px] font-black transition-all",
+                            q.correctIndex === i
+                              ? "bg-emerald-500 text-white border-emerald-500"
+                              : "border-border text-muted-foreground hover:bg-accent"
+                          )}
+                        >
+                          {String.fromCharCode(65 + i)}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left"><span>{q.correctIndex === i ? "Correct answer" : "Mark as correct"}</span></TooltipContent>
+                    </Tooltip>
                     </button>
                     <Input
                       placeholder={`Option ${String.fromCharCode(65 + i)}`}
