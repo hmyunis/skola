@@ -71,6 +71,7 @@ function AnnouncementFormDialog({
   const [target, setTarget] = useState<Announcement["targetAudience"]>(initial?.targetAudience || "all");
   const [expiresAt, setExpiresAt] = useState(initial?.expiresAt || "");
   const [pinned, setPinned] = useState(initial?.pinned || false);
+  const [sendTelegram, setSendTelegram] = useState(false);
 
   const isValid = title.trim() && content.trim();
 
