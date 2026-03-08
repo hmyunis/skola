@@ -12,6 +12,7 @@ import Resources from "./pages/Resources";
 import Lounge from "./pages/Lounge";
 import Arena from "./pages/Arena";
 import SettingsPage from "./pages/Settings";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
