@@ -14,6 +14,7 @@ import Arena from "./pages/Arena";
 import SettingsPage from "./pages/Settings";
 import Login from "./pages/Login";
 import Members from "./pages/Members";
+import Announcements from "./pages/Announcements";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/arena" element={<Arena />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/members" element={<Members />} />
+              <Route path="/announcements" element={<Announcements />} />
 
               {/* Admin routes */}
               <Route path="/admin/semesters" element={<AdminSemesters />} />

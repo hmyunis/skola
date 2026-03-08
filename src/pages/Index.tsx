@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchSemesterInfo, fetchQuickStats } from "@/services/api";
 import { LiveStatusCard } from "@/components/LiveStatusCard";
 import { PanicButton } from "@/components/PanicButton";
+import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, FileText, ClipboardList } from "lucide-react";
@@ -68,6 +69,9 @@ const Index = () => {
 
       {/* Live Status */}
       <LiveStatusCard />
+
+      {/* Announcements */}
+      <AnnouncementsBanner />
 
       {/* Admin Panic Button */}
       {isAdmin && (

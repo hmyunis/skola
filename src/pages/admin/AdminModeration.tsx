@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchFlaggedContent, type FlaggedContent } from "@/services/admin";
+import { fetchAllFlaggedContent, type FlaggedContent } from "@/services/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,7 +50,7 @@ const statusConfig = {
 const AdminModeration = () => {
   const { data: flaggedItems, isLoading } = useQuery({
     queryKey: ["flaggedContent"],
-    queryFn: fetchFlaggedContent,
+    queryFn: fetchAllFlaggedContent,
   });
 
   const [localChanges, setLocalChanges] = useState<Record<string, FlaggedContent["status"]>>({});

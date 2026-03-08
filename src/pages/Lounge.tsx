@@ -55,11 +55,13 @@ import {
   Pencil,
   Trash2,
   Shield,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { ReportDialog } from "@/components/ReportDialog";
 
 // ─── Time ago helper ───
 function timeAgo(timestamp: string): string {
@@ -395,6 +397,7 @@ function PostCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const [reportOpen, setReportOpen] = useState(false);
   const tagConfig = POST_TAGS.find((t) => t.value === post.tag);
   const courseName = post.course
     ? COURSES.find((c) => c.code === post.course)?.name
@@ -428,6 +431,19 @@ function PostCard({
 
         {/* Edit / Delete actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover/post:opacity-100 transition-opacity">
+          {!isOwner && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setReportOpen(true)}
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <Flag className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><span>Report post</span></TooltipContent>
+            </Tooltip>
+          )}
           {isOwner && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -504,6 +520,14 @@ function PostCard({
         onAddReply={onAddReply}
         onEditReply={onEditReply}
         onDeleteReply={onDeleteReply}
+      />
+      <ReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        contentType="post"
+        contentId={post.id}
+        contentPreview={post.content}
+        contentAuthor={post.isAnonymous ? post.anonymous_id : (post.displayName || post.anonymous_id)}
       />
     </div>
   );

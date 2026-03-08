@@ -62,11 +62,13 @@ import {
   Shield,
   User,
   UserCheck,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { IS_ADMIN, MOCK_USER_NAME } from "@/lib/user";
 import { toast } from "@/hooks/use-toast";
+import { ReportDialog } from "@/components/ReportDialog";
 
 // ─── Player stats (localStorage) ───
 interface PlayerStats {
@@ -749,6 +751,7 @@ function CustomQuizzesList({
 }) {
   const [quizzes, setQuizzes] = useState<CustomQuiz[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reportQuiz, setReportQuiz] = useState<CustomQuiz | null>(null);
 
   useEffect(() => {
     setQuizzes(loadCustomQuizzes());
@@ -799,6 +802,21 @@ function CustomQuizzesList({
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onPlay(quiz)}>
                   <Play className="h-3 w-3" /> Play
                 </Button>
+                {!quiz.createdByUser && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setReportQuiz(quiz)}
+                      >
+                        <Flag className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top"><span>Report quiz</span></TooltipContent>
+                  </Tooltip>
+                )}
                 {(quiz.createdByUser || IS_ADMIN) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -834,6 +852,17 @@ function CustomQuizzesList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {reportQuiz && (
+        <ReportDialog
+          open={!!reportQuiz}
+          onOpenChange={(o) => !o && setReportQuiz(null)}
+          contentType="quiz"
+          contentId={reportQuiz.id}
+          contentPreview={reportQuiz.title + " (" + reportQuiz.questions.length + " questions)"}
+          contentAuthor={reportQuiz.anonymous_id}
+        />
+      )}
     </>
   );
 }
