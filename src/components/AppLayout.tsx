@@ -28,7 +28,9 @@ const MOCK_USER = {
 };
 
 function UserMenu() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
