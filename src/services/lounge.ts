@@ -90,7 +90,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 0, "💀": 24, "🔥": 2, "📚": 0, "😭": 18, "🤝": 31 },
       replies: 12,
       anonymous_id: "Anon#7733",
-      displayName: "Riya Sharma",
+      displayName: "Meron Kebede",
       isAnonymous: false,
     },
     {
