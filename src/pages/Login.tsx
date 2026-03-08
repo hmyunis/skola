@@ -271,7 +271,14 @@ const Login = () => {
 
   // ─── Login form ───
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      <button
+        onClick={toggleColorMode}
+        className="absolute top-4 right-4 p-2 border border-border bg-card hover:bg-accent transition-colors"
+        aria-label="Toggle color mode"
+      >
+        {colorMode === "light" ? <Moon className="h-4 w-4 text-foreground" /> : <Sun className="h-4 w-4 text-foreground" />}
+      </button>
       <div className="w-full max-w-sm space-y-6">
         {/* Header */}
         <div className="text-center space-y-3">
