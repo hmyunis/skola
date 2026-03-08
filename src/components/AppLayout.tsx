@@ -71,15 +71,15 @@ function UserMenu() {
           <div className="p-3 space-y-2 border-b border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Mail className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{MOCK_USER.email}</span>
+              <span className="truncate">{user?.email || "—"}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <GraduationCap className="h-3.5 w-3.5 shrink-0" />
-              <span>Year {MOCK_USER.year}, Semester {MOCK_USER.semester}</span>
+              <span>Year {user?.year || "—"}, Semester {user?.semester || "—"}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Shield className="h-3.5 w-3.5 shrink-0" />
-              <span>{MOCK_USER.batch} Division</span>
+              <RoleIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>{user?.batch || "—"} Division</span>
             </div>
           </div>
 
