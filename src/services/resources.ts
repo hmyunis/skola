@@ -71,6 +71,7 @@ export async function fetchResources(): Promise<Resource[]> {
       totalRatings: 15,
       upvotes: 18,
       downvotes: 3,
+      downloads: 28,
       description: "Slide deck covering ER diagrams, relationships, cardinality, and mapping to relational schemas.",
       tags: ["er-diagram", "database", "schema"],
     },
