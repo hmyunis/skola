@@ -58,6 +58,13 @@ const AdminUsers = () => {
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [confirmAction, setConfirmAction] = useState<{
+    user: ManagedUser & Partial<ManagedUser>;
+    action: string;
+    changes: Partial<ManagedUser>;
+    description: string;
+    destructive?: boolean;
+  } | null>(null);
 
   const users = (fetchedUsers || []).map((u) => ({ ...u, ...localChanges[u.id] }));
 
