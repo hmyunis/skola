@@ -3,7 +3,6 @@ import { fetchSemesterInfo, fetchQuickStats } from "@/services/api";
 import { LiveStatusCard } from "@/components/LiveStatusCard";
 import { PanicButton } from "@/components/PanicButton";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
-import { GroupOrderGenerator } from "@/components/GroupOrderGenerator";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
