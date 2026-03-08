@@ -153,7 +153,7 @@ function Leaderboard({ data, search }: { data: LeaderboardEntry[]; search: strin
             <div
               key={entry.rank}
               className={cn(
-                "grid grid-cols-[40px_1fr_60px_50px_50px_60px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2.5 border-b border-border last:border-b-0 items-center",
+                "grid grid-cols-[36px_1fr_56px_44px_56px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2.5 border-b border-border last:border-b-0 items-center",
                 isCurrentUser
                   ? "bg-primary/10 border-l-2 border-l-primary"
                   : entry.rank <= 3 && "bg-accent/30"
