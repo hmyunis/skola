@@ -535,7 +535,7 @@ function PostCard({
 
 // ─── Compose Box ───
 function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => void }) {
-  const [content, setContent] = useState("");
+  const { userName } = useAuth();
   const [tag, setTag] = useState<PostTag>("discussion");
   const [course, setCourse] = useState<string>("none");
   const [expanded, setExpanded] = useState(false);
