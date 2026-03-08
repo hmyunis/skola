@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    --font-family: ui-sans-serif, system-ui, sans-serif;
     --background: 220 17% 97%;
     --foreground: 220 21% 10%;
 
@@ -126,4 +127,8 @@
 
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+html, body, * {
+  font-family: var(--font-family) !important;
 }

@@ -88,7 +88,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setFontFamilyState(id);
     localStorage.setItem(FONT_FAMILY_KEY, id);
     const font = FONT_FAMILIES.find(f => f.id === id);
-    if (font) document.documentElement.style.setProperty("font-family", font.value);
+    if (font) document.documentElement.style.setProperty("--font-family", font.value);
   }, []);
 
   const addCustomTheme = useCallback((theme: BatchTheme) => {
@@ -145,9 +145,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     applyTheme();
-    // Apply saved font on mount
     const font = FONT_FAMILIES.find(f => f.id === fontFamily);
-    if (font) document.documentElement.style.setProperty("font-family", font.value);
+    if (font) document.documentElement.style.setProperty("--font-family", font.value);
   }, [applyTheme]);
 
   return (
