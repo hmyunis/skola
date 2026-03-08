@@ -556,6 +556,11 @@ function ResourceCard({
             <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", categoryColors[resource.category])}>
               {catLabel}
             </span>
+            {resource.type !== "link" && (
+              <span className="text-[10px] text-muted-foreground tabular-nums flex items-center gap-0.5">
+                <Download className="h-2.5 w-2.5" />{resource.downloads}
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <StarRating rating={resource.rating} totalRatings={resource.totalRatings} />
