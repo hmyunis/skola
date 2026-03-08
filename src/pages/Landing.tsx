@@ -338,7 +338,7 @@ const Landing = () => {
 
       {/* ── Footer ── */}
       <footer className="border-t border-border py-8">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 bg-primary/10 border border-primary/30 flex items-center justify-center">
               <Lock className="h-3 w-3 text-primary" />
@@ -347,9 +347,18 @@ const Landing = () => {
               SKOLA
             </span>
           </div>
-          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">
+          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest text-center">
             © {new Date().getFullYear()} SKOLA · Privacy-First Education Platform
           </p>
+          <a
+            href="https://github.com/hmyunis"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground/50 hover:text-primary transition-colors"
+          >
+            <Github className="h-3.5 w-3.5" />
+            Made by @hmyunis
+          </a>
         </div>
       </footer>
     </div>
