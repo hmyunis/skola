@@ -25,7 +25,9 @@ import {
   XCircle,
   ArrowRight,
   RotateCcw,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 // ─── Player stats (localStorage) ───
@@ -80,7 +82,16 @@ function RankIcon({ rank }: { rank: number }) {
 }
 
 // ─── Leaderboard Table ───
-function Leaderboard({ data }: { data: LeaderboardEntry[] }) {
+function Leaderboard({ data, search }: { data: LeaderboardEntry[]; search: string }) {
+  const filtered = data.filter((e) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      e.anonymous_id.toLowerCase().includes(q) ||
+      e.title.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="border border-border overflow-hidden">
       {/* Header */}
@@ -92,30 +103,34 @@ function Leaderboard({ data }: { data: LeaderboardEntry[] }) {
         <span className="text-right hidden sm:block">Acc%</span>
         <span className="text-right">Streak</span>
       </div>
-      {data.map((entry) => (
-        <div
-          key={entry.rank}
-          className={cn(
-            "grid grid-cols-[40px_1fr_60px_50px_50px_60px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2.5 border-b border-border last:border-b-0 items-center",
-            entry.rank <= 3 && "bg-accent/30"
-          )}
-        >
-          <div className="flex items-center justify-center">
-            <RankIcon rank={entry.rank} />
+      {filtered.length === 0 ? (
+        <div className="p-6 text-center text-sm text-muted-foreground">No players match your search</div>
+      ) : (
+        filtered.map((entry) => (
+          <div
+            key={entry.rank}
+            className={cn(
+              "grid grid-cols-[40px_1fr_60px_50px_50px_60px] sm:grid-cols-[48px_1fr_80px_64px_64px_80px] gap-1 px-3 py-2.5 border-b border-border last:border-b-0 items-center",
+              entry.rank <= 3 && "bg-accent/30"
+            )}
+          >
+            <div className="flex items-center justify-center">
+              <RankIcon rank={entry.rank} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate">{entry.anonymous_id}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{entry.title}</p>
+            </div>
+            <p className="text-xs font-black tabular-nums text-right">{entry.xp.toLocaleString()}</p>
+            <p className="text-xs tabular-nums text-right text-muted-foreground">{entry.wins}</p>
+            <p className="text-xs tabular-nums text-right text-muted-foreground hidden sm:block">{entry.accuracy}%</p>
+            <div className="flex items-center justify-end gap-1">
+              {entry.streak > 0 && <Flame className="h-3 w-3 text-amber-500" />}
+              <span className="text-xs tabular-nums font-medium">{entry.streak}</span>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-bold truncate">{entry.anonymous_id}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{entry.title}</p>
-          </div>
-          <p className="text-xs font-black tabular-nums text-right">{entry.xp.toLocaleString()}</p>
-          <p className="text-xs tabular-nums text-right text-muted-foreground">{entry.wins}</p>
-          <p className="text-xs tabular-nums text-right text-muted-foreground hidden sm:block">{entry.accuracy}%</p>
-          <div className="flex items-center justify-end gap-1">
-            {entry.streak > 0 && <Flame className="h-3 w-3 text-amber-500" />}
-            <span className="text-xs tabular-nums font-medium">{entry.streak}</span>
-          </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }
@@ -402,6 +417,8 @@ const Arena = () => {
     queryFn: fetchLeaderboard,
   });
 
+  const [leaderboardSearch, setLeaderboardSearch] = useState("");
+
   const handleUpdateStats = useCallback((stats: PlayerStats) => {
     setPlayerStats(stats);
     saveStats(stats);
@@ -479,6 +496,16 @@ const Arena = () => {
           <h2 className="text-sm font-bold uppercase tracking-wider">Leaderboard</h2>
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search players..."
+            value={leaderboardSearch}
+            onChange={(e) => setLeaderboardSearch(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
+        </div>
+
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -486,7 +513,7 @@ const Arena = () => {
             ))}
           </div>
         ) : leaderboard ? (
-          <Leaderboard data={leaderboard} />
+          <Leaderboard data={leaderboard} search={leaderboardSearch} />
         ) : null}
       </div>
 

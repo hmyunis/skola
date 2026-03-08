@@ -19,10 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import {
   MessageSquare,
   Send,
   Filter,
+  Search,
   MessageCircle,
   Clock,
   TrendingUp,
@@ -263,6 +265,7 @@ const Lounge = () => {
   });
 
   const [localPosts, setLocalPosts] = useState<LoungePost[]>([]);
+  const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [filterCourse, setFilterCourse] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
@@ -308,6 +311,14 @@ const Lounge = () => {
     let result = allPosts.filter((p) => {
       if (filterTag !== "all" && p.tag !== filterTag) return false;
       if (filterCourse !== "all" && p.course !== filterCourse) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          p.content.toLowerCase().includes(q) ||
+          p.anonymous_id.toLowerCase().includes(q) ||
+          (p.course && p.course.toLowerCase().includes(q))
+        );
+      }
       return true;
     });
 
@@ -324,7 +335,7 @@ const Lounge = () => {
     }
 
     return result;
-  }, [allPosts, filterTag, filterCourse, sortBy]);
+  }, [allPosts, filterTag, filterCourse, sortBy, search]);
 
   // Stats
   const stats = useMemo(() => {
@@ -371,73 +382,85 @@ const Lounge = () => {
       {/* Compose */}
       <ComposeBox onPost={handlePost} />
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          <Filter className="h-3.5 w-3.5" />
-          <span className="text-[10px] uppercase tracking-widest font-bold">Feed</span>
+      {/* Search + Filters */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search posts, users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
         </div>
 
-        <Select value={filterTag} onValueChange={setFilterTag}>
-          <SelectTrigger className="w-[130px] h-8 text-xs">
-            <SelectValue placeholder="Tag" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Tags</SelectItem>
-            {POST_TAGS.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Filter className="h-3.5 w-3.5" />
+            <span className="text-[10px] uppercase tracking-widest font-bold">Feed</span>
+          </div>
+
+          <Select value={filterTag} onValueChange={setFilterTag}>
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue placeholder="Tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tags</SelectItem>
+              {POST_TAGS.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterCourse} onValueChange={setFilterCourse}>
+            <SelectTrigger className="w-[120px] h-8 text-xs">
+              <SelectValue placeholder="Course" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Courses</SelectItem>
+              {coursesInData.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {code}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Newest</span>
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={filterCourse} onValueChange={setFilterCourse}>
-          <SelectTrigger className="w-[120px] h-8 text-xs">
-            <SelectValue placeholder="Course" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Courses</SelectItem>
-            {coursesInData.map((code) => (
-              <SelectItem key={code} value={code}>
-                {code}
+              <SelectItem value="trending">
+                <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Trending</span>
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              <SelectItem value="discussed">
+                <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /> Most Discussed</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-[130px] h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">
-              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Newest</span>
-            </SelectItem>
-            <SelectItem value="trending">
-              <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Trending</span>
-            </SelectItem>
-            <SelectItem value="discussed">
-              <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /> Most Discussed</span>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        {(filterTag !== "all" || filterCourse !== "all") && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => {
-              setFilterTag("all");
-              setFilterCourse("all");
-            }}
-          >
-            Clear
-          </Button>
-        )}
+          {(filterTag !== "all" || filterCourse !== "all" || search) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                setFilterTag("all");
+                setFilterCourse("all");
+                setSearch("");
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
-
       {/* Feed */}
       {isLoading ? (
         <div className="space-y-3">
