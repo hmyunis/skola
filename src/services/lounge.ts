@@ -37,6 +37,8 @@ export interface LoungePost {
   reactions: Record<AcademicReaction, number>;
   replies: number;
   anonymous_id: string;
+  displayName?: string;
+  isAnonymous: boolean;
 }
 
 const MOCK_REPLIES: Record<string, LoungeReply[]> = {
@@ -78,6 +80,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 3, "💀": 12, "🔥": 1, "📚": 2, "😭": 8, "🤝": 15 },
       replies: 7,
       anonymous_id: "Anon#4821",
+      isAnonymous: true,
     },
     {
       id: "p2",
@@ -87,6 +90,8 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 0, "💀": 24, "🔥": 2, "📚": 0, "😭": 18, "🤝": 31 },
       replies: 12,
       anonymous_id: "Anon#7733",
+      displayName: "Riya Sharma",
+      isAnonymous: false,
     },
     {
       id: "p3",
@@ -97,6 +102,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 15, "💀": 5, "🔥": 22, "📚": 8, "😭": 3, "🤝": 11 },
       replies: 9,
       anonymous_id: "Anon#2156",
+      isAnonymous: true,
     },
     {
       id: "p4",
@@ -106,6 +112,8 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 0, "💀": 8, "🔥": 0, "📚": 0, "😭": 14, "🤝": 22 },
       replies: 5,
       anonymous_id: "Anon#9012",
+      displayName: "Vikram Desai",
+      isAnonymous: false,
     },
     {
       id: "p5",
@@ -116,6 +124,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 7, "💀": 19, "🔥": 14, "📚": 1, "😭": 3, "🤝": 6 },
       replies: 15,
       anonymous_id: "Anon#5544",
+      isAnonymous: true,
     },
     {
       id: "p6",
@@ -126,6 +135,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 2, "💀": 6, "🔥": 1, "📚": 4, "😭": 21, "🤝": 28 },
       replies: 23,
       anonymous_id: "Anon#3367",
+      isAnonymous: true,
     },
     {
       id: "p7",
@@ -135,6 +145,7 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 1, "💀": 30, "🔥": 8, "📚": 2, "😭": 4, "🤝": 12 },
       replies: 8,
       anonymous_id: "Anon#8891",
+      isAnonymous: true,
     },
     {
       id: "p8",
@@ -145,6 +156,8 @@ export async function fetchLoungePosts(): Promise<LoungePost[]> {
       reactions: { "🧠": 18, "💀": 2, "🔥": 9, "📚": 12, "😭": 1, "🤝": 7 },
       replies: 4,
       anonymous_id: "Anon#6120",
+      displayName: "Priya Nair",
+      isAnonymous: false,
     },
   ];
 }

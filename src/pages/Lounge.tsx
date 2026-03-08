@@ -31,12 +31,16 @@ import {
   Clock,
   TrendingUp,
   User,
+  UserCheck,
   ChevronDown,
   ChevronUp,
   CornerDownRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+
+const MOCK_USER_NAME = "Arjun Patel";
 
 // ─── Time ago helper ───
 function timeAgo(timestamp: string): string {
@@ -242,8 +246,14 @@ function PostCard({
         )}
         <div className="flex-1" />
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <User className="h-3 w-3" />
-          <span className="font-medium">{post.anonymous_id}</span>
+          {post.isAnonymous ? (
+            <User className="h-3 w-3" />
+          ) : (
+            <UserCheck className="h-3 w-3 text-primary" />
+          )}
+          <span className={cn("font-medium", !post.isAnonymous && "text-foreground")}>
+            {post.isAnonymous ? post.anonymous_id : post.displayName}
+          </span>
           <span className="opacity-50">·</span>
           <Clock className="h-3 w-3" />
           <span>{timeAgo(post.timestamp)}</span>
@@ -284,19 +294,21 @@ function PostCard({
 }
 
 // ─── Compose Box ───
-function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course?: string) => void }) {
+function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => void }) {
   const [content, setContent] = useState("");
   const [tag, setTag] = useState<PostTag>("discussion");
   const [course, setCourse] = useState<string>("none");
   const [expanded, setExpanded] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const handleSubmit = () => {
     if (!content.trim()) return;
-    onPost(content.trim(), tag, course === "none" ? undefined : course);
+    onPost(content.trim(), tag, course === "none" ? undefined : course, isAnonymous);
     setContent("");
     setTag("discussion");
     setCourse("none");
     setExpanded(false);
+    setIsAnonymous(false);
   };
 
   const charCount = content.length;
@@ -307,11 +319,20 @@ function ComposeBox({ onPost }: { onPost: (content: string, tag: PostTag, course
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2 mb-1">
           <div className="h-7 w-7 bg-muted border border-border flex items-center justify-center">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            {isAnonymous ? (
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : (
+              <UserCheck className="h-3.5 w-3.5 text-primary" />
+            )}
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Posting Anonymously
+            {isAnonymous ? "Posting Anonymously" : `Posting as ${MOCK_USER_NAME}`}
           </span>
+          <div className="flex-1" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">Anonymous</span>
+            <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} className="scale-75" />
+          </div>
         </div>
 
         <Textarea
@@ -408,7 +429,7 @@ const Lounge = () => {
     });
   };
 
-  const handlePost = (content: string, tag: PostTag, course?: string) => {
+  const handlePost = (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => {
     const newPost: LoungePost = {
       id: `local-${Date.now()}`,
       content,
@@ -418,6 +439,9 @@ const Lounge = () => {
       reactions: { "🧠": 0, "💀": 0, "🔥": 0, "📚": 0, "😭": 0, "🤝": 0 },
       replies: 0,
       anonymous_id: `Anon#${Math.floor(1000 + Math.random() * 9000)}`,
+      displayName: isAnonymous ? undefined : MOCK_USER_NAME,
+      isAnonymous: !!isAnonymous,
+    };
     };
     setLocalPosts((prev) => [newPost, ...prev]);
     toast({ title: "Posted!", description: "Your anonymous post is live." });
