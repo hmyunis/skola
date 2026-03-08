@@ -26,6 +26,8 @@ import {
   Sun,
   Moon,
   Link2,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
