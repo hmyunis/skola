@@ -178,6 +178,73 @@ export function saveAnnouncements(announcements: Announcement[]) {
   localStorage.setItem(ANNOUNCEMENTS_KEY, JSON.stringify(announcements));
 }
 
+// ─── User Reports ───
+const REPORTS_KEY = "scola-user-reports";
+
+export interface UserReport {
+  id: string;
+  type: FlaggedContent["type"];
+  contentId: string;
+  content: string;
+  author: string;
+  reason: string;
+  reportedBy: string;
+  reportedAt: string;
+  status: "pending" | "resolved" | "dismissed";
+}
+
+export function loadUserReports(): UserReport[] {
+  try {
+    const s = localStorage.getItem(REPORTS_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  return [];
+}
+
+export function saveUserReport(report: UserReport) {
+  const existing = loadUserReports();
+  existing.unshift(report);
+  localStorage.setItem(REPORTS_KEY, JSON.stringify(existing));
+}
+
+// Updated fetchFlaggedContent to include user reports
+export async function fetchAllFlaggedContent(): Promise<FlaggedContent[]> {
+  const [defaultItems, userReports] = await Promise.all([
+    fetchFlaggedContent(),
+    Promise.resolve(loadUserReports()),
+  ]);
+  const mapped: FlaggedContent[] = userReports.map((r) => ({
+    id: r.id,
+    type: r.type,
+    content: r.content,
+    author: r.author,
+    reason: r.reason,
+    reportedBy: r.reportedBy,
+    reportedAt: r.reportedAt,
+    status: r.status,
+  }));
+  return [...mapped, ...defaultItems];
+}
+
+// ─── Dismissed Announcements ───
+const DISMISSED_KEY = "scola-dismissed-announcements";
+
+export function getDismissedAnnouncementIds(): string[] {
+  try {
+    const s = localStorage.getItem(DISMISSED_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  return [];
+}
+
+export function dismissAnnouncement(id: string) {
+  const dismissed = getDismissedAnnouncementIds();
+  if (!dismissed.includes(id)) {
+    dismissed.push(id);
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(dismissed));
+  }
+}
+
 // ─── Analytics ───
 export interface AnalyticsData {
   totalUsers: number;
