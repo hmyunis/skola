@@ -84,6 +84,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setColorMode(colorMode === "light" ? "dark" : "light");
   }, [colorMode, setColorMode]);
 
+  const setFontFamily = useCallback((id: string) => {
+    setFontFamilyState(id);
+    localStorage.setItem(FONT_FAMILY_KEY, id);
+    const font = FONT_FAMILIES.find(f => f.id === id);
+    if (font) document.documentElement.style.setProperty("font-family", font.value);
+  }, []);
+
   const addCustomTheme = useCallback((theme: BatchTheme) => {
     setCustomThemes((prev) => {
       const next = [...prev, { ...theme, isCustom: true }];
