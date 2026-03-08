@@ -134,7 +134,7 @@ function AnnouncementFormDialog({
                 priority,
                 createdAt: initial?.createdAt || new Date().toISOString(),
                 expiresAt: expiresAt || undefined,
-                createdBy: initial?.createdBy || MOCK_USER_NAME,
+                createdBy: initial?.createdBy || userName,
                 targetAudience: target,
                 pinned,
               });

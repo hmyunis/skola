@@ -213,14 +213,14 @@ const AdminUsers = () => {
                         <CheckCircle2 className="h-3 w-3" /> Unban
                       </Button>
                     )}
-                    {IS_OWNER && user.role === "student" && (
+                    {isOwner && user.role === "student" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
                         setConfirmAction({ user, action: "Promote", changes: { role: "admin" }, description: `${user.name} will be promoted to admin with elevated privileges.` });
                       }}>
                         <Shield className="h-3 w-3" /> Promote
                       </Button>
                     )}
-                    {IS_OWNER && user.role === "admin" && (
+                    {isOwner && user.role === "admin" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => {
                         setConfirmAction({ user, action: "Demote", changes: { role: "student" }, description: `${user.name} will lose all admin privileges.`, destructive: true });
                       }}>

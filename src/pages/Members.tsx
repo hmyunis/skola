@@ -167,7 +167,7 @@ const Members = () => {
                 </div>
 
                 {/* Admin: remove button (owner-granted) */}
-                {IS_OWNER && user.role !== "owner" && (
+                {isOwner && user.role !== "owner" && (
                   <Button
                     size="sm"
                     variant="ghost"

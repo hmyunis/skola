@@ -966,7 +966,7 @@ const Lounge = () => {
               userReactions={userReactions[post.id] || new Set()}
               localReplies={localReplies[post.id] || []}
               isOwner={isPostOwner(post)}
-              isAdmin={IS_ADMIN}
+              isAdmin={isAdmin}
               onReact={handleReact}
               onAddReply={handleAddReply}
               onEditReply={handleEditReply}

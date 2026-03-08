@@ -141,7 +141,7 @@ export function AppSidebar() {
           currentPath={location.pathname}
         />
 
-        {IS_ADMIN && (
+        {isAdmin && (
           <>
             <div className="px-4">
               <Separator className="bg-sidebar-border" />
@@ -156,7 +156,7 @@ export function AppSidebar() {
           </>
         )}
 
-        {IS_OWNER && (
+        {isOwner && (
           <>
             <div className="px-4">
               <Separator className="bg-sidebar-border" />

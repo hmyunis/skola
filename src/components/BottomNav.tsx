@@ -158,7 +158,7 @@ export function BottomNav() {
                 </>
               )}
 
-              {IS_OWNER && (
+              {isOwner && (
                 <>
                   <div className="flex items-center gap-2 pt-3 pb-1 px-1">
                     <Crown className="h-3 w-3 text-amber-500" />

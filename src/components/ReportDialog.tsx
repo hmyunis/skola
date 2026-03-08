@@ -49,6 +49,8 @@ export function ReportDialog({
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
 
+  const { userName } = useAuth();
+
   const handleSubmit = () => {
     if (!reason) return;
     saveUserReport({
@@ -58,7 +60,7 @@ export function ReportDialog({
       content: contentPreview.slice(0, 200),
       author: contentAuthor,
       reason: reason === "Other" && details.trim() ? details.trim() : reason,
-      reportedBy: MOCK_USER_NAME,
+      reportedBy: userName,
       reportedAt: new Date().toISOString(),
       status: "pending",
     });

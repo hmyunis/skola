@@ -817,7 +817,7 @@ function CustomQuizzesList({
                     <TooltipContent side="top"><span>Report quiz</span></TooltipContent>
                   </Tooltip>
                 )}
-                {(quiz.createdByUser || IS_ADMIN) && (
+                {(quiz.createdByUser || isAdmin) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button

@@ -864,7 +864,7 @@ const Resources = () => {
         userRating={detailResource ? ratings[detailResource.id] : undefined}
         userVote={detailResource ? votes[detailResource.id] : undefined}
         isOwner={detailResource ? isOwner(detailResource) : false}
-        isAdmin={IS_ADMIN}
+        isAdmin={isAdmin}
         onRate={handleRate}
         onVote={handleVote}
         onEdit={() => {
