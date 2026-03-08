@@ -15,6 +15,18 @@ import SettingsPage from "./pages/Settings";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
+// Admin pages
+import AdminSemesters from "./pages/admin/AdminSemesters";
+import AdminCourses from "./pages/admin/AdminCourses";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminModeration from "./pages/admin/AdminModeration";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+
+// Owner pages
+import OwnerFeatures from "./pages/owner/OwnerFeatures";
+import OwnerDataExport from "./pages/owner/OwnerDataExport";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -34,6 +46,18 @@ const App = () => (
               <Route path="/lounge" element={<Lounge />} />
               <Route path="/arena" element={<Arena />} />
               <Route path="/settings" element={<SettingsPage />} />
+
+              {/* Admin routes */}
+              <Route path="/admin/semesters" element={<AdminSemesters />} />
+              <Route path="/admin/courses" element={<AdminCourses />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/moderation" element={<AdminModeration />} />
+              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+
+              {/* Owner routes */}
+              <Route path="/owner/features" element={<OwnerFeatures />} />
+              <Route path="/owner/data-export" element={<OwnerDataExport />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
