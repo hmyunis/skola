@@ -61,7 +61,7 @@ function CourseFormDialog({
   const [instructor, setInstructor] = useState(initial?.instructor || "");
   const [department, setDepartment] = useState(initial?.department || "Computer Science");
   const [semesterId, setSemesterId] = useState(initial?.semesterId || semesters[0]?.id || "");
-  const [maxCapacity, setMaxCapacity] = useState(String(initial?.maxCapacity || 80));
+  
 
   const isValid = code.trim() && name.trim() && instructor.trim();
 
@@ -92,15 +92,9 @@ function CourseFormDialog({
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Instructor</label>
             <Input value={instructor} onChange={(e) => setInstructor(e.target.value)} placeholder="Dr. Name" className="h-9 text-sm" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Department</label>
-              <Input value={department} onChange={(e) => setDepartment(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Max Capacity</label>
-              <Input type="number" value={maxCapacity} onChange={(e) => setMaxCapacity(e.target.value)} className="h-9 text-sm" />
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Department</label>
+            <Input value={department} onChange={(e) => setDepartment(e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Semester</label>
@@ -125,7 +119,6 @@ function CourseFormDialog({
                 department: department.trim(),
                 semesterId,
                 enrolled: initial?.enrolled || 0,
-                maxCapacity: Number(maxCapacity),
               });
               onOpenChange(false);
             }}>
@@ -223,7 +216,7 @@ const AdminCourses = () => {
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Users className="h-3 w-3" />
-              <span className="tabular-nums">{c.enrolled}/{c.maxCapacity}</span>
+              <span className="tabular-nums">{c.enrolled}</span>
             </div>
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditing(c); setFormOpen(true); }}>
               <Pencil className="h-3 w-3" />
