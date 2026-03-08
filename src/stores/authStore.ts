@@ -8,7 +8,7 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
   {
     id: "u1",
     name: "Dawit Tadesse",
-    email: "dawit@scola.edu",
+    email: "dawit@skola.edu",
     initials: "DT",
     phone: "+251912345678",
     role: "owner",
