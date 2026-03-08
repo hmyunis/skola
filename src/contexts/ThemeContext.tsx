@@ -42,6 +42,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 const CUSTOM_THEMES_KEY = "scola-custom-themes";
 const COLOR_MODE_KEY = "scola-color-mode";
+const FONT_FAMILY_KEY = "scola-font-family";
 
 function loadCustomThemes(): BatchTheme[] {
   try {
