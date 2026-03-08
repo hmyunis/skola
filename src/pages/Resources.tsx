@@ -57,6 +57,7 @@ import {
   Pencil,
   Trash2,
   Flag,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
