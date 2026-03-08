@@ -14,6 +14,7 @@ import Arena from "./pages/Arena";
 import SettingsPage from "./pages/Settings";
 import Login from "./pages/Login";
 import Members from "./pages/Members";
+import Announcements from "./pages/Announcements";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
