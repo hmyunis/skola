@@ -1,53 +1,36 @@
+import { apiFetch } from "./api";
 import type { ManagedUser } from "@/types/admin";
 
 // Re-export type for backward compatibility
 export type { ManagedUser } from "@/types/admin";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-const USER_STATUS_KEY = "skola-user-statuses";
-
-export function loadUserStatuses(): Record<string, { status: string; suspendedUntil?: string }> {
-  try {
-    const s = localStorage.getItem(USER_STATUS_KEY);
-    if (s) return JSON.parse(s);
-  } catch {}
-  return {};
+export async function fetchManagedUsers(classroomId: string): Promise<ManagedUser[]> {
+  const members = await apiFetch(`/classrooms/${classroomId}/members`);
+  return members.map((m: any) => ({
+    id: m.id,
+    name: m.user.name,
+    email: m.user.email || `${m.user.telegramUsername || m.user.id}@telegram.skola`,
+    role: m.role,
+    status: m.user.isBanned ? "banned" : (m.user.suspendedUntil && new Date(m.user.suspendedUntil) > new Date() ? "suspended" : "active"),
+    suspendedUntil: m.user.suspendedUntil,
+    joinedAt: m.joinedAt,
+    lastActive: m.user.updatedAt,
+    telegramUsername: m.user.telegramUsername,
+  }));
 }
 
-export function saveUserStatus(userId: string, status: string, suspendedUntil?: string) {
-  const all = loadUserStatuses();
-  all[userId] = { status, suspendedUntil };
-  localStorage.setItem(USER_STATUS_KEY, JSON.stringify(all));
+export async function saveUserStatus(classroomId: string, memberId: string, status: string, suspendedUntil?: string) {
+  return apiFetch(`/classrooms/members/${memberId}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status, suspendedUntil }),
+    headers: { "x-classroom-id": classroomId },
+  });
 }
 
-export function getUserStatus(userId: string): { status: string; suspendedUntil?: string } | null {
-  const all = loadUserStatuses();
-  return all[userId] || null;
-}
-
-export async function fetchManagedUsers(): Promise<ManagedUser[]> {
-  await delay(300);
-  const statuses = loadUserStatuses();
-  const users: ManagedUser[] = [
-    { id: "u1", name: "Dawit Tadesse", email: "dawit@skola.edu", role: "owner", status: "active", joinedAt: "2025-06-01", lastActive: "2026-03-08", telegramUsername: "dawit_t" },
-    { id: "u2", name: "Meron Kebede", email: "meron@skola.edu", role: "admin", status: "active", joinedAt: "2025-08-15", lastActive: "2026-03-07", telegramUsername: "meron_k" },
-    { id: "u3", name: "Bereket Wolde", email: "bereket@skola.edu", role: "student", status: "active", joinedAt: "2025-08-20", lastActive: "2026-03-08", telegramUsername: "bereket_w" },
-    { id: "u4", name: "Amina Hassan", email: "amina@skola.edu", role: "student", status: "active", joinedAt: "2025-09-01", lastActive: "2026-03-06", telegramUsername: "amina_h" },
-    { id: "u5", name: "Nahom Tesfaye", email: "nahom@skola.edu", role: "student", status: "suspended", joinedAt: "2025-09-10", lastActive: "2026-02-28", telegramUsername: "nahom_t" },
-    { id: "u6", name: "Sara Mohammed", email: "sara@skola.edu", role: "student", status: "banned", joinedAt: "2025-10-05", lastActive: "2026-01-15", telegramUsername: "sara_m" },
-    { id: "u7", name: "Kidus Mengistu", email: "kidus@skola.edu", role: "admin", status: "active", joinedAt: "2025-08-10", lastActive: "2026-03-08", telegramUsername: "kidus_m" },
-    { id: "u8", name: "Liya Abdi", email: "liya@skola.edu", role: "student", status: "active", joinedAt: "2025-11-01", lastActive: "2026-03-07", telegramUsername: "liya_a" },
-  ];
-  return users.map((u) => {
-    const saved = statuses[u.id];
-    if (saved) {
-      const s = saved as { status: string; suspendedUntil?: string };
-      if (s.status === "suspended" && s.suspendedUntil && new Date(s.suspendedUntil) <= new Date()) {
-        return { ...u, status: "active" as const };
-      }
-      return { ...u, status: s.status as ManagedUser["status"], suspendedUntil: s.suspendedUntil };
-    }
-    return u;
+export async function saveUserRole(classroomId: string, memberId: string, role: string) {
+  return apiFetch(`/classrooms/members/${memberId}/role`, {
+    method: "POST",
+    body: JSON.stringify({ role }),
+    headers: { "x-classroom-id": classroomId },
   });
 }

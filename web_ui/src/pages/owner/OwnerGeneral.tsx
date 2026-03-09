@@ -1,13 +1,52 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/stores/themeStore";
+import { useAuthStore } from "@/stores/authStore";
+import { useClassroomStore } from "@/stores/classroomStore";
+import { useSemesterStore } from "@/stores/semesterStore";
+import { apiFetch } from "@/services/api";
+import { type Semester } from "@/services/admin";
 import { batchThemes, primaryPresets, headerPresets, patternTemplates } from "@/lib/themes";
 import type { BatchTheme } from "@/lib/themes";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { X, Plus, Send, Save, Download, Database, Users, MessageSquare, FolderOpen, Swords, CheckCircle2 } from "lucide-react";
+import { DatePicker } from "@/components/DatePicker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  X,
+  Plus,
+  Send,
+  Save,
+  Download,
+  Database,
+  Users,
+  MessageSquare,
+  FolderOpen,
+  Swords,
+  CheckCircle2,
+  Trash2,
+  AlertTriangle,
+  CalendarDays,
+  Pencil,
+  Archive,
+  Clock,
+  Play,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +56,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -122,55 +162,6 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
         Create Theme
       </Button>
     </div>
-  );
-}
-
-// ─── Telegram Group ID Setting ───
-
-const TELEGRAM_GROUP_ID_KEY = "skola-telegram-group-id";
-
-function TelegramGroupIdSetting() {
-  const [groupId, setGroupId] = useState(() => localStorage.getItem(TELEGRAM_GROUP_ID_KEY) || "");
-  const [saved, setSaved] = useState(groupId);
-
-  const handleSave = () => {
-    localStorage.setItem(TELEGRAM_GROUP_ID_KEY, groupId.trim());
-    setSaved(groupId.trim());
-    toast({ title: "Saved", description: "Telegram Group ID updated." });
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xs flex items-center gap-2">
-          <Send className="h-3.5 w-3.5" />
-          Telegram Group ID
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          Only users who are members of this Telegram group will be able to log in.
-          Your bot must be an admin in the group.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-            placeholder="e.g. -1001234567890"
-            className="max-w-xs h-9 text-sm font-mono"
-          />
-          <Button size="sm" onClick={handleSave} disabled={groupId.trim() === saved}>
-            <Save className="h-3 w-3" />
-            Save
-          </Button>
-        </div>
-        {saved && (
-          <p className="text-[10px] text-muted-foreground">
-            Current: <code className="font-mono font-bold text-foreground">{saved}</code>
-          </p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -356,6 +347,340 @@ function DataExportTab() {
   );
 }
 
+// ─── Semester Management ───
+
+const statusConfig = {
+  active: { label: "Active", icon: CheckCircle2, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+  upcoming: { label: "Upcoming", icon: Clock, color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+  archived: { label: "Archived", icon: Archive, color: "bg-muted text-muted-foreground border-border" },
+};
+
+function SemesterFormDialog({
+  open,
+  onOpenChange,
+  initial,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  initial?: Semester | null;
+  onSave: (sem: Semester) => void;
+}) {
+  const [name, setName] = useState(initial?.name || "");
+  const [year, setYear] = useState(String(initial?.year || new Date().getFullYear()));
+  const [startDate, setStartDate] = useState(initial?.startDate || "");
+  const [endDate, setEndDate] = useState(initial?.endDate || "");
+  const [status, setStatus] = useState<Semester["status"]>(initial?.status || "upcoming");
+  const [examStart, setExamStart] = useState(initial?.examPeriod?.start || "");
+  const [examEnd, setExamEnd] = useState(initial?.examPeriod?.end || "");
+
+  const isValid = name.trim() && startDate && endDate;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="uppercase tracking-wider text-sm">
+            {initial ? "Edit Semester" : "Add Semester"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Semester Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Fall 2026" className="h-9 text-sm" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Year</label>
+              <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Status</label>
+              <Select value={status} onValueChange={(v) => setStatus(v as Semester["status"])}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Start Date</label>
+              <DatePicker value={startDate} onChange={setStartDate} placeholder="Start date" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">End Date</label>
+              <DatePicker value={endDate} onChange={setEndDate} placeholder="End date" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Exam Start</label>
+              <DatePicker value={examStart} onChange={setExamStart} placeholder="Exam start" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Exam End</label>
+              <DatePicker value={examEnd} onChange={setExamEnd} placeholder="Exam end" />
+            </div>
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button
+              className="w-full sm:w-auto"
+              disabled={!isValid}
+              onClick={() => {
+                onSave({
+                  id: initial?.id || `sem-${Date.now()}`,
+                  name: name.trim(),
+                  year: Number(year),
+                  startDate,
+                  endDate,
+                  status,
+                  examPeriod: examStart && examEnd ? { start: examStart, end: examEnd } : undefined,
+                  breaks: initial?.breaks || [],
+                });
+                onOpenChange(false);
+              }}
+            >
+              {initial ? <><Pencil className="h-3 w-3" /> Save</> : <><Plus className="h-3 w-3" /> Add</>}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SemesterManagement() {
+  const navigate = useNavigate();
+  const { logout } = useAuthStore();
+  const { semesters, activeSemester, setActiveSemester, addSemester, updateSemester, deleteSemester } = useSemesterStore();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Semester | null>(null);
+
+  const handleSave = (sem: Semester) => {
+    const exists = semesters.find((s) => s.id === sem.id);
+    if (exists) {
+      updateSemester(sem);
+      toast({ title: "Updated", description: `${sem.name} has been updated.` });
+    } else {
+      addSemester(sem);
+      toast({ title: "Created", description: `${sem.name} has been added.` });
+    }
+    setEditing(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-black uppercase tracking-wider">Semesters</h3>
+        <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }} className="h-8 text-[10px] font-bold uppercase tracking-widest">
+          <Plus className="h-3 w-3" /> Add Semester
+        </Button>
+      </div>
+
+      <div className="grid gap-3">
+        {semesters.length === 0 ? (
+          <div className="border border-dashed border-border p-8 text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest">No semesters defined</p>
+          </div>
+        ) : (
+          semesters.map((sem) => {
+            const config = statusConfig[sem.status];
+            const StatusIcon = config.icon;
+            const isActive = activeSemester?.id === sem.id;
+
+            return (
+              <Card key={sem.id} className={cn("overflow-hidden transition-all", isActive ? "border-primary/50 ring-1 ring-primary/20" : "hover:border-primary/30")}>
+                <CardContent className="p-0">
+                  <div className="flex flex-col sm:flex-row">
+                    {/* Status Strip */}
+                    <div className={cn("w-full sm:w-1.5", isActive ? "bg-primary" : "bg-border")} />
+                    
+                    <div className="flex-1 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold">{sem.name}</h4>
+                          <span className={cn("px-1.5 py-0.5 border text-[9px] font-bold uppercase tracking-wider flex items-center gap-1", config.color)}>
+                            <StatusIcon className="h-2.5 w-2.5" />
+                            {config.label}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground font-medium">
+                          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {sem.startDate} — {sem.endDate}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Year {sem.year}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        {!isActive && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-widest gap-1.5 border-primary/30 text-primary hover:bg-primary/5">
+                                <Play className="h-3 w-3" /> Set Active
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="uppercase tracking-wider">Switch Active Semester?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-sm">
+                                  Are you sure you want to set <strong>{sem.name}</strong> as the active semester? 
+                                  You will be logged out to apply this change system-wide.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="text-xs font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => {
+                                    setActiveSemester(sem);
+                                    logout();
+                                    navigate("/login");
+                                  }} 
+                                  className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold uppercase tracking-widest"
+                                >
+                                  Confirm & Logout
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => { setEditing(sem); setFormOpen(true); }} className="h-8 w-8 p-0">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="uppercase tracking-wider">Delete Semester?</AlertDialogTitle>
+                              <AlertDialogDescription className="text-sm">
+                                Are you sure you want to delete <strong>{sem.name}</strong>? This will remove all associated configurations.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="text-xs font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteSemester(sem.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold uppercase tracking-widest">
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      <SemesterFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        initial={editing}
+        onSave={handleSave}
+      />
+    </div>
+  );
+}
+
+// ─── Settings Tab ───
+
+function SettingsTab() {
+  const navigate = useNavigate();
+  const { logout } = useAuthStore();
+  const { clearActiveClassroom } = useClassroomStore();
+
+  const handleDeleteAccount = async () => {
+    try {
+      await apiFetch("/users/me", { method: "DELETE" });
+      toast({ title: "Account Deleted", description: "Your account and all associated data have been removed." });
+      clearActiveClassroom();
+      logout();
+      navigate("/login");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+     <div className="space-y-8">
+       {/* Theme Settings */}
+       <div className="space-y-4">
+         <div className="border-b border-border pb-2">
+           <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Aesthetics</p>
+           <h2 className="text-sm font-black uppercase tracking-wider">Classroom Theme</h2>
+         </div>
+         <BatchThemeSelector />
+       </div>
+
+       {/* Semester Management */}
+       <div className="space-y-4">
+         <div className="border-b border-border pb-2">
+           <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Academic Structure</p>
+           <h2 className="text-sm font-black uppercase tracking-wider">Semesters & Periods</h2>
+         </div>
+         <SemesterManagement />
+       </div>
+
+      {/* Danger Zone */}
+      <div className="space-y-4 pt-4">
+        <div className="border-b border-border pb-2">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-destructive font-bold">Danger Zone</p>
+          <h2 className="text-sm font-black uppercase tracking-wider text-destructive">Critical Actions</h2>
+        </div>
+
+        <Card className="border-destructive/20 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="text-xs text-destructive flex items-center gap-2">
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Account
+            </CardTitle>
+            <CardDescription className="text-[10px] text-destructive/70">
+              Permanently remove your account and all associated data. This action is irreversible.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="text-[10px] font-black uppercase tracking-widest gap-2">
+                  <AlertTriangle className="h-3 w-3" />
+                  Wipe Everything & Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="uppercase tracking-wider">Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm">
+                    This will permanently delete your user profile and remove you from all classrooms.
+                    You will need to sign up and set your Telegram group ID again if you want to return.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="text-xs font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold uppercase tracking-widest"
+                  >
+                    Yes, Delete My Account
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ───
 
 const OwnerGeneral = () => {
@@ -373,8 +698,7 @@ const OwnerGeneral = () => {
         </TabsList>
 
         <TabsContent value="settings" className="space-y-6">
-          <TelegramGroupIdSetting />
-          <BatchThemeSelector />
+          <SettingsTab />
         </TabsContent>
 
         <TabsContent value="export">

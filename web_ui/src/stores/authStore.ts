@@ -1,94 +1,63 @@
 import { create } from "zustand";
-import type { UserRole, MockAccount } from "@/types/auth";
 
-// Re-export types for backward compatibility
-export type { UserRole, MockAccount } from "@/types/auth";
+interface AuthState {
+  user: any | null;
+  accessToken: string | null;
+  isAdmin: boolean;
+  isOwner: boolean;
+  userName: string;
+  login: (user: any, accessToken: string) => void;
+  logout: () => void;
+}
 
-export const MOCK_ACCOUNTS: MockAccount[] = [
-  {
-    id: "u1",
-    name: "Dawit Tadesse",
-    email: "dawit@skola.edu",
-    initials: "DT",
-    phone: "+251912345678",
-    role: "owner",
-    code: "11111",
-    year: 4,
-    semester: 2,
-    batch: "Software",
-    anonymous_id: "Anon#4821",
-    telegramUsername: "dawit_t",
-  },
-  {
-    id: "u2",
-    name: "Meron Kebede",
-    email: "meron@skola.edu",
-    initials: "MK",
-    phone: "+251923456789",
-    role: "admin",
-    code: "22222",
-    year: 3,
-    semester: 2,
-    batch: "Software",
-    anonymous_id: "Anon#7733",
-    telegramUsername: "meron_k",
-  },
-  {
-    id: "u3",
-    name: "Bereket Wolde",
-    email: "bereket@skola.edu",
-    initials: "BW",
-    phone: "+251934567890",
-    role: "student",
-    code: "33333",
-    year: 2,
-    semester: 2,
-    batch: "Software",
-    anonymous_id: "Anon#2156",
-    telegramUsername: "bereket_w",
-  },
-];
+const TOKEN_KEY = "skola-auth-token";
+const USER_KEY = "skola-auth-user";
 
-const AUTH_KEY = "skola-auth-user";
-
-function loadStoredUser(): MockAccount | null {
+function loadStoredUser(): any | null {
   try {
-    const s = localStorage.getItem(AUTH_KEY);
+    const s = localStorage.getItem(USER_KEY);
     if (s) return JSON.parse(s);
   } catch {}
   return null;
 }
 
-interface AuthState {
-  user: MockAccount | null;
-  isAdmin: boolean;
-  isOwner: boolean;
-  userName: string;
-  login: (account: MockAccount) => void;
-  logout: () => void;
+function loadStoredToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 export const useAuthStore = create<AuthState>((set) => {
-  const initial = loadStoredUser();
-  return {
-    user: initial,
-    isOwner: initial?.role === "owner",
-    isAdmin: initial?.role === "owner" || initial?.role === "admin",
-    userName: initial?.name || "Guest",
+  const initialUser = loadStoredUser();
+  const initialToken = loadStoredToken();
 
-    login: (account) => {
-      localStorage.setItem(AUTH_KEY, JSON.stringify(account));
+  return {
+    user: initialUser,
+    accessToken: initialToken,
+    isOwner: initialUser?.role === "owner",
+    isAdmin: initialUser?.role === "owner" || initialUser?.role === "admin",
+    userName: initialUser?.name || "Guest",
+
+    login: (user, accessToken) => {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      localStorage.setItem(TOKEN_KEY, accessToken);
       set({
-        user: account,
-        isOwner: account.role === "owner",
-        isAdmin: account.role === "owner" || account.role === "admin",
-        userName: account.name,
+        user,
+        accessToken,
+        isOwner: user.role === "owner",
+        isAdmin: user.role === "owner" || user.role === "admin",
+        userName: user.name,
       });
     },
 
     logout: () => {
-      localStorage.removeItem(AUTH_KEY);
-      set({ user: null, isOwner: false, isAdmin: false, userName: "Guest" });
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      set({
+        user: null,
+        accessToken: null,
+        isOwner: false,
+        isAdmin: false,
+        userName: "Guest",
+      });
     },
   };
 });

@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
-import { useAuth, MOCK_ACCOUNTS } from "@/stores/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
-import { getUserStatus } from "@/services/admin";
-import { getInviteByCode } from "@/services/invites";
-import { joinClassByCode } from "@/services/classrooms";
+import { apiFetch } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,42 +20,25 @@ import {
   ArrowRight,
   Loader2,
   XOctagon,
-  Crown,
-  User,
   Sun,
   Moon,
   Link2,
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 type AuthView = "login" | "signup" | "verifying" | "denied" | "success";
 type InviteStatus = "idle" | "checking" | "valid" | "invalid";
 
-const roleIcon = {
-  owner: Crown,
-  admin: Shield,
-  student: User,
-};
-
-const roleColor = {
-  owner: "border-amber-500/40 bg-amber-500/5 text-amber-600",
-  admin: "border-primary/40 bg-primary/5 text-primary",
-  student: "border-border bg-muted/50 text-muted-foreground",
-};
-
-const TELEGRAM_BOT_NAME = "YourSkolaBot";
-const API_BASE_URL = "/api";
+const TELEGRAM_BOT_NAME = import.meta.env.VITE_TELEGRAM_BOT_NAME;
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
-  const { setActiveClassroom } = useClassroomStore();
+  const { login } = useAuthStore();
+  const { activeClassroom, setActiveClassroom } = useClassroomStore();
   const { colorMode, toggleColorMode } = useThemeStore();
   const [view, setView] = useState<AuthView>("login");
-  const [error, setError] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [inviteStatus, setInviteStatus] = useState<InviteStatus>("idle");
   const [inviteError, setInviteError] = useState("");
@@ -68,53 +49,74 @@ const Login = () => {
 
   const handleTelegramAuth = async (telegramUser: TelegramUser) => {
     setView("verifying");
-    setError("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/telegram`, {
+      const data = await apiFetch("/auth/telegram", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(telegramUser),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.reason === "not_in_group") { setView("denied"); setDeniedReason("not_in_group"); return; }
-        if (data.reason === "banned") { setView("denied"); setDeniedReason("banned"); return; }
-        if (data.reason === "suspended") {
-          setView("denied"); setDeniedReason("suspended");
-          setSuspendedUntil(data.suspendedUntil ? new Date(data.suspendedUntil).toLocaleString() : "");
-          return;
+      // If we are in signup view, we need to join the classroom after login
+      if (view === "signup" && inviteStatus === "valid" && inviteCode) {
+        try {
+          const joinResult = await apiFetch("/classrooms/join", {
+            method: "POST",
+            body: JSON.stringify({ inviteCode }),
+            headers: { Authorization: `Bearer ${data.accessToken}` }
+          });
+          if (joinResult) {
+            setActiveClassroom(joinResult);
+          }
+        } catch (joinErr: any) {
+          console.error("Failed to join classroom:", joinErr);
+          toast({ title: "Joined with issues", description: "You are logged in, but we couldn't automatically add you to the classroom.", variant: "destructive" });
         }
-        setView("denied"); setDeniedReason("unregistered"); return;
       }
 
-      login(data.user);
+      login(data.user, data.accessToken);
       setView("success");
-      setTimeout(() => navigate("/dashboard"), 1200);
-    } catch (err) {
+
+      // Check if user has classrooms
+      setTimeout(async () => {
+        try {
+          const classrooms = await apiFetch("/classrooms/my", {
+            headers: { Authorization: `Bearer ${data.accessToken}` }
+          });
+          
+          if (classrooms && classrooms.length > 0) {
+            // Set the first one as active if none is set
+            if (!activeClassroom) {
+              setActiveClassroom(classrooms[0]);
+            }
+            // Already in a class, go to dashboard
+            navigate("/dashboard");
+          } else {
+            // New user with no class, go to onboarding
+            navigate("/get-started");
+          }
+        } catch (err) {
+          console.error("Failed to fetch user classrooms:", err);
+          navigate("/dashboard"); // Fallback
+        }
+      }, 1200);
+    } catch (err: any) {
       console.error("Telegram auth error:", err);
-      toast({ title: "Connection Error", description: "Could not reach the server. Please try again.", variant: "destructive" });
+      
+      const errorData = err.data || {};
+      if (errorData.reason === "not_in_group") { setView("denied"); setDeniedReason("not_in_group"); return; }
+      if (errorData.reason === "banned") { setView("denied"); setDeniedReason("banned"); return; }
+      if (errorData.reason === "suspended") {
+        setView("denied"); setDeniedReason("suspended");
+        setSuspendedUntil(errorData.suspendedUntil ? new Date(errorData.suspendedUntil).toLocaleString() : "");
+        return;
+      }
+      
+      toast({ title: "Authentication Failed", description: err.message || "Could not reach the server. Please try again.", variant: "destructive" });
       setView("login");
     }
   };
 
-  const tryLogin = (account: (typeof MOCK_ACCOUNTS)[0]) => {
-    const saved = getUserStatus(account.id);
-    if (saved?.status === "banned") { setView("denied"); setDeniedReason("banned"); return; }
-    if (saved?.status === "suspended" && saved.suspendedUntil) {
-      const until = new Date(saved.suspendedUntil);
-      if (until > new Date()) { setView("denied"); setDeniedReason("suspended"); setSuspendedUntil(until.toLocaleString()); return; }
-    }
-    login(account);
-    setView("success");
-    setTimeout(() => navigate("/dashboard"), 1200);
-  };
-
-  const handleQuickLogin = (accountIdx: number) => tryLogin(MOCK_ACCOUNTS[accountIdx]);
-
-  const validateInviteCode = () => {
+  const validateInviteCode = async () => {
     const code = inviteCode.trim().toUpperCase();
     if (!code) {
       setInviteStatus("invalid");
@@ -122,44 +124,23 @@ const Login = () => {
       return;
     }
     setInviteStatus("checking");
-    // Simulate a brief network check
-    setTimeout(() => {
-      const invite = getInviteByCode(code);
-      if (invite) {
+    
+    try {
+      const result = await apiFetch(`/admin/invites/validate/${code}`);
+      if (result.valid) {
         setInviteStatus("valid");
         setInviteError("");
       } else {
         setInviteStatus("invalid");
         setInviteError("Invalid, expired, or fully used code.");
       }
-    }, 600);
+    } catch (err: any) {
+      setInviteStatus("invalid");
+      setInviteError(err.message || "Invalid code.");
+    }
   };
 
-  const handleSignupWithInvite = (accountIdx: number) => {
-    if (inviteStatus !== "valid") {
-      toast({ title: "Validate invite code first", description: "Click 'Verify' to check your code before signing up.", variant: "destructive" });
-      return;
-    }
-
-    const newUser = {
-      ...MOCK_ACCOUNTS[accountIdx],
-      id: `u-${Date.now()}`,
-      role: "student" as const,
-    };
-
-    login(newUser);
-
-    const result = joinClassByCode(inviteCode.trim().toUpperCase(), newUser.id);
-    if (result.success && result.classroom) {
-      setActiveClassroom(result.classroom);
-      toast({ title: "Welcome!", description: `You joined ${result.classroom.name}` });
-    }
-
-    setView("success");
-    setTimeout(() => navigate("/dashboard"), 1200);
-  };
-
-  const resetToLogin = () => { setView("login"); setError(""); };
+  const resetToLogin = () => { setView("login"); };
 
   // ─── ACCESS DENIED ───
   if (view === "denied") {
@@ -350,64 +331,6 @@ const Login = () => {
             )}
           </AnimatePresence>
 
-          {/* Demo signup with invite */}
-          <AnimatePresence mode="wait">
-            {inviteStatus === "valid" ? (
-              <motion.div
-                key="demo-unlocked"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", damping: 20, stiffness: 300, delay: 0.1 }}
-              >
-                <Card className="border-dashed border-primary/30">
-                  <CardContent className="p-4 space-y-3">
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
-                      Quick Signup (Demo)
-                    </p>
-                    <div className="space-y-2">
-                      {MOCK_ACCOUNTS.filter((a) => a.role === "student").map((account) => (
-                        <button
-                          key={account.id}
-                          onClick={() => handleSignupWithInvite(2)}
-                          className={cn("w-full flex items-center gap-3 p-3 border transition-colors hover:opacity-80", roleColor[account.role])}
-                        >
-                          <User className="h-4 w-4 shrink-0" />
-                          <div className="text-left flex-1 min-w-0">
-                            <p className="text-xs font-bold">Sign up as {account.name}</p>
-                            <p className="text-[10px] opacity-70 uppercase tracking-wider">+ Invite Code</p>
-                          </div>
-                          <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ) : (
-              <motion.div key="demo-locked" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                <Card className="border-dashed opacity-40 pointer-events-none select-none">
-                  <CardContent className="p-4 space-y-3">
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
-                      Quick Signup (Demo)
-                    </p>
-                    <div className="space-y-2">
-                      {MOCK_ACCOUNTS.filter((a) => a.role === "student").map((account) => (
-                        <button key={account.id} disabled className={cn("w-full flex items-center gap-3 p-3 border", roleColor[account.role])}>
-                          <User className="h-4 w-4 shrink-0" />
-                          <div className="text-left flex-1 min-w-0">
-                            <p className="text-xs font-bold">Sign up as {account.name}</p>
-                            <p className="text-[10px] opacity-70 uppercase tracking-wider">+ Invite Code</p>
-                          </div>
-                          <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <div className="text-center space-y-2">
             <button onClick={() => setView("login")} className="text-[10px] text-primary uppercase tracking-widest hover:underline">
               Already have an account? Sign In
@@ -439,34 +362,6 @@ const Login = () => {
         <Card>
           <CardContent className="p-5">
             <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
-          </CardContent>
-        </Card>
-
-        {/* Quick Login — Dev accounts */}
-        <Card className="border-dashed">
-          <CardContent className="p-4 space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
-              Quick Login (Demo)
-            </p>
-            <div className="space-y-2">
-              {MOCK_ACCOUNTS.map((account, idx) => {
-                const RoleIcon = roleIcon[account.role];
-                return (
-                  <button
-                    key={account.id}
-                    onClick={() => handleQuickLogin(idx)}
-                    className={cn("w-full flex items-center gap-3 p-3 border transition-colors hover:opacity-80", roleColor[account.role])}
-                  >
-                    <RoleIcon className="h-4 w-4 shrink-0" />
-                    <div className="text-left flex-1 min-w-0">
-                      <p className="text-xs font-bold">{account.name}</p>
-                      <p className="text-[10px] opacity-70 uppercase tracking-wider">{account.role} · Code: {account.code}</p>
-                    </div>
-                    <ArrowRight className="h-3 w-3 shrink-0 opacity-50" />
-                  </button>
-                );
-              })}
-            </div>
           </CardContent>
         </Card>
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { loadInviteLinks, createInviteLink, deactivateInviteLink, deleteInviteLink, getInvitesByClassroom } from "@/services/invites";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createInviteLink, deactivateInviteLink, deleteInviteLink, getInvitesByClassroom } from "@/services/invites";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useAuth } from "@/stores/authStore";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Link2, Plus, Copy, Trash2, XCircle, Clock, Users, CheckCircle2, AlertTriangle,
+  Link2, Plus, Copy, Trash2, XCircle, Clock, Users, CheckCircle2, AlertTriangle, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -34,18 +35,23 @@ function formatDate(iso: string) {
 }
 
 function isExpired(link: InviteLink): boolean {
-  if (!link.active) return true;
+  if (!link.isActive) return true;
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) return true;
-  if (link.maxUses > 0 && link.usedCount >= link.maxUses) return true;
+  if (link.maxUses > 0 && link.uses >= link.maxUses) return true;
   return false;
 }
 
 const InviteCodesTab = () => {
   const { activeClassroom } = useClassroomStore();
   const { user } = useAuth();
-  const [invites, setInvites] = useState<InviteLink[]>(() =>
-    activeClassroom ? getInvitesByClassroom(activeClassroom.id) : loadInviteLinks()
-  );
+  const queryClient = useQueryClient();
+
+  const { data: invites = [], isLoading } = useQuery({
+    queryKey: ["inviteLinks", activeClassroom?.id],
+    queryFn: () => activeClassroom ? getInvitesByClassroom(activeClassroom.id) : Promise.resolve([]),
+    enabled: !!activeClassroom,
+  });
+
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<InviteLink | null>(null);
 
@@ -53,9 +59,37 @@ const InviteCodesTab = () => {
   const [maxUses, setMaxUses] = useState("0");
   const [expiryDays, setExpiryDays] = useState("");
 
-  const refresh = () => {
-    setInvites(activeClassroom ? getInvitesByClassroom(activeClassroom.id) : loadInviteLinks());
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: { maxUses: number; expiresAt?: string }) => 
+      createInviteLink(activeClassroom!.id, data.maxUses, data.expiresAt),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inviteLinks"] });
+      setShowCreate(false);
+      setMaxUses("0");
+      setExpiryDays("");
+      toast({ title: "Invite created", description: "New invite code generated." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => deactivateInviteLink(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inviteLinks"] });
+      toast({ title: "Deactivated", description: "Invite code is no longer usable." });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteInviteLink(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inviteLinks"] });
+      setDeleteTarget(null);
+      toast({ title: "Deleted", description: "Invite code removed." });
+    },
+  });
 
   const handleCreate = () => {
     if (!activeClassroom || !user) {
@@ -65,32 +99,31 @@ const InviteCodesTab = () => {
     const expiresAt = expiryDays && parseInt(expiryDays) > 0
       ? new Date(Date.now() + parseInt(expiryDays) * 24 * 60 * 60 * 1000).toISOString()
       : undefined;
-    createInviteLink(activeClassroom.id, parseInt(maxUses) || 0, user.id, expiresAt);
-    refresh();
-    setShowCreate(false);
-    setMaxUses("0");
-    setExpiryDays("");
-    toast({ title: "Invite created", description: "New invite code generated." });
+    
+    createMutation.mutate({ maxUses: parseInt(maxUses) || 0, expiresAt });
   };
 
   const handleDeactivate = (id: string) => {
-    deactivateInviteLink(id);
-    refresh();
-    toast({ title: "Deactivated", description: "Invite code is no longer usable." });
+    deactivateMutation.mutate(id);
   };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
-    deleteInviteLink(deleteTarget.id);
-    refresh();
-    setDeleteTarget(null);
-    toast({ title: "Deleted", description: "Invite code removed." });
+    deleteMutation.mutate(deleteTarget.id);
   };
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast({ title: "Copied!", description: `Code ${code} copied to clipboard.` });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const active = invites.filter((i) => !isExpired(i));
   const expired = invites.filter((i) => isExpired(i));
@@ -134,7 +167,7 @@ const InviteCodesTab = () => {
                     <span className="px-1.5 py-0.5 border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">Active</span>
                   </div>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
-                    <span className="flex items-center gap-0.5"><Users className="h-2.5 w-2.5" /> {inv.usedCount}{inv.maxUses > 0 ? `/${inv.maxUses}` : "/∞"} uses</span>
+                    <span className="flex items-center gap-0.5"><Users className="h-2.5 w-2.5" /> {inv.uses || 0}{inv.maxUses > 0 ? `/${inv.maxUses}` : "/∞"} uses</span>
                     {inv.expiresAt && (
                       <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> Expires {formatDate(inv.expiresAt)}</span>
                     )}
@@ -146,8 +179,15 @@ const InviteCodesTab = () => {
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => copyCode(inv.code)}>
                   <Copy className="h-3 w-3" /> Copy
                 </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-600" onClick={() => handleDeactivate(inv.id)}>
-                  <XCircle className="h-3 w-3" /> Deactivate
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-7 text-xs text-amber-600" 
+                  onClick={() => handleDeactivate(inv.id)}
+                  disabled={deactivateMutation.isPending}
+                >
+                  {deactivateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+                  Deactivate
                 </Button>
               </div>
             </div>
@@ -171,7 +211,7 @@ const InviteCodesTab = () => {
                     <span className="px-1.5 py-0.5 border border-border text-muted-foreground text-[10px] font-bold uppercase tracking-wider">Inactive</span>
                   </div>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-0.5">
-                    <span>{inv.usedCount} uses</span>
+                    <span>{inv.uses || 0} uses</span>
                     <span>Created {formatDate(inv.createdAt)}</span>
                   </div>
                 </div>
@@ -225,8 +265,9 @@ const InviteCodesTab = () => {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button onClick={handleCreate} className="gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Generate
+              <Button onClick={handleCreate} className="gap-1" disabled={createMutation.isPending}>
+                {createMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                {createMutation.isPending ? "Generating..." : "Generate"}
               </Button>
             </div>
           </div>
@@ -244,8 +285,9 @@ const InviteCodesTab = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDelete}>
-              Delete
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Trash2 className="h-3 w-3 mr-1" />}
+              {deleteMutation.isPending ? "Deleting..." : "Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

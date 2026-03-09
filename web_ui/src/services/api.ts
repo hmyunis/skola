@@ -1,7 +1,38 @@
 import type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, Course } from "@/types/api";
+import { useAuthStore } from "@/stores/authStore";
+import { useClassroomStore } from "@/stores/classroomStore";
 
 // Re-export types for backward compatibility
 export type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, Course, DayOfWeek } from "@/types/api";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+
+export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+  const token = useAuthStore.getState().accessToken;
+  const activeClassroom = useClassroomStore.getState().activeClassroom;
+  
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(activeClassroom ? { "x-classroom-id": activeClassroom.id } : {}),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "An error occurred" }));
+    const apiError = new Error(error.message || "An error occurred") as any;
+    apiError.status = response.status;
+    apiError.data = error;
+    throw apiError;
+  }
+
+  return response.json();
+}
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

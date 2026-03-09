@@ -29,11 +29,11 @@ export interface InviteLink {
   code: string;
   classroomId: string;
   maxUses: number;
-  usedCount: number;
+  uses: number;
   createdAt: string;
   expiresAt?: string;
   createdBy: string;
-  active: boolean;
+  isActive: boolean;
 }
 
 export interface InviteRegistration {

@@ -8,8 +8,8 @@ import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { useTheme } from "@/stores/themeStore";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
-import { getUserStatus } from "@/services/admin";
-import { Sun, Moon, LogOut, Mail, GraduationCap, Shield, Crown, User, CalendarDays, Ban, Clock } from "lucide-react";
+import { useClassroomStore } from "@/stores/classroomStore";
+import { Sun, Moon, LogOut, GraduationCap, Shield, Crown, User, CalendarDays, Ban, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -48,9 +48,13 @@ function UserMenu() {
         <TooltipTrigger asChild>
           <button
             onClick={() => setOpen((p) => !p)}
-            className="h-8 w-8 flex items-center justify-center bg-white/15 hover:bg-white/25 transition-colors text-[10px] font-black uppercase tracking-wider"
+            className="h-8 w-8 flex items-center justify-center bg-white/15 hover:bg-white/25 transition-all text-[10px] font-black uppercase tracking-wider overflow-hidden"
           >
-            {user?.initials || "?"}
+            {user?.photoUrl ? (
+              <img src={user.photoUrl} alt={user.name} className="h-full w-full object-cover" />
+            ) : (
+              user?.initials || "?"
+            )}
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom"><span>{user?.name || "Guest"}</span></TooltipContent>
@@ -61,8 +65,12 @@ function UserMenu() {
           {/* User info */}
           <div className="p-4 border-b border-border space-y-2">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-primary/15 border border-primary/30 flex items-center justify-center text-sm font-black text-primary">
-                {user?.initials || "?"}
+              <div className="h-10 w-10 bg-primary/15 border border-primary/30 flex items-center justify-center text-sm font-black text-primary overflow-hidden">
+                {user?.photoUrl ? (
+                  <img src={user.photoUrl} alt={user.name} className="h-full w-full object-cover" />
+                ) : (
+                  user?.initials || "?"
+                )}
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold truncate">{user?.name || "Guest"}</p>
@@ -73,10 +81,12 @@ function UserMenu() {
 
           {/* Details */}
           <div className="p-3 space-y-2 border-b border-border">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Mail className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{user?.email || "—"}</span>
-            </div>
+            {user?.telegramUsername && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-bold border border-current rounded-full shrink-0">@</span>
+                <span className="truncate">@{user.telegramUsername}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <GraduationCap className="h-3.5 w-3.5 shrink-0" />
               <span>Year {user?.year || "—"}, Semester {user?.semester || "—"}</span>
@@ -132,19 +142,31 @@ export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const activeSemester = useSemesterStore((s) => s.activeSemester);
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+
+  // Authentication protection
+  useEffect(() => {
+    if (!user) {
+      navigate("/login", { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Redirection for users without a classroom
+  useEffect(() => {
+    if (user && !activeClassroom) {
+      navigate("/get-started");
+    }
+  }, [user, activeClassroom, navigate]);
 
   // Enforce ban/suspend for already logged-in users
   useEffect(() => {
     if (!user) return;
-    const saved = getUserStatus(user.id);
-    if (saved?.status === "banned") {
+    if (user.isBanned) {
       logout();
       navigate("/login");
-    } else if (saved?.status === "suspended" && saved.suspendedUntil) {
-      if (new Date(saved.suspendedUntil) > new Date()) {
-        logout();
-        navigate("/login");
-      }
+    } else if (user.suspendedUntil && new Date(user.suspendedUntil) > new Date()) {
+      logout();
+      navigate("/login");
     }
   }, [user, logout, navigate]);
 

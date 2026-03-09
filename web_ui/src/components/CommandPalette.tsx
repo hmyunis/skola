@@ -26,9 +26,8 @@ import {
   ToggleLeft,
   Search,
 } from "lucide-react";
-import { useAuth } from "@/stores/authStore";
+import { useAuthStore } from "@/stores/authStore";
 import { COURSES } from "@/services/api";
-import { MOCK_ACCOUNTS } from "@/stores/authStore";
 
 const pages = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "pages" },
@@ -59,7 +58,7 @@ const ownerPages = [
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { isAdmin, isOwner } = useAuth();
+  const { isAdmin, isOwner } = useAuthStore();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -130,25 +129,6 @@ export function CommandPalette() {
                 <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>{course.code}</span>
                 <span className="text-muted-foreground text-xs">— {course.name}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-
-          <CommandSeparator />
-
-          <CommandGroup heading="Members">
-            {MOCK_ACCOUNTS.map((member) => (
-              <CommandItem
-                key={member.id}
-                value={`${member.name} ${member.email} ${member.role}`}
-                onSelect={() => handleSelect("/members")}
-                className="gap-2"
-              >
-                <div className="h-5 w-5 flex items-center justify-center bg-primary/10 text-primary text-[9px] font-black shrink-0">
-                  {member.initials}
-                </div>
-                <span>{member.name}</span>
-                <span className="text-muted-foreground text-xs capitalize">— {member.role}</span>
               </CommandItem>
             ))}
           </CommandGroup>

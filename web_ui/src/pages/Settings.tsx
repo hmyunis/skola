@@ -1,7 +1,6 @@
 import { useTheme, FONT_FAMILIES } from "@/stores/themeStore";
 import { userAccents } from "@/lib/themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Sun, Moon, Type } from "lucide-react";
 
 const SettingsPage = () => {

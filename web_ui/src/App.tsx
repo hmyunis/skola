@@ -20,7 +20,6 @@ import Announcements from "./pages/Announcements";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
-import AdminSemesters from "./pages/admin/AdminSemesters";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminModeration from "./pages/admin/AdminModeration";
@@ -31,6 +30,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import OwnerFeatures from "./pages/owner/OwnerFeatures";
 import OwnerGeneral from "./pages/owner/OwnerGeneral";
 import JoinPage from "./pages/Join";
+import { RoleGuard } from "@/components/RoleGuard";
 
 const queryClient = new QueryClient();
 
@@ -60,17 +60,20 @@ const App = () => (
             <Route path="/members" element={<Members />} />
             <Route path="/announcements" element={<Announcements />} />
 
-            {/* Admin routes */}
-            <Route path="/admin/semesters" element={<AdminSemesters />} />
-            <Route path="/admin/courses" element={<AdminCourses />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/moderation" element={<AdminModeration />} />
-            <Route path="/admin/announcements" element={<AdminAnnouncements />} />
-            <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            {/* Admin/Moderator routes */}
+            <Route element={<RoleGuard allowedRoles={["owner", "admin"]} />}>
+              <Route path="/admin/courses" element={<AdminCourses />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/moderation" element={<AdminModeration />} />
+              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            </Route>
 
-            {/* Owner routes */}
-            <Route path="/owner/features" element={<OwnerFeatures />} />
-            <Route path="/owner/general" element={<OwnerGeneral />} />
+            {/* Owner-only routes */}
+            <Route element={<RoleGuard allowedRoles={["owner"]} />}>
+              <Route path="/owner/features" element={<OwnerFeatures />} />
+              <Route path="/owner/general" element={<OwnerGeneral />} />
+            </Route>
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,9 +1,33 @@
+import { apiFetch } from "./api";
 import type { InviteLink, InviteRegistration } from "@/types/admin";
 
 export type { InviteLink, InviteRegistration } from "@/types/admin";
 
+export async function createInviteLink(classroomId: string, maxUses: number, expiresAt?: string): Promise<InviteLink> {
+  return apiFetch("/admin/invites/generate", {
+    method: "POST",
+    body: JSON.stringify({ maxUses, expiresAt }),
+  });
+}
+
+export async function getInvitesByClassroom(classroomId: string): Promise<InviteLink[]> {
+  return apiFetch("/admin/invites");
+}
+
+export async function deactivateInviteLink(id: string) {
+  return apiFetch(`/admin/invites/${id}/deactivate`, { method: "POST" });
+}
+
+export async function deleteInviteLink(id: string) {
+  return apiFetch(`/admin/invites/${id}/delete`, { method: "POST" });
+}
+
+export async function validateInviteCode(code: string): Promise<{ valid: boolean; classroom: { id: string; name: string } }> {
+  return apiFetch(`/admin/invites/validate/${code}`);
+}
+
+// ─── Legacy/Mock logic for local state (registrations flow) ───
 const INVITES_KEY = "skola-invite-links";
-const REGISTRATIONS_KEY = "skola-invite-registrations";
 
 export function loadInviteLinks(): InviteLink[] {
   try {
@@ -17,64 +41,29 @@ export function saveInviteLinks(links: InviteLink[]) {
   localStorage.setItem(INVITES_KEY, JSON.stringify(links));
 }
 
-export function createInviteLink(classroomId: string, maxUses: number, createdBy: string, expiresAt?: string): InviteLink {
-  const links = loadInviteLinks();
-  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-  const link: InviteLink = {
-    id: `inv-${Date.now()}`,
-    code,
-    classroomId,
-    maxUses,
-    usedCount: 0,
-    createdAt: new Date().toISOString(),
-    expiresAt,
-    createdBy,
-    active: true,
-  };
-  links.push(link);
-  saveInviteLinks(links);
-  return link;
-}
-
-export function getInvitesByClassroom(classroomId: string): InviteLink[] {
-  return loadInviteLinks().filter((l) => l.classroomId === classroomId);
-}
-
-export function deactivateInviteLink(id: string) {
-  const links = loadInviteLinks();
-  const link = links.find((l) => l.id === id);
-  if (link) {
-    link.active = false;
-    saveInviteLinks(links);
-  }
-}
-
-export function deleteInviteLink(id: string) {
-  const links = loadInviteLinks().filter((l) => l.id !== id);
-  saveInviteLinks(links);
-}
-
 export function getInviteByCode(code: string): InviteLink | null {
   const links = loadInviteLinks();
-  const link = links.find((l) => l.code === code && l.active);
+  const link = links.find((l) => l.code === code && l.isActive);
   if (!link) return null;
-  if (link.maxUses > 0 && link.usedCount >= link.maxUses) return null;
+  if (link.maxUses > 0 && link.uses >= link.maxUses) return null;
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) return null;
   return link;
 }
 
 export function useInviteLink(code: string): boolean {
   const links = loadInviteLinks();
-  const link = links.find((l) => l.code === code && l.active);
+  const link = links.find((l) => l.code === code);
   if (!link) return false;
-  if (link.maxUses > 0 && link.usedCount >= link.maxUses) return false;
-  link.usedCount++;
-  if (link.maxUses > 0 && link.usedCount >= link.maxUses) {
-    link.active = false;
-  }
+  if (link.maxUses > 0 && link.uses >= link.maxUses) return false;
+  
+  link.uses++;
+
   saveInviteLinks(links);
   return true;
 }
+
+// Keeping registrations as local for now or we could move them too
+const REGISTRATIONS_KEY = "skola-invite-registrations";
 
 export function loadRegistrations(): InviteRegistration[] {
   try {

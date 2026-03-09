@@ -8,7 +8,7 @@ export type { Semester } from "./semesters";
 export { loadCourses, saveCourses } from "./courses";
 export type { AdminCourse } from "./courses";
 
-export { loadUserStatuses, saveUserStatus, getUserStatus, fetchManagedUsers } from "./users";
+export { fetchManagedUsers, saveUserStatus, saveUserRole } from "./users";
 export type { ManagedUser } from "./users";
 
 export { fetchFlaggedContent, loadUserReports, saveUserReport, fetchAllFlaggedContent } from "./moderation";

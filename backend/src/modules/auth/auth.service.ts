@@ -22,16 +22,22 @@ export class AuthService {
   // 1. Verify Telegram Hash
   private verifyTelegramHash(data: TelegramLoginDto): boolean {
     const { hash, ...rest } = data;
-    const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
+    let botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
 
     if (!botToken) {
+      this.logger.error('TELEGRAM_BOT_TOKEN is not defined in configuration');
       return false;
     }
 
+    // Clean the token (remove whitespace, quotes that might come from .env)
+    botToken = botToken.trim().replace(/^["']|["']$/g, '');
+
     // Create a data check string by sorting keys alphabetically
+    // We must use the raw values sent by Telegram.
     const dataCheckString = Object.keys(rest)
+      .filter(key => rest[key as keyof typeof rest] !== undefined && rest[key as keyof typeof rest] !== null)
       .sort()
-      .map((key) => `${key}=${(rest as any)[key]}`)
+      .map((key) => `${key}=${rest[key as keyof typeof rest]}`)
       .join('\n');
 
     const secretKey = crypto.createHash('sha256').update(botToken).digest();
@@ -40,25 +46,17 @@ export class AuthService {
       .update(dataCheckString)
       .digest('hex');
 
-    return computedHash === hash;
-  }
+    const isValid = computedHash === hash;
 
-  // 2. Check Group Membership via Telegram API
-  private async checkGroupMembership(userId: number): Promise<boolean> {
-    const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
-    const groupId = this.configService.get<string>('TELEGRAM_GROUP_ID');
-    const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${groupId}&user_id=${userId}`;
-
-    try {
-      const response = await firstValueFrom(this.httpService.get(url));
-      const status = response.data.result.status;
-      
-      const allowedStatuses = ['creator', 'administrator', 'member', 'restricted'];
-      return allowedStatuses.includes(status);
-    } catch (error) {
-      this.logger.error(`Failed to check group membership for user ${userId}`, error.message);
-      return false; // Fail safe: deny access
+    if (!isValid) {
+      this.logger.warn(`Telegram hash mismatch!`);
+      this.logger.debug(`Data check string: [${dataCheckString.replace(/\n/g, '\\n')}]`);
+      this.logger.debug(`Computed: ${computedHash}`);
+      this.logger.debug(`Received: ${hash}`);
+      this.logger.debug(`Token length: ${botToken.length}`);
     }
+
+    return isValid;
   }
 
   // 3. Main Login Flow
@@ -73,13 +71,7 @@ export class AuthService {
       throw new UnauthorizedException({ reason: 'unregistered', message: 'Authentication payload expired' });
     }
 
-    // Step B: Check Group Membership
-    const isMember = await this.checkGroupMembership(dto.id);
-    if (!isMember) {
-      throw new ForbiddenException({ reason: 'not_in_group', message: 'You must join the class Telegram group to access SKOLA.' });
-    }
-
-    // Step C: Find or Create User
+    // Step B: Find or Create User
     let user = await this.usersService.findByTelegramId(dto.id);
     
     if (user) {
@@ -98,7 +90,12 @@ export class AuthService {
       // Update info if it changed
       user.photoUrl = dto.photo_url || user.photoUrl;
       user.telegramUsername = dto.username || user.telegramUsername;
-      // In a real app, you might want to call usersRepository.save(user) here
+      
+      // Save changes to the user object (e.g. photo URL or username updates)
+      await this.usersService.update(user.id, { 
+        photoUrl: user.photoUrl, 
+        telegramUsername: user.telegramUsername 
+      });
     } else {
       // Auto-register new user
       const name = dto.last_name ? `${dto.first_name} ${dto.last_name}` : dto.first_name;

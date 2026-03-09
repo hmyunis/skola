@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
@@ -9,12 +9,12 @@ import { User } from '../users/entities/user.entity';
 import { AdminService } from './admin.service';
 import { PriorityLevel } from './entities/announcement.entity';
 
-@UseGuards(JwtAuthGuard, ClassroomRoleGuard) // Order is important! Check JWT first, then Role
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // ================= ADMIN ROUTES =================
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('announcements')
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
   async createAnnouncement(
@@ -25,6 +25,7 @@ export class AdminController {
     return this.adminService.createAnnouncement(classroomId, user.id, dto);
   }
 
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('invites/generate')
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
   async generateInviteCode(
@@ -35,7 +36,34 @@ export class AdminController {
     return this.adminService.generateInviteCode(classroomId, user.id, dto);
   }
 
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Get('invites')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async getInviteCodes(@CurrentClassroom() classroomId: string) {
+    return this.adminService.getInviteCodes(classroomId);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Post('invites/:id/deactivate')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async deactivateInviteCode(@Param('id') id: string) {
+    return this.adminService.deactivateInviteCode(id);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Post('invites/:id/delete') // Or DELETE /admin/invites/:id
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async deleteInviteCode(@Param('id') id: string) {
+    return this.adminService.deleteInviteCode(id);
+  }
+
+  @Get('invites/validate/:code')
+  async validateInviteCode(@Param('code') code: string) {
+    return this.adminService.validateInviteCode(code);
+  }
+
   // ================= OWNER SUITE ROUTES =================
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('settings/features')
   @RequireClassroomRole(UserRole.OWNER) // ONLY the Owner can toggle global features
   async updateFeatureToggles(

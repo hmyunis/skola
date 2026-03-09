@@ -17,6 +17,9 @@ export class Classroom {
   theme: string; // e.g., "software_eng"
 
   @Column({ unique: true })
+  telegramGroupId: string;
+
+  @Column({ unique: true })
   inviteCode: string;
 
   @Column({ default: true })

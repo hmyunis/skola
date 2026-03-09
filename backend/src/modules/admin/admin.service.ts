@@ -40,6 +40,53 @@ export class AdminService {
     return this.inviteCodeRepo.save(inviteCode);
   }
 
+  async validateInviteCode(code: string) {
+    // 1. Try dynamic invite code
+    const invite = await this.inviteCodeRepo.findOne({
+      where: { code, isActive: true },
+      relations: ['classroom'],
+    });
+
+    if (invite) {
+      if (invite.expiresAt && new Date() > invite.expiresAt) {
+        invite.isActive = false;
+        await this.inviteCodeRepo.save(invite);
+        throw new BadRequestException('Invite code has expired');
+      }
+
+      if (invite.maxUses && invite.uses >= invite.maxUses) {
+        invite.isActive = false;
+        await this.inviteCodeRepo.save(invite);
+        throw new BadRequestException('Invite code has reached its maximum uses');
+      }
+
+      return {
+        valid: true,
+        classroom: {
+          id: invite.classroom.id,
+          name: invite.classroom.name,
+        },
+      };
+    }
+
+    // 2. Try default classroom code
+    const classroom = await this.classroomRepo.findOne({
+      where: { inviteCode: code, isActive: true },
+    });
+
+    if (classroom) {
+      return {
+        valid: true,
+        classroom: {
+          id: classroom.id,
+          name: classroom.name,
+        },
+      };
+    }
+
+    throw new BadRequestException('Invalid or inactive invite code');
+  }
+
   async updateFeatureToggles(classroomId: string, toggles: Record<string, boolean>) {
     const classroom = await this.classroomRepo.findOne({ where: { id: classroomId } });
     if (!classroom) {
@@ -57,6 +104,24 @@ export class AdminService {
     Object.assign(classroom.featureToggles, toggles);
 
     return this.classroomRepo.save(classroom);
+  }
+
+  async getInviteCodes(classroomId: string) {
+    return this.inviteCodeRepo.find({
+      where: { classroomId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async deactivateInviteCode(id: string) {
+    const invite = await this.inviteCodeRepo.findOne({ where: { id } });
+    if (!invite) throw new BadRequestException('Invite code not found');
+    invite.isActive = false;
+    return this.inviteCodeRepo.save(invite);
+  }
+
+  async deleteInviteCode(id: string) {
+    return this.inviteCodeRepo.delete(id);
   }
 
   private generateRandomCode(): string {

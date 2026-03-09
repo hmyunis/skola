@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchManagedUsers, saveUserStatus, type ManagedUser } from "@/services/admin";
+import { fetchManagedUsers, saveUserStatus, saveUserRole, type ManagedUser } from "@/services/users";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/stores/authStore";
+import { useClassroomStore } from "@/stores/classroomStore";
 import InviteCodesTab from "@/components/admin/InviteCodesTab";
 
 const roleConfig = {
@@ -76,10 +77,12 @@ function formatRemaining(until: string): string {
 
 const AdminUsers = () => {
   const { isOwner } = useAuth();
+  const { activeClassroom } = useClassroomStore();
   const queryClient = useQueryClient();
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ["managedUsers"],
-    queryFn: fetchManagedUsers,
+    queryKey: ["managedUsers", activeClassroom?.id],
+    queryFn: () => activeClassroom ? fetchManagedUsers(activeClassroom.id) : Promise.resolve([]),
+    enabled: !!activeClassroom,
   });
 
   const [search, setSearch] = useState("");
@@ -99,9 +102,24 @@ const AdminUsers = () => {
     onConfirm: () => void;
   } | null>(null);
 
-  const applyStatus = (userId: string, status: string, suspendedUntil?: string) => {
-    saveUserStatus(userId, status, suspendedUntil);
-    queryClient.invalidateQueries({ queryKey: ["managedUsers"] });
+  const applyStatus = async (memberId: string, status: string, suspendedUntil?: string) => {
+    if (!activeClassroom) return;
+    try {
+      await saveUserStatus(activeClassroom.id, memberId, status, suspendedUntil);
+      queryClient.invalidateQueries({ queryKey: ["managedUsers", activeClassroom.id] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const applyRole = async (memberId: string, role: string) => {
+    if (!activeClassroom) return;
+    try {
+      await saveUserRole(activeClassroom.id, memberId, role);
+      queryClient.invalidateQueries({ queryKey: ["managedUsers", activeClassroom.id] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   const handleSuspend = () => {
@@ -137,17 +155,17 @@ const AdminUsers = () => {
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Users</h1>
       </div>
 
-      <Tabs defaultValue="members" className="space-y-5">
+      <Tabs defaultValue="users" className="space-y-5">
         <TabsList>
-          <TabsTrigger value="members" className="gap-1.5 text-xs font-bold uppercase tracking-wider">
-            <Users className="h-3.5 w-3.5" /> Members
+          <TabsTrigger value="users" className="gap-1.5 text-xs font-bold uppercase tracking-wider">
+            <Users className="h-3.5 w-3.5" /> Users
           </TabsTrigger>
           <TabsTrigger value="invites" className="gap-1.5 text-xs font-bold uppercase tracking-wider">
             <Link2 className="h-3.5 w-3.5" /> Invite Codes
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="members" className="space-y-5">
+        <TabsContent value="users" className="space-y-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card><CardContent className="p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total</p>
@@ -213,7 +231,7 @@ const AdminUsers = () => {
                 const status = statusConfig[user.status];
                 const RoleIcon = role.icon;
                 return (
-                  <div key={user.id} className="border border-border p-3 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-accent/20 transition-colors">
+                  <div key={user.id} className="border border-border p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-accent/20 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={cn("p-2 border shrink-0", role.color)}>
                         <RoleIcon className="h-4 w-4" />
@@ -274,6 +292,7 @@ const AdminUsers = () => {
                             setConfirmAction({
                               user, action: "Promote", description: `${user.name} will be promoted to admin with elevated privileges.`,
                               onConfirm: () => {
+                                applyRole(user.id, "admin");
                                 toast({ title: "Promoted", description: `${user.name} is now an admin.` });
                               },
                             });
@@ -286,6 +305,7 @@ const AdminUsers = () => {
                             setConfirmAction({
                               user, action: "Demote", description: `${user.name} will lose all admin privileges.`, destructive: true,
                               onConfirm: () => {
+                                applyRole(user.id, "student");
                                 toast({ title: "Demoted", description: `${user.name} is now a student.` });
                               },
                             });
