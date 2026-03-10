@@ -50,6 +50,13 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   suspendedUntil: Date;
 
+  @Column({ type: 'simple-json', nullable: true })
+  themeSettings: {
+    colorMode?: 'light' | 'dark';
+    fontFamily?: string;
+    accentColor?: string;
+  };
+
   @CreateDateColumn()
   createdAt: Date;
 

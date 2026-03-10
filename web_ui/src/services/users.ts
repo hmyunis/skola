@@ -34,3 +34,10 @@ export async function saveUserRole(classroomId: string, memberId: string, role: 
     headers: { "x-classroom-id": classroomId },
   });
 }
+
+export async function removeMember(classroomId: string, memberId: string) {
+  return apiFetch(`/classrooms/members/${memberId}`, {
+    method: "DELETE",
+    headers: { "x-classroom-id": classroomId },
+  });
+}

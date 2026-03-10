@@ -26,5 +26,5 @@ export type { FeatureToggle } from "./features";
 export { loadAssessments, saveAssessment, deleteAssessment } from "./assessments";
 export type { Assessment } from "./assessments";
 
-export { loadInviteLinks, createInviteLink, deactivateInviteLink, deleteInviteLink, getInviteByCode, useInviteLink, loadRegistrations, saveRegistration } from "./invites";
+export { createInviteLink, deactivateInviteLink, deleteInviteLink } from "./invites";
 export type { InviteLink, InviteRegistration } from "./invites";

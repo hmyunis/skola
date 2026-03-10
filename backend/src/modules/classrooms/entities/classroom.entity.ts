@@ -13,8 +13,8 @@ export class Classroom {
   @Column()
   name: string; // e.g., "Computer Science - Class of 2026"
 
-  @Column({ nullable: true })
-  theme: string; // e.g., "software_eng"
+  @Column({ type: 'simple-json', nullable: true })
+  theme: any; // Store the whole theme object
 
   @Column({ unique: true })
   telegramGroupId: string;

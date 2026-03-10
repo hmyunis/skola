@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchManagedUsers, type ManagedUser } from "@/services/admin";
+import { fetchManagedUsers, type ManagedUser } from "@/services/users";
+import { useRemoveMember } from "@/hooks/use-members";
+import { useClassroomStore } from "@/stores/classroomStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +24,9 @@ import {
   UserMinus,
   Circle,
   MessageCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/stores/authStore";
 
 const roleConfig = {
@@ -41,10 +43,14 @@ const statusDot: Record<string, string> = {
 
 const Members = () => {
   const { isAdmin, isOwner } = useAuth();
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ["managedUsers"],
-    queryFn: fetchManagedUsers,
+    queryKey: ["managedUsers", activeClassroom?.id],
+    queryFn: () => fetchManagedUsers(activeClassroom!.id),
+    enabled: !!activeClassroom,
   });
+  const removeMemberMutation = useRemoveMember();
+
   const [search, setSearch] = useState("");
   const [removingUser, setRemovingUser] = useState<ManagedUser | null>(null);
 
@@ -65,9 +71,11 @@ const Members = () => {
   });
 
   const handleRemove = () => {
-    if (!removingUser) return;
-    toast({ title: "User Removed", description: `${removingUser.name} has been removed from the group.` });
-    setRemovingUser(null);
+    if (!removingUser || !activeClassroom) return;
+    removeMemberMutation.mutate(
+      { classroomId: activeClassroom.id, memberId: removingUser.id },
+      { onSuccess: () => setRemovingUser(null) }
+    );
   };
 
   return (
@@ -139,6 +147,7 @@ const Members = () => {
                       variant="ghost"
                       className="h-7 w-7 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => setRemovingUser(user)}
+                      disabled={removeMemberMutation.isPending}
                     >
                       <UserMinus className="h-3.5 w-3.5" />
                     </Button>
@@ -162,8 +171,12 @@ const Members = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Remove
+              <AlertDialogAction
+                onClick={handleRemove}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={removeMemberMutation.isPending}
+              >
+                {removeMemberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

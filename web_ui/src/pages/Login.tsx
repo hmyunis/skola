@@ -37,7 +37,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
   const { activeClassroom, setActiveClassroom } = useClassroomStore();
-  const { colorMode, toggleColorMode } = useThemeStore();
+  const { colorMode, toggleColorMode, syncThemeWithStores } = useThemeStore();
   const [view, setView] = useState<AuthView>("login");
   const [inviteCode, setInviteCode] = useState("");
   const [inviteStatus, setInviteStatus] = useState<InviteStatus>("idle");
@@ -66,6 +66,7 @@ const Login = () => {
           });
           if (joinResult) {
             setActiveClassroom(joinResult);
+            syncThemeWithStores();
           }
         } catch (joinErr: any) {
           console.error("Failed to join classroom:", joinErr);
@@ -74,21 +75,24 @@ const Login = () => {
       }
 
       login(data.user, data.accessToken);
+      syncThemeWithStores();
       setView("success");
 
       // Check if user has classrooms
       setTimeout(async () => {
         try {
-          const classrooms = await apiFetch("/classrooms/my", {
+                    const { classrooms, user: fullUser } = await apiFetch("/classrooms/my", {
             headers: { Authorization: `Bearer ${data.accessToken}` }
           });
+
+          if (fullUser) {
+            login(fullUser, data.accessToken);
+          }
           
           if (classrooms && classrooms.length > 0) {
-            // Set the first one as active if none is set
-            if (!activeClassroom) {
-              setActiveClassroom(classrooms[0]);
-            }
-            // Already in a class, go to dashboard
+            // Always set the first classroom as active and sync theme
+            setActiveClassroom(classrooms[0]);
+            syncThemeWithStores();
             navigate("/dashboard");
           } else {
             // New user with no class, go to onboarding

@@ -1,4 +1,4 @@
-import { Controller, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
@@ -8,9 +8,15 @@ import { User } from './entities/user.entity';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('me')
   @UseGuards(JwtAuthGuard)
-  @Delete('me')
-  async deleteMyAccount(@CurrentUser() user: User) {
-    return this.usersService.deleteAccount(user.id);
+  getProfile(@CurrentUser() user: User) {
+    return user;
+  }
+
+  @Put('me/theme')
+  @UseGuards(JwtAuthGuard)
+  updateThemeSettings(@CurrentUser() user: User, @Body() themeSettings: any) {
+    return this.usersService.updateThemeSettings(user.id, themeSettings);
   }
 }

@@ -37,6 +37,15 @@ export class UsersService {
     await this.usersRepository.update(id, data);
   }
 
+  async updateThemeSettings(userId: string, themeSettings: any): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    user.themeSettings = { ...user.themeSettings, ...themeSettings };
+    return this.usersRepository.save(user);
+  }
+
   async deleteAccount(id: string): Promise<void> {
     await this.usersRepository.delete(id);
   }

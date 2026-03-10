@@ -1,21 +1,28 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getInviteByCode, useInviteLink, saveRegistration } from "@/services/invites";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, CheckCircle2, UserPlus } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { AlertTriangle, CheckCircle2, UserPlus, Loader2 } from "lucide-react";
+import { useValidateInviteCode, useRegisterWithInvite } from "@/hooks/use-invites";
 
 const JoinPage = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const invite = code ? getInviteByCode(code) : null;
+  const { data: invite, isLoading, isError } = useValidateInviteCode(code!);
+  const registerMutation = useRegisterWithInvite();
 
   const [fullName, setFullName] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
-  const [submitted, setSubmitted] = useState(false);
 
-  if (!invite) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError || !invite?.valid) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <div className="max-w-sm w-full border border-destructive/30 bg-destructive/5 p-8 text-center space-y-3">
@@ -32,7 +39,7 @@ const JoinPage = () => {
     );
   }
 
-  if (submitted) {
+  if (registerMutation.isSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <div className="max-w-sm w-full border border-emerald-500/30 bg-emerald-500/5 p-8 text-center space-y-3">
@@ -51,19 +58,11 @@ const JoinPage = () => {
 
   const handleSubmit = () => {
     if (!fullName.trim() || !code) return;
-    const success = useInviteLink(code);
-    if (!success) {
-      toast({ title: "Error", description: "This invite link is no longer valid." });
-      return;
-    }
-    saveRegistration({
-      id: `reg-${Date.now()}`,
-      inviteCode: code,
+    registerMutation.mutate({
+      code,
       fullName: fullName.trim(),
       telegramUsername: telegramUsername.trim() || undefined,
-      registeredAt: new Date().toISOString(),
     });
-    setSubmitted(true);
   };
 
   return (
@@ -71,7 +70,9 @@ const JoinPage = () => {
       <div className="max-w-sm w-full border border-border p-6 sm:p-8 space-y-6">
         <div className="text-center space-y-1">
           <h1 className="text-xl font-black uppercase tracking-[0.3em]">SKOLA</h1>
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Join the Community</p>
+          <p className="text-sm text-muted-foreground">
+            Joining <span className="font-bold text-foreground">{invite.classroom.name}</span>
+          </p>
         </div>
 
         <div className="space-y-4">
@@ -84,6 +85,7 @@ const JoinPage = () => {
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your full name"
               className="h-9 text-sm"
+              disabled={registerMutation.isPending}
             />
           </div>
 
@@ -96,16 +98,26 @@ const JoinPage = () => {
               onChange={(e) => setTelegramUsername(e.target.value)}
               placeholder="@username"
               className="h-9 text-sm"
+              disabled={registerMutation.isPending}
             />
           </div>
 
           <Button
             className="w-full"
-            disabled={!fullName.trim()}
+            disabled={!fullName.trim() || registerMutation.isPending}
             onClick={handleSubmit}
           >
-            <UserPlus className="h-3 w-3" /> Join
+            {registerMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <UserPlus className="h-3 w-3 mr-2" /> Join
+              </>
+            )}
           </Button>
+          {registerMutation.isError && (
+            <p className="text-sm text-destructive text-center">{registerMutation.error.message}</p>
+          )}
         </div>
       </div>
     </div>

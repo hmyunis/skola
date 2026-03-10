@@ -8,6 +8,7 @@ interface AuthState {
   userName: string;
   login: (user: any, accessToken: string) => void;
   logout: () => void;
+  setUser: (user: any) => void;
 }
 
 const TOKEN_KEY = "skola-auth-token";
@@ -25,7 +26,7 @@ function loadStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export const useAuthStore = create<AuthState>((set) => {
+export const useAuthStore = create<AuthState>((set, get) => {
   const initialUser = loadStoredUser();
   const initialToken = loadStoredToken();
 
@@ -57,6 +58,16 @@ export const useAuthStore = create<AuthState>((set) => {
         isOwner: false,
         isAdmin: false,
         userName: "Guest",
+      });
+    },
+
+    setUser: (user) => {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      set({
+        user,
+        isOwner: user.role === "owner",
+        isAdmin: user.role === "owner" || user.role === "admin",
+        userName: user.name,
       });
     },
   };

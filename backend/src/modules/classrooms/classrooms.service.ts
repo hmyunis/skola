@@ -143,6 +143,15 @@ export class ClassroomsService {
     return classroom;
   }
 
+  async updateTheme(id: string, theme: any): Promise<Classroom> {
+    const classroom = await this.classroomsRepository.findOne({ where: { id } });
+    if (!classroom) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroom.theme = theme;
+    return this.classroomsRepository.save(classroom);
+  }
+
   async joinClassroom(inviteCode: string, user: User): Promise<{ member: ClassroomMember; classroom: Classroom; user: User; accessToken: string }> {
     let classroom: Classroom | null = null;
     let inviteEntity: InviteCode | null = null;
@@ -224,12 +233,19 @@ export class ClassroomsService {
     };
   }
 
-  async getUserClassrooms(userId: string): Promise<Classroom[]> {
+  async getUserClassrooms(userId: string): Promise<{ classrooms: Classroom[]; user: User }> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     const members = await this.membersRepository.find({
       where: { user: { id: userId } },
       relations: ['classroom']
     });
-    return members.map(member => member.classroom);
+
+    const classrooms = members.map(member => member.classroom);
+    return { classrooms, user };
   }
 
   async getClassroomMembers(classroomId: string): Promise<ClassroomMember[]> {
@@ -285,6 +301,14 @@ export class ClassroomsService {
     
     await this.usersRepository.save(user);
     return this.membersRepository.save(member);
+  }
+
+  async removeMember(memberId: string): Promise<void> {
+    const member = await this.membersRepository.findOne({ where: { id: memberId } });
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+    await this.membersRepository.remove(member);
   }
 
   private generateInviteCode(): string {

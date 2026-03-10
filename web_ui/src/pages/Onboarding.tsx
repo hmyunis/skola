@@ -19,7 +19,7 @@ type Step = "choose" | "create" | "join";
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { colorMode, toggleColorMode } = useThemeStore();
+  const { colorMode, toggleColorMode, syncThemeWithStores } = useThemeStore();
   const { user, login, accessToken, logout } = useAuthStore();
   const { setActiveClassroom } = useClassroomStore();
   
@@ -62,6 +62,7 @@ const Onboarding = () => {
       setActiveClassroom(result.classroom);
       if (result.user && result.accessToken) {
         login(result.user, result.accessToken);
+        syncThemeWithStores();
       }
       toast({ title: "Class Created!", description: "You are now the owner of this classroom." });
       setTimeout(() => navigate("/dashboard"), 2000);
@@ -91,6 +92,7 @@ const Onboarding = () => {
       setActiveClassroom(result.classroom);
       if (result.user && result.accessToken) {
         login(result.user, result.accessToken);
+        syncThemeWithStores();
       }
       toast({ title: "Joined!", description: `Welcome to the classroom.` });
       setTimeout(() => navigate("/dashboard"), 2000);

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, UseGuards, HttpCode, HttpStatus, Delete } from '@nestjs/common';
 import { ClassroomsService } from './classrooms.service';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,12 +41,20 @@ export class ClassroomsController {
   @UseGuards(JwtAuthGuard)
   @Get('my')
   async getUserClassrooms(@CurrentUser() user: User) {
-    return this.classroomsService.getUserClassrooms(user.id);
+    const { classrooms, user: fullUser } = await this.classroomsService.getUserClassrooms(user.id);
+    return { classrooms, user: fullUser };
   }
 
   @Get(':id')
   async getClassroom(@Param('id') id: string) {
     return this.classroomsService.getClassroomById(id);
+  }
+
+  @Put(':id/theme')
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.OWNER)
+  async updateClassroomTheme(@Param('id') id: string, @Body() theme: any) {
+    return this.classroomsService.updateTheme(id, theme);
   }
 
   @Get(':id/members')
@@ -72,5 +80,12 @@ export class ClassroomsController {
     @Body() dto: { role: UserRole }
   ) {
     return this.classroomsService.updateMemberRole(memberId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Delete('members/:memberId')
+  @RequireClassroomRole(UserRole.OWNER)
+  async removeMember(@Param('memberId') memberId: string) {
+    return this.classroomsService.removeMember(memberId);
   }
 }

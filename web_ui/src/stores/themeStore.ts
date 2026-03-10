@@ -6,7 +6,10 @@ import {
   type ColorMode,
   parseHueSat,
   generateSurfaceColors,
+  userAccents,
 } from "@/lib/themes";
+import { useAuthStore } from "./authStore";
+import { useClassroomStore } from "./classroomStore";
 
 export const FONT_FAMILIES = [
   { id: "system", name: "System Default", value: "ui-sans-serif, system-ui, sans-serif" },
@@ -20,38 +23,6 @@ export const FONT_FAMILIES = [
   { id: "manrope", name: "Manrope", value: "'Manrope', sans-serif" },
   { id: "ibm-plex", name: "IBM Plex Sans", value: "'IBM Plex Sans', sans-serif" },
 ];
-
-const CUSTOM_THEMES_KEY = "skola-custom-themes";
-const COLOR_MODE_KEY = "skola-color-mode";
-const FONT_FAMILY_KEY = "skola-font-family";
-
-function loadCustomThemes(): BatchTheme[] {
-  try {
-    const stored = localStorage.getItem(CUSTOM_THEMES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-function loadColorMode(): ColorMode {
-  try {
-    const stored = localStorage.getItem(COLOR_MODE_KEY);
-    if (stored === "dark" || stored === "light") return stored;
-  } catch {}
-  if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-    return "dark";
-  }
-  return "light";
-}
-
-function loadFontFamily(): string {
-  try {
-    return localStorage.getItem(FONT_FAMILY_KEY) || "system";
-  } catch {
-    return "system";
-  }
-}
 
 function adjustPrimaryForDark(hsl: string): string {
   const parts = hsl.split(/\s+/);
@@ -112,70 +83,78 @@ interface ThemeState {
   setFontFamily: (id: string) => void;
   addCustomTheme: (theme: BatchTheme) => void;
   removeCustomTheme: (id: string) => void;
+  syncThemeWithStores: () => void;
 }
 
-export const useThemeStore = create<ThemeState>((set, get) => {
-  const initialColorMode = loadColorMode();
-  const initialBatch = batchThemes[6];
-  const initialFont = loadFontFamily();
+export const useThemeStore = create<ThemeState>((set, get) => ({
+  batchTheme: batchThemes[0],
+  userAccent: null,
+  colorMode: "light" as ColorMode,
+  fontFamily: "system",
+  customThemes: [],
 
-  // Apply on store creation
-  applyThemeToDOM(initialBatch, null, initialColorMode);
-  applyFontToDOM(initialFont);
+  setBatchTheme: (theme) => {
+    set({ batchTheme: theme });
+    const { userAccent, colorMode } = get();
+    applyThemeToDOM(theme, userAccent, colorMode);
+  },
 
-  return {
-    batchTheme: initialBatch,
-    userAccent: null,
-    colorMode: initialColorMode,
-    fontFamily: initialFont,
-    customThemes: loadCustomThemes(),
+  setUserAccent: (accent) => {
+    set({ userAccent: accent });
+    const { batchTheme, colorMode } = get();
+    applyThemeToDOM(batchTheme, accent, colorMode);
+  },
 
-    setBatchTheme: (theme) => {
-      set({ batchTheme: theme });
-      const { userAccent, colorMode } = get();
-      applyThemeToDOM(theme, userAccent, colorMode);
+  setColorMode: (mode) => {
+    set({ colorMode: mode });
+    const { batchTheme, userAccent } = get();
+    applyThemeToDOM(batchTheme, userAccent, mode);
+  },
+
+  toggleColorMode: () => {
+    const next = get().colorMode === "light" ? "dark" : "light";
+    get().setColorMode(next);
+  },
+
+  setFontFamily: (id) => {
+    set({ fontFamily: id });
+    applyFontToDOM(id);
+  },
+
+  addCustomTheme: (theme) => {
+    const next = [...get().customThemes, { ...theme, isCustom: true }];
+    set({ customThemes: next });
+  },
+
+  removeCustomTheme: (id) => {
+    const next = get().customThemes.filter((t) => t.id !== id);
+    set({ customThemes: next });
+    if (get().batchTheme.id === id) {
+      get().setBatchTheme(batchThemes[6]);
+    }
+  },
+
+  syncThemeWithStores: () => {
+      const { user } = useAuthStore.getState();
+      const { activeClassroom } = useClassroomStore.getState();
+
+      const userTheme = user?.themeSettings;
+      const classroomTheme = activeClassroom?.theme;
+
+      const colorMode = userTheme?.colorMode || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const fontFamily = userTheme?.fontFamily || "system";
+      const batchTheme = classroomTheme || get().batchTheme || batchThemes[0];
+      const userAccent = userTheme?.accentColor ? userAccents.find(a => a.id === userTheme.accentColor) || null : null;
+
+      set({ colorMode, fontFamily, batchTheme, userAccent });
+      applyThemeToDOM(batchTheme, userAccent, colorMode);
+      applyFontToDOM(fontFamily);
     },
-
-    setUserAccent: (accent) => {
-      set({ userAccent: accent });
-      const { batchTheme, colorMode } = get();
-      applyThemeToDOM(batchTheme, accent, colorMode);
-    },
-
-    setColorMode: (mode) => {
-      localStorage.setItem(COLOR_MODE_KEY, mode);
-      set({ colorMode: mode });
-      const { batchTheme, userAccent } = get();
-      applyThemeToDOM(batchTheme, userAccent, mode);
-    },
-
-    toggleColorMode: () => {
-      const next = get().colorMode === "light" ? "dark" : "light";
-      get().setColorMode(next);
-    },
-
-    setFontFamily: (id) => {
-      localStorage.setItem(FONT_FAMILY_KEY, id);
-      set({ fontFamily: id });
-      applyFontToDOM(id);
-    },
-
-    addCustomTheme: (theme) => {
-      const next = [...get().customThemes, { ...theme, isCustom: true }];
-      localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(next));
-      set({ customThemes: next });
-    },
-
-    removeCustomTheme: (id) => {
-      const next = get().customThemes.filter((t) => t.id !== id);
-      localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(next));
-      set({ customThemes: next });
-      if (get().batchTheme.id === id) {
-        get().setBatchTheme(batchThemes[6]);
-      }
-    },
-  };
-});
+}));
 
 // Convenience hook matching old API
 export const useTheme = () => useThemeStore();
+
+// Sync theme whenever stores change
+useAuthStore.subscribe(() => useThemeStore.getState().syncThemeWithStores());
+useClassroomStore.subscribe(() => useThemeStore.getState().syncThemeWithStores());

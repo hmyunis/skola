@@ -32,54 +32,63 @@ import OwnerGeneral from "./pages/owner/OwnerGeneral";
 import JoinPage from "./pages/Join";
 import { RoleGuard } from "@/components/RoleGuard";
 
+import { useEffect } from "react";
+import { useThemeStore } from "@/stores/themeStore";
+
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <ThemeBackground />
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/get-started" element={<Onboarding />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/join/:code" element={<JoinPage />} />
+const App = () => {
+  useEffect(() => {
+    useThemeStore.getState().syncThemeWithStores();
+  }, []);
 
-          {/* Authenticated app routes */}
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<Index />} />
-            <Route path="/schedule" element={<Schedule />} />
-            <Route path="/academics" element={<Academics />} />
-            <Route path="/resources" element={<Resources />} />
-            <Route path="/lounge" element={<Lounge />} />
-            <Route path="/arena" element={<Arena />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/members" element={<Members />} />
-            <Route path="/announcements" element={<Announcements />} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <ThemeBackground />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/get-started" element={<Onboarding />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/join/:code" element={<JoinPage />} />
 
-            {/* Admin/Moderator routes */}
-            <Route element={<RoleGuard allowedRoles={["owner", "admin"]} />}>
-              <Route path="/admin/courses" element={<AdminCourses />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/moderation" element={<AdminModeration />} />
-              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            {/* Authenticated app routes */}
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<Index />} />
+              <Route path="/schedule" element={<Schedule />} />
+              <Route path="/academics" element={<Academics />} />
+              <Route path="/resources" element={<Resources />} />
+              <Route path="/lounge" element={<Lounge />} />
+              <Route path="/arena" element={<Arena />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/members" element={<Members />} />
+              <Route path="/announcements" element={<Announcements />} />
+
+              {/* Admin/Moderator routes */}
+              <Route element={<RoleGuard allowedRoles={["owner", "admin"]} />}>
+                <Route path="/admin/courses" element={<AdminCourses />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/moderation" element={<AdminModeration />} />
+                <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              </Route>
+
+              {/* Owner-only routes */}
+              <Route element={<RoleGuard allowedRoles={["owner"]} />}>
+                <Route path="/owner/features" element={<OwnerFeatures />} />
+                <Route path="/owner/general" element={<OwnerGeneral />} />
+              </Route>
             </Route>
-
-            {/* Owner-only routes */}
-            <Route element={<RoleGuard allowedRoles={["owner"]} />}>
-              <Route path="/owner/features" element={<OwnerFeatures />} />
-              <Route path="/owner/general" element={<OwnerGeneral />} />
-            </Route>
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

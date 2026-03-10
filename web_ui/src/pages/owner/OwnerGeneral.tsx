@@ -4,6 +4,7 @@ import { useTheme } from "@/stores/themeStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useSemesterStore } from "@/stores/semesterStore";
+import { useUpdateClassroomTheme } from "@/hooks/use-theme";
 import { apiFetch } from "@/services/api";
 import { type Semester } from "@/services/admin";
 import { batchThemes, primaryPresets, headerPresets, patternTemplates } from "@/lib/themes";
@@ -169,8 +170,17 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
 
 function BatchThemeSelector() {
   const { batchTheme, setBatchTheme, customThemes, removeCustomTheme } = useTheme();
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const updateClassroomTheme = useUpdateClassroomTheme();
   const [showCreator, setShowCreator] = useState(false);
   const allThemes = [...batchThemes, ...customThemes];
+
+  const handleSelectTheme = (theme: BatchTheme) => {
+    setBatchTheme(theme);
+    if (activeClassroom) {
+      updateClassroomTheme.mutate({ classroomId: activeClassroom.id, theme });
+    }
+  };
 
   return (
     <Card>
@@ -189,7 +199,7 @@ function BatchThemeSelector() {
           {allThemes.map((theme) => (
             <div key={theme.id} className="relative group">
               <button
-                onClick={() => setBatchTheme(theme)}
+                onClick={() => handleSelectTheme(theme)}
                 className={`w-full p-3 border text-left text-xs font-bold uppercase tracking-wider transition-colors ${
                   batchTheme.id === theme.id
                     ? "border-primary bg-primary/10 text-primary"

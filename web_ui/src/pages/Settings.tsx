@@ -1,5 +1,6 @@
 import { useTheme, FONT_FAMILIES } from "@/stores/themeStore";
 import { userAccents } from "@/lib/themes";
+import { useUpdateUserTheme } from "@/hooks/use-theme";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sun, Moon, Type } from "lucide-react";
 
@@ -8,6 +9,11 @@ const SettingsPage = () => {
     userAccent, setUserAccent,
     colorMode, setColorMode, fontFamily, setFontFamily,
   } = useTheme();
+  const updateUserTheme = useUpdateUserTheme();
+
+  const handleUpdate = (settings: any) => {
+    updateUserTheme.mutate(settings);
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-5xl">
@@ -24,7 +30,7 @@ const SettingsPage = () => {
         <CardContent>
           <div className="flex gap-2">
             <button
-              onClick={() => setColorMode("light")}
+              onClick={() => { setColorMode("light"); handleUpdate({ colorMode: "light" }); }}
               className={`flex items-center gap-2 px-4 py-2.5 border text-xs font-bold uppercase tracking-wider transition-colors ${
                 colorMode === "light"
                   ? "border-primary bg-primary/10 text-primary"
@@ -35,7 +41,7 @@ const SettingsPage = () => {
               Light
             </button>
             <button
-              onClick={() => setColorMode("dark")}
+              onClick={() => { setColorMode("dark"); handleUpdate({ colorMode: "dark" }); }}
               className={`flex items-center gap-2 px-4 py-2.5 border text-xs font-bold uppercase tracking-wider transition-colors ${
                 colorMode === "dark"
                   ? "border-primary bg-primary/10 text-primary"
@@ -62,7 +68,7 @@ const SettingsPage = () => {
             {FONT_FAMILIES.map((font) => (
               <button
                 key={font.id}
-                onClick={() => setFontFamily(font.id)}
+                onClick={() => { setFontFamily(font.id); handleUpdate({ fontFamily: font.id }); }}
                 className={`p-3 border text-left transition-colors ${
                   fontFamily === font.id
                     ? "border-primary bg-primary/10 text-primary"
@@ -86,7 +92,7 @@ const SettingsPage = () => {
         <CardContent>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setUserAccent(null)}
+              onClick={() => { setUserAccent(null); handleUpdate({ accentColor: null }); }}
               className={`px-4 py-2 border text-xs font-bold uppercase tracking-wider transition-colors ${
                 !userAccent ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent text-foreground"
               }`}
@@ -96,7 +102,7 @@ const SettingsPage = () => {
             {userAccents.map((accent) => (
               <button
                 key={accent.id}
-                onClick={() => setUserAccent(accent)}
+                onClick={() => { setUserAccent(accent); handleUpdate({ accentColor: accent.id }); }}
                 className={`px-4 py-2 border text-xs font-bold uppercase tracking-wider transition-colors ${
                   userAccent?.id === accent.id ? "border-2" : "border-border hover:bg-accent"
                 }`}
