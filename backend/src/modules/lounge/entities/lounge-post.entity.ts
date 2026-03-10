@@ -30,6 +30,9 @@ export class LoungePost {
   @Column({ type: 'simple-array', nullable: true })
   tags: string[]; // e.g., "question", "rant", "meme"
 
+  @Column({ nullable: true })
+  course: string; // e.g., "CS301" — optional course reference
+
   // Self-referencing relationship for threaded replies
   @ManyToOne(() => LoungePost, post => post.replies, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'parentId' })

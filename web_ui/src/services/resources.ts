@@ -22,11 +22,8 @@ export const RESOURCE_CATEGORIES: { value: ResourceCategory; label: string }[] =
   { value: "project", label: "Project" },
 ];
 
-const MOCK_SEMESTER_ID = "sem-2";
-
 export async function fetchResources(semesterId?: string): Promise<Resource[]> {
   await delay(350);
-  if (semesterId && semesterId !== MOCK_SEMESTER_ID) return [];
   return [
     {
       id: "r1",

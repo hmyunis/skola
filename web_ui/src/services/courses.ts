@@ -1,27 +1,104 @@
-import type { AdminCourse } from "@/types/admin";
+import { apiFetch } from './api';
 
-// Re-export type for backward compatibility
-export type { AdminCourse } from "@/types/admin";
-
-const COURSES_KEY = "skola-admin-courses";
-
-const DEFAULT_COURSES: AdminCourse[] = [
-  { id: "c1", code: "CS301", name: "Data Structures & Algorithms", credits: 4, instructor: "Dr. Abebe Bekele", semesterId: "sem-2", enrolled: 68 },
-  { id: "c2", code: "CS302", name: "Database Management Systems", credits: 4, instructor: "Prof. Hana Gebremedhin", semesterId: "sem-2", enrolled: 72 },
-  { id: "c3", code: "CS303", name: "Computer Networks", credits: 3, instructor: "Dr. Mohammed Yusuf", semesterId: "sem-2", enrolled: 65 },
-  { id: "c4", code: "CS304", name: "Operating Systems", credits: 4, instructor: "Prof. Tigist Alemu", semesterId: "sem-2", enrolled: 70 },
-  { id: "c5", code: "MA201", name: "Engineering Mathematics", credits: 3, instructor: "Dr. Yonas Hailu", semesterId: "sem-2", enrolled: 120 },
-  { id: "c6", code: "EC201", name: "Digital Electronics", credits: 3, instructor: "Dr. Fatima Ahmed", semesterId: "sem-2", enrolled: 55 },
-];
-
-export function loadCourses(): AdminCourse[] {
-  try {
-    const s = localStorage.getItem(COURSES_KEY);
-    if (s) return JSON.parse(s);
-  } catch {}
-  return DEFAULT_COURSES;
+export interface Course {
+    id: string;
+    name: string;
+    code?: string;
+    credits?: number;
+    instructor?: string;
+    semesterId: string;
+    semester?: {
+        id: string;
+        name: string;
+    };
+    createdAt: string;
 }
 
-export function saveCourses(courses: AdminCourse[]) {
-  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
+export interface CourseListResponse {
+    data: Course[];
+    meta: {
+        total: number;
+        page: number;
+        limit: number;
+        lastPage: number;
+    };
+}
+
+export interface CourseQueryParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    semesterId?: string;
+}
+
+// ─── API Calls ───
+
+export async function fetchCourses(params?: CourseQueryParams): Promise<CourseListResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.search) query.set('search', params.search);
+    if (params?.semesterId) query.set('semesterId', params.semesterId);
+
+    const qs = query.toString();
+    return apiFetch(`/academics/courses${qs ? `?${qs}` : ''}`);
+}
+
+export async function fetchCourse(courseId: string): Promise<Course> {
+    return apiFetch(`/academics/courses/${courseId}`);
+}
+
+export async function createCourse(data: {
+    name: string;
+    code?: string;
+    credits?: number;
+    instructor?: string;
+    semesterId: string;
+}): Promise<Course> {
+    return apiFetch('/academics/courses', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateCourse(
+    courseId: string,
+    data: {
+        name?: string;
+        code?: string;
+        credits?: number;
+        instructor?: string;
+        semesterId?: string;
+    },
+): Promise<Course> {
+    return apiFetch(`/academics/courses/${courseId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteCourse(courseId: string): Promise<{ deleted: boolean }> {
+    return apiFetch(`/academics/courses/${courseId}`, {
+        method: 'DELETE',
+    });
+}
+
+// ─── Semester API ───
+
+export interface Semester {
+    id: string;
+    name: string;
+    year?: number;
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
+    classroomId: string;
+}
+
+export async function fetchSemesters(): Promise<Semester[]> {
+    return apiFetch('/academics/semesters/archive');
+}
+
+export async function fetchActiveSemester(): Promise<Semester> {
+    return apiFetch('/academics/semesters/active');
 }

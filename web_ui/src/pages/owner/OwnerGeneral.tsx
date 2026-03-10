@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/stores/themeStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -370,11 +370,13 @@ function SemesterFormDialog({
   onOpenChange,
   initial,
   onSave,
+  isLoading,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: Semester | null;
-  onSave: (sem: Semester) => void;
+  onSave: (sem: any) => void;
+  isLoading?: boolean;
 }) {
   const [name, setName] = useState(initial?.name || "");
   const [year, setYear] = useState(String(initial?.year || new Date().getFullYear()));
@@ -383,6 +385,27 @@ function SemesterFormDialog({
   const [status, setStatus] = useState<Semester["status"]>(initial?.status || "upcoming");
   const [examStart, setExamStart] = useState(initial?.examPeriod?.start || "");
   const [examEnd, setExamEnd] = useState(initial?.examPeriod?.end || "");
+
+  // Sync state with initial when it changes
+  useEffect(() => {
+    if (initial) {
+      setName(initial.name);
+      setYear(String(initial.year));
+      setStartDate(initial.startDate);
+      setEndDate(initial.endDate);
+      setStatus(initial.status);
+      setExamStart(initial.examPeriod?.start || "");
+      setExamEnd(initial.examPeriod?.end || "");
+    } else {
+      setName("");
+      setYear(String(new Date().getFullYear()));
+      setStartDate("");
+      setEndDate("");
+      setStatus("upcoming");
+      setExamStart("");
+      setExamEnd("");
+    }
+  }, [initial]);
 
   const isValid = name.trim() && startDate && endDate;
 
@@ -437,25 +460,29 @@ function SemesterFormDialog({
             </div>
           </div>
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancel</Button>
             <Button
               className="w-full sm:w-auto"
-              disabled={!isValid}
+              disabled={!isValid || isLoading}
               onClick={() => {
                 onSave({
-                  id: initial?.id || `sem-${Date.now()}`,
+                  ...(initial?.id && { id: initial.id }),
                   name: name.trim(),
                   year: Number(year),
                   startDate,
                   endDate,
                   status,
                   examPeriod: examStart && examEnd ? { start: examStart, end: examEnd } : undefined,
-                  breaks: initial?.breaks || [],
                 });
-                onOpenChange(false);
               }}
             >
-              {initial ? <><Pencil className="h-3 w-3" /> Save</> : <><Plus className="h-3 w-3" /> Add</>}
+              {isLoading ? (
+                <div className="h-3 w-3 border-2 border-primary-foreground border-t-transparent animate-spin" />
+              ) : initial ? (
+                <><Pencil className="h-3 w-3" /> Save</>
+              ) : (
+                <><Plus className="h-3 w-3" /> Add</>
+              )}
             </Button>
           </div>
         </div>
@@ -467,20 +494,43 @@ function SemesterFormDialog({
 function SemesterManagement() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
-  const { semesters, activeSemester, setActiveSemester, addSemester, updateSemester, deleteSemester } = useSemesterStore();
+  const { semesters, activeSemester, setActiveSemester, addSemester, updateSemester, deleteSemester, reload, isLoading } = useSemesterStore();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Semester | null>(null);
 
-  const handleSave = (sem: Semester) => {
-    const exists = semesters.find((s) => s.id === sem.id);
-    if (exists) {
-      updateSemester(sem);
-      toast({ title: "Updated", description: `${sem.name} has been updated.` });
-    } else {
-      addSemester(sem);
-      toast({ title: "Created", description: `${sem.name} has been added.` });
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const handleSave = async (sem: Semester) => {
+    try {
+      if (sem.id) {
+        await updateSemester(sem);
+        toast({ title: "Updated", description: `${sem.name} has been updated.` });
+      } else {
+        await addSemester(sem);
+        toast({ title: "Created", description: `${sem.name} has been added.` });
+      }
+      setEditing(null);
+      setFormOpen(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-    setEditing(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteSemester(id);
+      toast({ title: "Deleted", description: "Semester removed successfully." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSetActive = async (sem: Semester) => {
+    setActiveSemester(sem);
+    logout();
+    navigate("/login");
   };
 
   return (
@@ -493,7 +543,13 @@ function SemesterManagement() {
       </div>
 
       <div className="grid gap-3">
-        {semesters.length === 0 ? (
+        {isLoading && semesters.length === 0 ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 bg-muted animate-pulse border border-border" />
+            ))}
+          </div>
+        ) : semesters.length === 0 ? (
           <div className="border border-dashed border-border p-8 text-center">
             <p className="text-xs text-muted-foreground uppercase tracking-widest">No semesters defined</p>
           </div>
@@ -544,11 +600,7 @@ function SemesterManagement() {
                               <AlertDialogFooter>
                                 <AlertDialogCancel className="text-xs font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
                                 <AlertDialogAction 
-                                  onClick={() => {
-                                    setActiveSemester(sem);
-                                    logout();
-                                    navigate("/login");
-                                  }} 
+                                  onClick={() => handleSetActive(sem)} 
                                   className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold uppercase tracking-widest"
                                 >
                                   Confirm & Logout
@@ -575,7 +627,7 @@ function SemesterManagement() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel className="text-xs font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteSemester(sem.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold uppercase tracking-widest">
+                              <AlertDialogAction onClick={() => handleDelete(sem.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold uppercase tracking-widest">
                                 Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -596,6 +648,7 @@ function SemesterManagement() {
         onOpenChange={setFormOpen}
         initial={editing}
         onSave={handleSave}
+        isLoading={isLoading}
       />
     </div>
   );

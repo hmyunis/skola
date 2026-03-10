@@ -5,11 +5,15 @@ import { Course } from './entities/course.entity';
 import { ScheduleItem } from './entities/schedule-item.entity';
 import { AcademicsService } from './academics.service';
 import { AcademicsController } from './academics.controller';
+import { ClassroomsModule } from '../classrooms/classrooms.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Semester, Course, ScheduleItem])],
+  imports: [
+    TypeOrmModule.forFeature([Semester, Course, ScheduleItem]),
+    ClassroomsModule,
+  ],
   controllers: [AcademicsController],
   providers: [AcademicsService],
-  exports:[AcademicsService],
+  exports: [AcademicsService],
 })
 export class AcademicsModule {}
