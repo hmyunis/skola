@@ -31,6 +31,7 @@ import OwnerFeatures from "./pages/owner/OwnerFeatures";
 import OwnerGeneral from "./pages/owner/OwnerGeneral";
 import JoinPage from "./pages/Join";
 import { RoleGuard } from "@/components/RoleGuard";
+import { FeatureGuard } from "@/components/FeatureGuard";
 
 import { useEffect } from "react";
 import { useThemeStore } from "@/stores/themeStore";
@@ -59,11 +60,27 @@ const App = () => {
             {/* Authenticated app routes */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Index />} />
-              <Route path="/schedule" element={<Schedule />} />
-              <Route path="/academics" element={<Academics />} />
-              <Route path="/resources" element={<Resources />} />
-              <Route path="/lounge" element={<Lounge />} />
-              <Route path="/arena" element={<Arena />} />
+              
+              <Route element={<FeatureGuard featureId="ft-schedule" />}>
+                <Route path="/schedule" element={<Schedule />} />
+              </Route>
+              
+              <Route element={<FeatureGuard featureId="ft-academics" />}>
+                <Route path="/academics" element={<Academics />} />
+              </Route>
+              
+              <Route element={<FeatureGuard featureId="ft-resources" />}>
+                <Route path="/resources" element={<Resources />} />
+              </Route>
+              
+              <Route element={<FeatureGuard featureId="ft-lounge" />}>
+                <Route path="/lounge" element={<Lounge />} />
+              </Route>
+              
+              <Route element={<FeatureGuard featureId="ft-arena" />}>
+                <Route path="/arena" element={<Arena />} />
+              </Route>
+              
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/members" element={<Members />} />
               <Route path="/announcements" element={<Announcements />} />

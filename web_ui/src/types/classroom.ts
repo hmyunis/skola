@@ -10,6 +10,7 @@ export interface Classroom {
   ownerId: string;
   createdAt: string;
   memberCount: number;
+  featureToggles?: any; // Store the array of FeatureToggle objects
 }
 
 export interface ClassMembership {

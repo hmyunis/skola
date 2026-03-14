@@ -9,6 +9,7 @@ import { useTheme } from "@/stores/themeStore";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useClassroomStore } from "@/stores/classroomStore";
+import { useSyncClassroom } from "@/hooks/use-classroom";
 import { Sun, Moon, LogOut, GraduationCap, Shield, Crown, User, CalendarDays, Ban, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
@@ -143,6 +144,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const activeSemester = useSemesterStore((s) => s.activeSemester);
   const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  useSyncClassroom(); // This will keep classroom data (features, etc.) in sync
 
   // Authentication protection
   useEffect(() => {

@@ -6,6 +6,7 @@ import { useClassroomStore } from "@/stores/classroomStore";
 export type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, Course, DayOfWeek } from "@/types/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const MOCK_SEMESTER_ID = "mock-semester-id";
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = useAuthStore.getState().accessToken;
@@ -75,6 +76,10 @@ export async function fetchTodaySchedule(semesterId?: string): Promise<ClassSlot
       startTime: new Date(`${new Date().toISOString().split('T')[0]}T${item.startTime}`),
       endTime: new Date(`${new Date().toISOString().split('T')[0]}T${item.endTime}`),
     }));
+}
+
+export async function fetchClassroom(classroomId: string): Promise<any> {
+  return apiFetch(`/classrooms/${classroomId}`);
 }
 
 export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySchedule> {

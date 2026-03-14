@@ -1,11 +1,11 @@
 import type { FeatureToggle } from "@/types/admin";
+import { useClassroomStore } from "@/stores/classroomStore";
+import { apiFetch } from "./api";
 
 // Re-export type for backward compatibility
 export type { FeatureToggle } from "@/types/admin";
 
-const FEATURES_KEY = "skola-owner-features";
-
-const DEFAULT_FEATURES: FeatureToggle[] = [
+export const DEFAULT_FEATURES: FeatureToggle[] = [
   { id: "ft-schedule", name: "Schedule", description: "Class schedule and timetable management", enabled: true, category: "core" },
   { id: "ft-academics", name: "Academics", description: "Grades, assignments, and academic tracking", enabled: true, category: "core" },
   { id: "ft-resources", name: "Resources", description: "Shared study materials and file hub", enabled: true, category: "core" },
@@ -17,13 +17,41 @@ const DEFAULT_FEATURES: FeatureToggle[] = [
 ];
 
 export function loadFeatures(): FeatureToggle[] {
-  try {
-    const s = localStorage.getItem(FEATURES_KEY);
-    if (s) return JSON.parse(s);
-  } catch {}
+  const activeClassroom = useClassroomStore.getState().activeClassroom;
+  if (activeClassroom?.featureToggles && Array.isArray(activeClassroom.featureToggles)) {
+    return activeClassroom.featureToggles;
+  }
   return DEFAULT_FEATURES;
 }
 
-export function saveFeatures(features: FeatureToggle[]) {
-  localStorage.setItem(FEATURES_KEY, JSON.stringify(features));
+export async function saveFeatures(features: FeatureToggle[]) {
+  const activeClassroom = useClassroomStore.getState().activeClassroom;
+  if (!activeClassroom) return;
+
+  try {
+    const updated = await apiFetch(`/classrooms/${activeClassroom.id}/features`, {
+      method: 'PUT',
+      body: JSON.stringify(features),
+    });
+    
+    // Update store
+    useClassroomStore.getState().setActiveClassroom(updated);
+  } catch (error) {
+    console.error("Failed to save features:", error);
+    throw error;
+  }
+}
+
+export function isFeatureEnabled(id: string): boolean {
+  const features = loadFeatures();
+  return features.find(f => f.id === id)?.enabled ?? false;
+}
+
+export function useFeatureEnabled(id: string): boolean {
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const features = activeClassroom?.featureToggles && Array.isArray(activeClassroom.featureToggles)
+    ? activeClassroom.featureToggles
+    : DEFAULT_FEATURES;
+  
+  return (features as FeatureToggle[]).find(f => f.id === id)?.enabled ?? false;
 }

@@ -68,6 +68,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
+import { useFeatureEnabled } from "@/services/features";
 import { toast } from "@/hooks/use-toast";
 import { ReportDialog } from "@/components/ReportDialog";
 
@@ -494,14 +495,19 @@ function CreateQuizDialog({
   const { userName } = useAuth();
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("CS301");
-  const [isAnonymous, setIsAnonymous] = useState(true);
+  const anonEnabled = useFeatureEnabled('ft-anon-posting');
+  const [isAnonymous, setIsAnonymous] = useState(anonEnabled);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
   const [currentQ, setCurrentQ] = useState(0);
+
+  useEffect(() => {
+    if (!anonEnabled) setIsAnonymous(false);
+  }, [anonEnabled]);
 
   const resetForm = () => {
     setTitle("");
     setCourse("CS301");
-    setIsAnonymous(true);
+    setIsAnonymous(anonEnabled);
     setQuestions([emptyDraftQuestion()]);
     setCurrentQ(0);
   };
@@ -607,29 +613,31 @@ function CreateQuizDialog({
               </Select>
             </div>
             {/* Anonymous toggle */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Post As</label>
-              <button
-                type="button"
-                onClick={() => setIsAnonymous((prev) => !prev)}
-                className={cn(
-                  "w-full flex items-center gap-3 p-2.5 border transition-colors text-left",
-                  isAnonymous ? "border-border bg-muted/50" : "border-primary/40 bg-primary/5"
-                )}
-              >
-                {isAnonymous ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground shrink-0" />
-                ) : (
-                  <Eye className="h-4 w-4 text-primary shrink-0" />
-                )}
-                <div className="min-w-0">
-                  <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : userName}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {isAnonymous ? "Your name will be hidden" : "Your name will be visible"}
-                  </p>
-                </div>
-              </button>
-            </div>
+            {anonEnabled && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Post As</label>
+                <button
+                  type="button"
+                  onClick={() => setIsAnonymous((prev) => !prev)}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-2.5 border transition-colors text-left",
+                    isAnonymous ? "border-border bg-muted/50" : "border-primary/40 bg-primary/5"
+                  )}
+                >
+                  {isAnonymous ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground shrink-0" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-primary shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold">{isAnonymous ? "Anonymous" : userName}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {isAnonymous ? "Your name will be hidden" : "Your name will be visible"}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Question tabs */}

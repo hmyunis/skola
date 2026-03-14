@@ -1,10 +1,20 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { LoungePost } from './entities/lounge-post.entity';
 import { LoungeReaction } from './entities/lounge-reaction.entity';
 import { PaginationQueryDto, PaginatedResult } from '../../core/dto/pagination-query.dto';
 import { User, UserRole } from '../users/entities/user.entity';
+import { ClassroomsService } from '../classrooms/classrooms.service';
+
+interface LoungeFeedQueryDto {
+  page?: number;
+  limit?: number;
+  search?: string;
+  tag?: string;
+  course?: string;
+  sort?: string;
+}
 
 interface FeedFilters {
   search?: string;
@@ -18,9 +28,18 @@ export class LoungeService {
   constructor(
     @InjectRepository(LoungePost) private postRepo: Repository<LoungePost>,
     @InjectRepository(LoungeReaction) private reactionRepo: Repository<LoungeReaction>,
+    private classroomService: ClassroomsService,
   ) {}
 
   async createPost(classroomId: string, authorId: string, data: { content: string; tags?: string[]; course?: string; isAnonymous?: boolean }) {
+    if (data.isAnonymous) {
+      const classroom = await this.classroomService.getClassroomById(classroomId);
+      const feature = (classroom.featureToggles as any[])?.find(f => f.id === 'ft-anon-posting');
+      if (feature && !feature.enabled) {
+        throw new BadRequestException('Anonymous posting is disabled in this classroom');
+      }
+    }
+
     const post = this.postRepo.create({
       content: data.content,
       tags: data.tags || [],
@@ -173,6 +192,14 @@ export class LoungeService {
   async addReply(parentId: string, authorId: string, data: { content: string; isAnonymous?: boolean }): Promise<any> {
     const parentPost = await this.postRepo.findOne({ where: { id: parentId } });
     if (!parentPost) throw new NotFoundException('Parent post not found');
+
+    if (data.isAnonymous) {
+      const classroom = await this.classroomService.getClassroomById(parentPost.classroomId);
+      const feature = (classroom.featureToggles as any[])?.find(f => f.id === 'ft-anon-posting');
+      if (feature && !feature.enabled) {
+        throw new BadRequestException('Anonymous posting is disabled in this classroom');
+      }
+    }
 
     const reply = this.postRepo.create({
       content: data.content,

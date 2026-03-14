@@ -23,6 +23,7 @@ import { useTheme } from "@/stores/themeStore";
 import { useAuth } from "@/stores/authStore";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isFeatureEnabled, useFeatureEnabled } from "@/services/features";
 import {
   Sidebar,
   SidebarContent,
@@ -37,11 +38,11 @@ import {
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Schedule", url: "/schedule", icon: Calendar },
-  { title: "Assessments", url: "/academics", icon: BookOpen },
-  { title: "Resources", url: "/resources", icon: FolderOpen },
-  { title: "Lounge", url: "/lounge", icon: MessageSquare },
-  { title: "Arena", url: "/arena", icon: Swords },
+  { title: "Schedule", url: "/schedule", icon: Calendar, featureId: "ft-schedule" },
+  { title: "Assessments", url: "/academics", icon: BookOpen, featureId: "ft-academics" },
+  { title: "Resources", url: "/resources", icon: FolderOpen, featureId: "ft-resources" },
+  { title: "Lounge", url: "/lounge", icon: MessageSquare, featureId: "ft-lounge" },
+  { title: "Arena", url: "/arena", icon: Swords, featureId: "ft-arena" },
   { title: "Members", url: "/members", icon: Users },
   { title: "Appearance", url: "/settings", icon: Settings },
 ];
@@ -59,6 +60,51 @@ const ownerItems = [
   { title: "General", url: "/owner/general", icon: Settings },
 ];
 
+function SidebarLink({ 
+  item, 
+  collapsed, 
+  currentPath 
+}: { 
+  item: any; 
+  collapsed: boolean; 
+  currentPath: string; 
+}) {
+  const isEnabled = useFeatureEnabled(item.featureId || "none");
+  if (item.featureId && !isEnabled) return null;
+
+  const isActive = currentPath === item.url;
+  const link = (
+    <NavLink
+      to={item.url}
+      end
+      className={`flex items-center gap-3 px-3 py-2 text-sm font-medium uppercase tracking-wide transition-colors ${
+        isActive
+          ? "bg-sidebar-accent text-sidebar-primary-foreground border-l-2 border-sidebar-primary"
+          : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+      }`}
+      activeClassName=""
+    >
+      <item.icon className="h-4 w-4 shrink-0" />
+      {!collapsed && <span>{item.title}</span>}
+    </NavLink>
+  );
+
+  return (
+    <SidebarMenuItem key={item.url}>
+      <SidebarMenuButton asChild tooltip={item.title}>
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{link}</TooltipTrigger>
+            <TooltipContent side="right"><span>{item.title}</span></TooltipContent>
+          </Tooltip>
+        ) : (
+          link
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
 function NavSection({
   items,
   label,
@@ -66,7 +112,7 @@ function NavSection({
   collapsed,
   currentPath,
 }: {
-  items: typeof navItems;
+  items: any[];
   label: string;
   icon?: typeof Shield;
   collapsed: boolean;
@@ -80,38 +126,14 @@ function NavSection({
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => {
-            const isActive = currentPath === item.url;
-            const link = (
-              <NavLink
-                to={item.url}
-                end
-                className={`flex items-center gap-3 px-3 py-2 text-sm font-medium uppercase tracking-wide transition-colors ${
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-primary-foreground border-l-2 border-sidebar-primary"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
-                }`}
-                activeClassName=""
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>{item.title}</span>}
-              </NavLink>
-            );
-            return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild>
-                  {collapsed ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>{link}</TooltipTrigger>
-                      <TooltipContent side="right"><span>{item.title}</span></TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    link
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
+          {items.map((item) => (
+            <SidebarLink 
+              key={item.url} 
+              item={item} 
+              collapsed={collapsed} 
+              currentPath={currentPath} 
+            />
+          ))}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

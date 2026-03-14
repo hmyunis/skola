@@ -144,11 +144,14 @@ export class ClassroomsService {
   }
 
   async updateTheme(id: string, theme: any): Promise<Classroom> {
-    const classroom = await this.classroomsRepository.findOne({ where: { id } });
-    if (!classroom) {
-      throw new NotFoundException('Classroom not found');
-    }
+    const classroom = await this.getClassroomById(id);
     classroom.theme = theme;
+    return this.classroomsRepository.save(classroom);
+  }
+
+  async updateFeatures(id: string, features: any): Promise<Classroom> {
+    const classroom = await this.getClassroomById(id);
+    classroom.featureToggles = features;
     return this.classroomsRepository.save(classroom);
   }
 

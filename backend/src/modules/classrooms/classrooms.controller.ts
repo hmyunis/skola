@@ -57,6 +57,13 @@ export class ClassroomsController {
     return this.classroomsService.updateTheme(id, theme);
   }
 
+  @Put(':id/features')
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.OWNER)
+  async updateClassroomFeatures(@Param('id') id: string, @Body() features: any) {
+    return this.classroomsService.updateFeatures(id, features);
+  }
+
   @Get(':id/members')
   async getClassroomMembers(@Param('id') id: string) {
     return this.classroomsService.getClassroomMembers(id);

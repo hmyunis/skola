@@ -26,11 +26,7 @@ export class Classroom {
   isActive: boolean;
 
   @Column({ type: 'simple-json', nullable: true })
-  featureToggles: {
-    social: boolean;
-    gamification: boolean;
-    experimental: boolean;
-  };
+  featureToggles: any; // Store the array of FeatureToggle objects
 
   @OneToMany(() => ClassroomMember, (member) => member.classroom)
   members: ClassroomMember[];

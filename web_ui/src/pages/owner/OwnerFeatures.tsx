@@ -26,17 +26,28 @@ const categoryConfig = {
 const OwnerFeatures = () => {
   const [features, setFeatures] = useState<FeatureToggle[]>(loadFeatures);
 
-  const toggleFeature = (id: string) => {
+  const toggleFeature = async (id: string) => {
     const updated = features.map((f) =>
       f.id === id ? { ...f, enabled: !f.enabled } : f
     );
     setFeatures(updated);
-    saveFeatures(updated);
-    const ft = updated.find((f) => f.id === id)!;
-    toast({
-      title: ft.enabled ? "Enabled" : "Disabled",
-      description: `${ft.name} has been ${ft.enabled ? "enabled" : "disabled"}.`,
-    });
+    
+    try {
+      await saveFeatures(updated);
+      const ft = updated.find((f) => f.id === id)!;
+      toast({
+        title: ft.enabled ? "Enabled" : "Disabled",
+        description: `${ft.name} has been ${ft.enabled ? "enabled" : "disabled"}.`,
+      });
+    } catch (error) {
+      // Revert on error
+      setFeatures(features);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save feature toggle. Please try again.",
+      });
+    }
   };
 
   const grouped = Object.entries(categoryConfig).map(([key, cfg]) => ({

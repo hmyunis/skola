@@ -19,6 +19,7 @@ import {
 import { CourseSelectDropdown } from '@/components/CourseSelectDropdown';
 import { useAuth } from '@/stores/authStore';
 import { useSemesterStore } from '@/stores/semesterStore';
+import { useFeatureEnabled } from '@/services/features';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -216,6 +217,11 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
     const [expanded, setExpanded] = useState(false);
     const [replyText, setReplyText] = useState('');
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const anonEnabled = useFeatureEnabled('ft-anon-posting');
+
+    useEffect(() => {
+        if (!anonEnabled) setIsAnonymous(false);
+    }, [anonEnabled]);
 
     const { data: replies, isLoading } = useQuery({
         queryKey: ['loungeReplies', postId],
@@ -322,25 +328,27 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
                                 }}
                                 className="h-7 text-xs flex-1"
                             />
-                            <div className="flex items-center gap-1">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-[9px] text-muted-foreground">
-                                                Anon
-                                            </span>
-                                            <Switch
-                                                checked={isAnonymous}
-                                                onCheckedChange={setIsAnonymous}
-                                                className="scale-[0.6]"
-                                            />
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">
-                                        <span>Post anonymously</span>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </div>
+                            {anonEnabled && (
+                                <div className="flex items-center gap-1">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[9px] text-muted-foreground">
+                                                    Anon
+                                                </span>
+                                                <Switch
+                                                    checked={isAnonymous}
+                                                    onCheckedChange={setIsAnonymous}
+                                                    className="scale-[0.6]"
+                                                />
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                            <span>Post anonymously</span>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            )}
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -640,6 +648,11 @@ function ComposeBox({
     const [course, setCourse] = useState<string>('none');
     const [expanded, setExpanded] = useState(false);
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const anonEnabled = useFeatureEnabled('ft-anon-posting');
+
+    useEffect(() => {
+        if (!anonEnabled) setIsAnonymous(false);
+    }, [anonEnabled]);
 
     const handleSubmit = () => {
         if (!content.trim()) return;
@@ -669,14 +682,16 @@ function ComposeBox({
                         {isAnonymous ? 'Posting Anonymously' : `Posting as ${userName}`}
                     </span>
                     <div className="flex-1" />
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-muted-foreground">Anonymous</span>
-                        <Switch
-                            checked={isAnonymous}
-                            onCheckedChange={setIsAnonymous}
-                            className="scale-75"
-                        />
-                    </div>
+                    {anonEnabled && (
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground">Anonymous</span>
+                            <Switch
+                                checked={isAnonymous}
+                                onCheckedChange={setIsAnonymous}
+                                className="scale-75"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <Textarea

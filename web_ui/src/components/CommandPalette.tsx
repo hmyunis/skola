@@ -28,14 +28,16 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { COURSES } from "@/services/api";
+import { isFeatureEnabled, useFeatureEnabled } from "@/services/features";
+import { useClassroomStore } from "@/stores/classroomStore";
 
 const pages = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "pages" },
-  { title: "Schedule", url: "/schedule", icon: Calendar, group: "pages" },
-  { title: "Assessments", url: "/academics", icon: BookOpen, group: "pages" },
-  { title: "Resources", url: "/resources", icon: FolderOpen, group: "pages" },
-  { title: "Lounge", url: "/lounge", icon: MessageSquare, group: "pages" },
-  { title: "Arena", url: "/arena", icon: Swords, group: "pages" },
+  { title: "Schedule", url: "/schedule", icon: Calendar, group: "pages", featureId: "ft-schedule" },
+  { title: "Assessments", url: "/academics", icon: BookOpen, group: "pages", featureId: "ft-academics" },
+  { title: "Resources", url: "/resources", icon: FolderOpen, group: "pages", featureId: "ft-resources" },
+  { title: "Lounge", url: "/lounge", icon: MessageSquare, group: "pages", featureId: "ft-lounge" },
+  { title: "Arena", url: "/arena", icon: Swords, group: "pages", featureId: "ft-arena" },
   { title: "Members", url: "/members", icon: Users, group: "pages" },
   { title: "Appearance", url: "/settings", icon: Settings, group: "pages" },
   { title: "Announcements", url: "/announcements", icon: Megaphone, group: "pages" },
@@ -59,6 +61,8 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { isAdmin, isOwner } = useAuthStore();
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const features = activeClassroom?.featureToggles || [];
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -72,11 +76,15 @@ export function CommandPalette() {
   }, []);
 
   const allPages = useMemo(() => {
-    let result = [...pages];
+    let result = pages.filter((p: any) => {
+      if (!p.featureId) return true;
+      const f = (features as any[]).find(f => f.id === p.featureId);
+      return f ? f.enabled : true; // Default to enabled if feature not found
+    });
     if (isAdmin) result = [...result, ...adminPages];
     if (isOwner) result = [...result, ...ownerPages];
     return result;
-  }, [isAdmin, isOwner]);
+  }, [isAdmin, isOwner, features]);
 
   const handleSelect = (url: string) => {
     setOpen(false);

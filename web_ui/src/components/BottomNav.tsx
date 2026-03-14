@@ -29,17 +29,18 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { useAuth } from "@/stores/authStore";
+import { isFeatureEnabled, useFeatureEnabled } from "@/services/features";
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Schedule", url: "/schedule", icon: Calendar },
-  { title: "Assessments", url: "/academics", icon: BookOpen },
-  { title: "Lounge", url: "/lounge", icon: MessageSquare },
+  { title: "Schedule", url: "/schedule", icon: Calendar, featureId: "ft-schedule" },
+  { title: "Assessments", url: "/academics", icon: BookOpen, featureId: "ft-academics" },
+  { title: "Lounge", url: "/lounge", icon: MessageSquare, featureId: "ft-lounge" },
 ];
 
 const moreItems = [
-  { title: "Resources", url: "/resources", icon: FolderOpen },
-  { title: "Arena", url: "/arena", icon: Swords },
+  { title: "Resources", url: "/resources", icon: FolderOpen, featureId: "ft-resources" },
+  { title: "Arena", url: "/arena", icon: Swords, featureId: "ft-arena" },
   { title: "Members", url: "/members", icon: Users },
   { title: "Appearance", url: "/settings", icon: Settings },
 ];
@@ -58,9 +59,51 @@ const ownerItems = [
   { title: "Data Export", url: "/owner/data-export", icon: Download },
 ];
 
-export function BottomNav() {
+function BottomNavLink({ item }: { item: any }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const isEnabled = useFeatureEnabled(item.featureId || "none");
+  if (item.featureId && !isEnabled) return null;
+
+  const active = location.pathname === item.url;
+  return (
+    <button
+      onClick={() => navigate(item.url)}
+      className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[9px] uppercase tracking-wider font-medium transition-colors ${
+        active ? "text-primary" : "text-muted-foreground"
+      }`}
+    >
+      <item.icon className="h-4 w-4" />
+      <span className="leading-none">{item.title}</span>
+    </button>
+  );
+}
+
+function MoreNavItem({ item, onSelect }: { item: any; onSelect: () => void }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isEnabled = useFeatureEnabled(item.featureId || "none");
+  if (item.featureId && !isEnabled) return null;
+
+  const active = location.pathname === item.url;
+  return (
+    <button
+      onClick={() => {
+        navigate(item.url);
+        onSelect();
+      }}
+      className={`flex items-center gap-3 w-full p-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+        active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+      }`}
+    >
+      <item.icon className="h-4 w-4" />
+      <span>{item.title}</span>
+    </button>
+  );
+}
+
+export function BottomNav() {
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const { isAdmin, isOwner } = useAuth();
 
@@ -74,21 +117,9 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden safe-area-bottom">
       <div className="flex items-center justify-around h-12 px-1">
-        {mainItems.map((item) => {
-          const active = location.pathname === item.url;
-          return (
-            <button
-              key={item.url}
-              onClick={() => navigate(item.url)}
-              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[9px] uppercase tracking-wider font-medium transition-colors ${
-                active ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              <span className="leading-none">{item.title}</span>
-            </button>
-          );
-        })}
+        {mainItems.map((item) => (
+          <BottomNavLink key={item.url} item={item} />
+        ))}
 
         {/* More button */}
         <Sheet open={open} onOpenChange={setOpen}>
@@ -102,91 +133,22 @@ export function BottomNav() {
               <span className="leading-none">More</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="border-t border-border max-h-[70vh] overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle className="uppercase tracking-widest text-sm">More</SheetTitle>
+          <SheetContent side="bottom" className="h-[70vh] p-0 border-t-2 border-primary">
+            <SheetHeader className="p-4 border-b border-border">
+              <SheetTitle className="text-xs font-black uppercase tracking-[0.2em] text-left">
+                Navigation Menu
+              </SheetTitle>
             </SheetHeader>
-            <div className="flex flex-col gap-1 mt-4">
-              {moreItems.map((item) => {
-                const active = location.pathname === item.url;
-                return (
-                  <button
-                    key={item.url}
-                    onClick={() => {
-                      navigate(item.url);
-                      setOpen(false);
-                    }}
-                    className={`flex items-center gap-3 px-4 py-3 text-sm font-medium uppercase tracking-wide transition-colors border border-border ${
-                      active
-                        ? "bg-primary/10 text-primary border-primary/30"
-                        : "text-foreground hover:bg-accent"
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </button>
-                );
-              })}
-
-              {isAdmin && (
-                <>
-                  <div className="flex items-center gap-2 pt-3 pb-1 px-1">
-                    <Shield className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Admin</span>
-                    <Separator className="flex-1" />
-                  </div>
-                  {adminItems.map((item) => {
-                    const active = location.pathname === item.url;
-                    return (
-                      <button
-                        key={item.url}
-                        onClick={() => {
-                          navigate(item.url);
-                          setOpen(false);
-                        }}
-                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium uppercase tracking-wide transition-colors border border-border ${
-                          active
-                            ? "bg-primary/10 text-primary border-primary/30"
-                            : "text-foreground hover:bg-accent"
-                        }`}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </button>
-                    );
-                  })}
-                </>
-              )}
-
-              {isOwner && (
-                <>
-                  <div className="flex items-center gap-2 pt-3 pb-1 px-1">
-                    <Crown className="h-3 w-3 text-amber-500" />
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Owner</span>
-                    <Separator className="flex-1" />
-                  </div>
-                  {ownerItems.map((item) => {
-                    const active = location.pathname === item.url;
-                    return (
-                      <button
-                        key={item.url}
-                        onClick={() => {
-                          navigate(item.url);
-                          setOpen(false);
-                        }}
-                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium uppercase tracking-wide transition-colors border border-border ${
-                          active
-                            ? "bg-primary/10 text-primary border-primary/30"
-                            : "text-foreground hover:bg-accent"
-                        }`}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </button>
-                    );
-                  })}
-                </>
-              )}
+            <div className="overflow-y-auto pb-8">
+              <div className="grid grid-cols-1 divide-y divide-border">
+                {allMoreItems.map((item) => (
+                  <MoreNavItem 
+                    key={item.url} 
+                    item={item} 
+                    onSelect={() => setOpen(false)} 
+                  />
+                ))}
+              </div>
             </div>
           </SheetContent>
         </Sheet>
