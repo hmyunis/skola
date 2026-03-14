@@ -18,6 +18,7 @@ import { Flag } from "lucide-react";
 import { saveUserReport, type UserReport } from "@/services/admin";
 import { reportResource } from "@/services/resources";
 import { reportLoungeContent } from "@/services/lounge";
+import { reportArenaQuiz } from "@/services/arena";
 import { useAuth } from "@/stores/authStore";
 import { toast } from "@/hooks/use-toast";
 
@@ -66,6 +67,8 @@ export function ReportDialog({
           reason: resolvedReason,
           details: details.trim() || undefined,
         });
+      } else if (contentType === "quiz") {
+        await reportArenaQuiz(contentId, { reason: resolvedReason, details: details.trim() || undefined });
       } else {
         saveUserReport({
           id: `report-${Date.now()}`,
@@ -83,10 +86,10 @@ export function ReportDialog({
       setReason("");
       setDetails("");
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Report Failed",
-        description: err?.message || "Could not submit report.",
+        description: err instanceof Error ? err.message : "Could not submit report.",
         variant: "destructive",
       });
     }

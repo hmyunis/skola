@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Patch,
   Delete,
   Body,
@@ -19,9 +18,17 @@ import {
   CourseQueryDto,
 } from './dto/course.dto';
 import { CreateSemesterDto, UpdateSemesterDto } from './dto/semester.dto';
-import { UserRole } from '../users/entities/user.entity';
+import { CreateScheduleItemDto, UpdateScheduleItemDto } from './dto/schedule.dto';
+import {
+  AssessmentQueryDto,
+  CreateAssessmentDto,
+  RateAssessmentDto,
+  UpdateAssessmentDto,
+} from './dto/assessment.dto';
+import { User, UserRole } from '../users/entities/user.entity';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('academics')
@@ -72,6 +79,88 @@ export class AcademicsController {
   @Get('semesters/archive')
   async getArchive(@CurrentClassroom() classroomId: string) {
     return this.academicsService.getAllSemesters(classroomId);
+  }
+
+  @Get('dashboard/quick-stats')
+  async getDashboardQuickStats(@CurrentClassroom() classroomId: string) {
+    return this.academicsService.getDashboardQuickStats(classroomId);
+  }
+
+  // ================= ASSESSMENTS =================
+  @Get('assessments')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async getAssessments(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Query() query: AssessmentQueryDto,
+  ) {
+    return this.academicsService.getAssessments(classroomId, query, user.id);
+  }
+
+  @Get('assessments/stats')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async getAssessmentStats(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: AssessmentQueryDto,
+  ) {
+    return this.academicsService.getAssessmentStats(classroomId, query);
+  }
+
+  @Post('assessments')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async createAssessment(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Body() dto: CreateAssessmentDto,
+  ) {
+    return this.academicsService.createAssessment(classroomId, user.id, dto);
+  }
+
+  @Patch('assessments/:id')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async updateAssessment(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateAssessmentDto,
+  ) {
+    return this.academicsService.updateAssessment(classroomId, id, dto);
+  }
+
+  @Delete('assessments/:id')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async deleteAssessment(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.deleteAssessment(classroomId, id);
+  }
+
+  @Post('assessments/:id/rating')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async rateAssessment(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: RateAssessmentDto,
+  ) {
+    return this.academicsService.rateAssessment(classroomId, id, user.id, dto.vote);
+  }
+
+  @Delete('assessments/:id/rating')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async clearAssessmentRating(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.clearAssessmentRating(classroomId, id, user.id);
   }
 
   // ================= COURSES =================
@@ -130,11 +219,41 @@ export class AcademicsController {
     return this.academicsService.getWeeklySchedule(classroomId);
   }
 
-  @Post('schedule/:courseId')
-  async addScheduleItem(
-    @Param('courseId') courseId: string,
-    @Body() dto: any, // Replace with CreateScheduleItemDto
+  @Post('schedule')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async createScheduleItem(
+    @CurrentClassroom() classroomId: string,
+    @Body() dto: CreateScheduleItemDto,
   ) {
-    return this.academicsService.addScheduleItem(courseId, dto);
+    return this.academicsService.createScheduleItem(classroomId, dto);
+  }
+
+  @Patch('schedule/:id')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async updateScheduleItem(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateScheduleItemDto,
+  ) {
+    return this.academicsService.updateScheduleItem(classroomId, id, dto);
+  }
+
+  @Delete('schedule/:id')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async deleteScheduleItem(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.deleteScheduleItem(classroomId, id);
+  }
+
+  @Post('schedule/publish')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async publishScheduleDrafts(@CurrentClassroom() classroomId: string) {
+    return this.academicsService.publishScheduleDrafts(classroomId);
   }
 }

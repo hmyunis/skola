@@ -3,6 +3,8 @@ import { Classroom } from '../../classrooms/entities/classroom.entity';
 import { Course } from '../../academics/entities/course.entity';
 import { User } from '../../users/entities/user.entity';
 import { QuizQuestion } from './quiz-question.entity';
+import { QuizAttempt } from './quiz-attempt.entity';
+import { QuizReport } from './quiz-report.entity';
 
 @Entity('quizzes')
 export class Quiz {
@@ -16,12 +18,15 @@ export class Quiz {
   @Column()
   classroomId: string;
 
-  @ManyToOne(() => Course, (course) => course.quizzes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Course, (course) => course.quizzes, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'courseId' })
   course: Course;
 
+  @Column({ nullable: true })
+  courseId: string | null;
+
   @Column()
-  courseId: string;
+  courseCode: string;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL' }) // Students can create quizzes too!
   @JoinColumn({ name: 'authorId' })
@@ -36,11 +41,20 @@ export class Quiz {
   @Column({ type: 'int', default: 0 })
   timeLimitMinutes: number; // 0 means no limit
 
+  @Column({ default: false })
+  isAnonymous: boolean;
+
   @Column({ default: true })
   isPublished: boolean;
 
   @OneToMany(() => QuizQuestion, (question) => question.quiz, { cascade: true })
   questions: QuizQuestion[];
+
+  @OneToMany(() => QuizAttempt, (attempt) => attempt.quiz)
+  attempts: QuizAttempt[];
+
+  @OneToMany(() => QuizReport, (report) => report.quiz)
+  reports: QuizReport[];
 
   @CreateDateColumn()
   createdAt: Date;

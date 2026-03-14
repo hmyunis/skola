@@ -34,6 +34,12 @@ export async function deleteAnnouncement(id: string): Promise<void> {
   });
 }
 
+export async function triggerSurpriseAssessment(): Promise<Announcement> {
+  return apiFetch("/admin/surprise-assessment/trigger", {
+    method: "POST",
+  });
+}
+
 export function getDismissedAnnouncementIds(): string[] {
   try {
     const s = localStorage.getItem(DISMISSED_KEY);

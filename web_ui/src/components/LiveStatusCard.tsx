@@ -2,15 +2,20 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchTodaySchedule, type ClassSlot } from "@/services/api";
 import { useSemesterStore } from "@/stores/semesterStore";
+import { useAuth } from "@/stores/authStore";
+import { useClassroomStore } from "@/stores/classroomStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Clock, Coffee } from "lucide-react";
+import { Clock, Coffee, Loader2 } from "lucide-react";
 import { formatTime12 } from "@/lib/utils";
 
 type LiveState =
   | { status: "live"; classSlot: ClassSlot; progress: number; remaining: string }
   | { status: "upcoming"; classSlot: ClassSlot; startsIn: string }
   | { status: "free" };
+
+const EMPTY_SCHEDULE: ClassSlot[] = [];
 
 function computeState(schedule: ClassSlot[]): LiveState {
   const now = new Date();
@@ -52,20 +57,65 @@ function computeState(schedule: ClassSlot[]): LiveState {
 }
 
 export function LiveStatusCard() {
+  const { isAdmin } = useAuth();
   const semId = useSemesterStore((s) => s.activeSemester?.id);
-  const { data: schedule } = useQuery({
+  const activeClassroomId = useClassroomStore((s) => s.activeClassroom?.id);
+  const {
+    data: scheduleData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["todaySchedule", semId],
     queryFn: () => fetchTodaySchedule(semId),
+    enabled: !!activeClassroomId,
+    retry: 1,
   });
+  const schedule = scheduleData ?? EMPTY_SCHEDULE;
 
   const [state, setState] = useState<LiveState>({ status: "free" });
 
   useEffect(() => {
-    if (!schedule) return;
-    setState(computeState(schedule));
-    const interval = setInterval(() => setState(computeState(schedule)), 10000);
+    const visibleSchedule = isAdmin ? schedule : schedule.filter((slot) => !slot.draft);
+    setState(computeState(visibleSchedule));
+    const interval = setInterval(() => setState(computeState(visibleSchedule)), 10000);
     return () => clearInterval(interval);
-  }, [schedule]);
+  }, [scheduleData, isAdmin]);
+
+  if (isLoading) {
+    return (
+      <Card className="border border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <CardTitle className="text-sm text-muted-foreground">CHECKING STATUS</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Loading today's classes...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="border border-destructive/30 bg-destructive/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-destructive">STATUS UNAVAILABLE</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-destructive/90">
+            {error instanceof Error ? error.message : "Could not load live status."}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (state.status === "live") {
     return (

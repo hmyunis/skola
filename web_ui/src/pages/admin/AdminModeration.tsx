@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  dismissArenaReport,
   dismissResourceReport,
   dismissLoungeReport,
   fetchAllFlaggedContent,
+  resolveArenaReport,
   resolveLoungeReport,
   resolveResourceReport,
   updateUserReportStatus,
@@ -98,6 +100,12 @@ const AdminModeration = () => {
         }
         return dismissLoungeReport(action.item.id);
       }
+      if (action.item.type === "quiz") {
+        if (action.status === "resolved") {
+          return resolveArenaReport(action.item.id, Boolean(action.removeResource));
+        }
+        return dismissArenaReport(action.item.id);
+      }
       updateUserReportStatus(action.item.id, action.status);
       return { success: true };
     },
@@ -106,8 +114,12 @@ const AdminModeration = () => {
       toast({ title: "Moderation action applied" });
       setConfirmAction(null);
     },
-    onError: (err: any) => {
-      toast({ title: "Action failed", description: err.message || "Could not update report", variant: "destructive" });
+    onError: (err: unknown) => {
+      toast({
+        title: "Action failed",
+        description: err instanceof Error ? err.message : "Could not update report",
+        variant: "destructive",
+      });
     },
   });
 
@@ -175,7 +187,7 @@ const AdminModeration = () => {
             const TypeIcon = typeIcons[item.type];
             const sCfg = statusConfig[item.status];
             const SIcon = sCfg.icon;
-            const isResource = item.type === "resource";
+            const isRemovableContent = item.type === "resource" || item.type === "quiz" || item.type === "post" || item.type === "reply";
 
             return (
               <div key={item.id} className="border border-border p-3 sm:p-4 space-y-2 hover:bg-accent/20 transition-colors">
@@ -199,7 +211,7 @@ const AdminModeration = () => {
                   <span className="break-words">By: {item.author} · Reported by: {item.reportedBy}</span>
                   {item.status === "pending" && (
                     <div className="flex gap-1 w-full sm:w-auto">
-                      {isResource && (
+                      {isRemovableContent && (
                         <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 flex-1 sm:flex-none text-destructive" onClick={() =>
                           setConfirmAction({
                             item,
@@ -219,8 +231,8 @@ const AdminModeration = () => {
                           status: "resolved",
                           removeResource: false,
                           label: "Resolve Report",
-                          description: isResource
-                            ? "Mark report resolved and keep the resource."
+                          description: isRemovableContent
+                            ? "Mark report resolved and keep the content."
                             : "Mark report resolved.",
                         })
                       }>

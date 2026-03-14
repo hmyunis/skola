@@ -1,4 +1,4 @@
-/** Shared arena types — safe to import from backend monorepo */
+export type QuizDifficulty = "easy" | "medium" | "hard";
 
 export interface QuizQuestion {
   id: string;
@@ -6,17 +6,29 @@ export interface QuizQuestion {
   options: string[];
   correctIndex: number;
   course: string;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: QuizDifficulty;
+  durationSeconds: number;
 }
 
 export interface CustomQuiz {
   id: string;
   title: string;
   course: string;
-  questions: QuizQuestion[];
   createdAt: string;
   anonymous_id: string;
-  createdByUser?: boolean;
+  createdByUser: boolean;
+  questionCount: number;
+  questions?: QuizQuestion[];
+}
+
+export interface ArenaQuizListResponse {
+  data: CustomQuiz[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
 }
 
 export interface LeaderboardEntry {
@@ -29,7 +41,17 @@ export interface LeaderboardEntry {
   title: string;
 }
 
-export interface PlayerStats {
+export interface ArenaLeaderboardResponse {
+  data: LeaderboardEntry[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+}
+
+export interface ArenaPlayerStats {
   xp: number;
   wins: number;
   totalPlayed: number;
@@ -37,4 +59,31 @@ export interface PlayerStats {
   bestStreak: number;
   correctAnswers: number;
   totalAnswers: number;
+  accuracy: number;
+  title: string;
+}
+
+export interface QuizAttemptResult {
+  id: string;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  won: boolean;
+  xpEarned: number;
+  stats: ArenaPlayerStats;
+}
+
+export interface ArenaReport {
+  id: string;
+  type: "quiz";
+  contentId: string;
+  content: string;
+  author: string;
+  reason: string;
+  details?: string;
+  reportedBy: string;
+  reportedAt: string;
+  status: "pending" | "resolved" | "dismissed";
+  reviewedAt?: string;
+  reviewedBy?: string;
 }

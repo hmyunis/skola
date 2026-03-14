@@ -9,10 +9,12 @@ export interface SemesterInfo {
 
 export interface ClassSlot {
   id: string;
+  courseId?: string;
   name: string;
   code: string;
   room: string;
   type: "lecture" | "lab" | "exam";
+  dayOfWeek?: number;
   startTime: Date;
   endTime: Date;
   draft?: boolean;
@@ -25,6 +27,20 @@ export interface Assignment {
   dueDate: string;
   source: "classroom" | "direct" | "notice";
   status: "pending" | "submitted" | "graded";
+  createdAt?: string;
+  updatedAt?: string;
+  confidenceDistribution?: {
+    confident: number;
+    neutral: number;
+    struggling: number;
+    total: number;
+  };
+  confidencePercentages?: {
+    confident: number;
+    neutral: number;
+    struggling: number;
+  };
+  userConfidence?: "confident" | "neutral" | "struggling" | null;
 }
 
 export interface QuickStats {

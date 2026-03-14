@@ -7,7 +7,7 @@ export class QuizAttempt {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Quiz, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Quiz, (quiz) => quiz.attempts, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'quizId' })
   quiz: Quiz;
 
@@ -26,6 +26,12 @@ export class QuizAttempt {
 
   @Column({ type: 'int' })
   totalQuestions: number;
+
+  @Column({ type: 'int', default: 0 })
+  correctAnswers: number;
+
+  @Column({ default: false })
+  won: boolean;
 
   @CreateDateColumn()
   completedAt: Date;

@@ -20,8 +20,11 @@ export interface Assessment {
   description: string;
   maxScore: number;
   weight: number;
+  status?: "pending" | "submitted" | "graded";
+  source?: "classroom" | "direct" | "notice";
   semesterId: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface InviteLink {

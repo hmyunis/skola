@@ -23,6 +23,8 @@ export {
     dismissResourceReport,
     resolveLoungeReport,
     dismissLoungeReport,
+    resolveArenaReport,
+    dismissArenaReport,
 } from './moderation';
 export type { FlaggedContent, UserReport } from './moderation';
 
@@ -31,6 +33,7 @@ export {
     createAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
+    triggerSurpriseAssessment,
     getDismissedAnnouncementIds,
     dismissAnnouncement,
 } from './announcements';

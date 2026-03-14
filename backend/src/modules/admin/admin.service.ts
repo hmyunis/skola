@@ -23,6 +23,7 @@ interface UpsertAnnouncementDto {
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
+  private static readonly SURPRISE_ASSESSMENT_TITLE = 'Surprise Assessment Alarm';
 
   constructor(
     @InjectRepository(Announcement) private announcementRepo: Repository<Announcement>,
@@ -111,6 +112,45 @@ export class AdminService {
 
     if (data.sendTelegram) {
       await this.sendAnnouncementToTelegram(classroomId, withAuthor);
+    }
+
+    return this.toAnnouncementResponse(withAuthor);
+  }
+
+  async triggerSurpriseAssessment(classroomId: string, authorId: string) {
+    const classroom = await this.classroomRepo.findOne({ where: { id: classroomId } });
+    if (!classroom) {
+      throw new NotFoundException('Classroom not found');
+    }
+
+    const panicFeature = (classroom.featureToggles as any[] | undefined)?.find(
+      (feature) => feature?.id === 'ft-panic',
+    );
+    const panicEnabled = panicFeature ? Boolean(panicFeature.enabled) : true;
+
+    if (!panicEnabled) {
+      throw new BadRequestException('Surprise Assessment feature is disabled for this classroom.');
+    }
+
+    const announcement = this.announcementRepo.create({
+      classroomId,
+      authorId,
+      title: AdminService.SURPRISE_ASSESSMENT_TITLE,
+      content: 'A surprise assessment has been triggered. Check with your instructor immediately.',
+      priority: PriorityLevel.URGENT,
+      targetAudience: AnnouncementTargetAudience.ALL,
+      pinned: true,
+      expiresAt: null,
+    });
+
+    const saved = await this.announcementRepo.save(announcement);
+    const withAuthor = await this.announcementRepo.findOne({
+      where: { id: saved.id },
+      relations: ['author'],
+    });
+
+    if (!withAuthor) {
+      throw new NotFoundException('Announcement not found');
     }
 
     return this.toAnnouncementResponse(withAuthor);

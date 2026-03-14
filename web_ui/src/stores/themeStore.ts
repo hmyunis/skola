@@ -27,6 +27,20 @@ function persistColorMode(mode: ColorMode) {
   } catch {}
 }
 
+function normalizePattern(pattern: unknown): string {
+  if (typeof pattern !== "string" || pattern.trim().length === 0) {
+    return batchThemes[0].pattern;
+  }
+  return pattern.replace(/%2523/gi, "%23");
+}
+
+function normalizeTheme(theme: BatchTheme): BatchTheme {
+  return {
+    ...theme,
+    pattern: normalizePattern(theme.pattern),
+  };
+}
+
 export const FONT_FAMILIES = [
   { id: "system", name: "System Default", value: "ui-sans-serif, system-ui, sans-serif" },
   { id: "inter", name: "Inter", value: "'Inter', sans-serif" },
@@ -111,9 +125,10 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   customThemes: [],
 
   setBatchTheme: (theme) => {
-    set({ batchTheme: theme });
+    const normalizedTheme = normalizeTheme(theme);
+    set({ batchTheme: normalizedTheme });
     const { userAccent, colorMode } = get();
-    applyThemeToDOM(theme, userAccent, colorMode);
+    applyThemeToDOM(normalizedTheme, userAccent, colorMode);
   },
 
   setUserAccent: (accent) => {
@@ -140,7 +155,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   addCustomTheme: (theme) => {
-    const next = [...get().customThemes, { ...theme, isCustom: true }];
+    const next = [...get().customThemes, normalizeTheme({ ...theme, isCustom: true })];
     set({ customThemes: next });
   },
 
@@ -153,7 +168,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   setCustomThemes: (themes) => {
-    set({ customThemes: themes });
+    set({ customThemes: themes.map(normalizeTheme) });
   },
 
   syncThemeWithStores: () => {
@@ -172,10 +187,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         userTheme?.colorMode ||
         (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       const fontFamily = userTheme?.fontFamily || "system";
-      const batchTheme = classroomTheme || get().batchTheme || batchThemes[0];
+      const batchTheme = normalizeTheme((classroomTheme || get().batchTheme || batchThemes[0]) as BatchTheme);
       const userAccent = userTheme?.accentColor ? userAccents.find(a => a.id === userTheme.accentColor) || null : null;
+      const normalizedCustomThemes = classroomCustomThemes.map((theme) => normalizeTheme(theme));
 
-      set({ colorMode, fontFamily, batchTheme, userAccent, customThemes: classroomCustomThemes });
+      set({ colorMode, fontFamily, batchTheme, userAccent, customThemes: normalizedCustomThemes });
       persistColorMode(colorMode);
       applyThemeToDOM(batchTheme, userAccent, colorMode);
       applyFontToDOM(fontFamily);

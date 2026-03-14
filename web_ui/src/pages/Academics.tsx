@@ -1,9 +1,23 @@
-import { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchAssignments, COURSES, type Assignment } from "@/services/api";
-import { loadAssessments, saveAssessment, deleteAssessment, type Assessment as AdminAssessment } from "@/services/assessments";
+import { useState, useMemo, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  clearAssignmentConfidence,
+  fetchAssessmentStats,
+  fetchAssignments,
+  rateAssignmentConfidence,
+  type Assignment,
+} from "@/services/api";
+import {
+  createAssessment,
+  deleteAssessment,
+  loadAssessments,
+  updateAssessment,
+  type Assessment as AdminAssessment,
+} from "@/services/assessments";
+import { fetchCourses } from "@/services/courses";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useAuth } from "@/stores/authStore";
+import { useClassroomStore } from "@/stores/classroomStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +70,7 @@ import {
 import { cn } from "@/lib/utils";
 import { GroupOrderGenerator } from "@/components/GroupOrderGenerator";
 import { toast } from "@/hooks/use-toast";
+import { CourseSelectDropdown } from "@/components/CourseSelectDropdown";
 
 // ─── Source styling ───
 const sourceConfig: Record<string, { label: string; className: string; icon: typeof FileText }> = {
@@ -76,16 +91,64 @@ const assessmentTypeConfig: Record<string, { label: string; icon: typeof BookOpe
   assignment: { label: "Assignment", icon: FileText, className: "bg-primary/10 text-primary border-primary/30" },
   project: { label: "Project", icon: FolderKanban, className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
 };
+type AssessmentSource = NonNullable<AdminAssessment["source"]>;
+const sourceOptions: Array<{ value: AssessmentSource; label: string }> = [
+  { value: "classroom", label: sourceConfig.classroom.label },
+  { value: "direct", label: sourceConfig.direct.label },
+  { value: "notice", label: sourceConfig.notice.label },
+];
 
 // ─── Confidence types ───
 type ConfidenceVote = "confident" | "neutral" | "struggling";
-interface ConfidenceState { [assignmentId: string]: ConfidenceVote }
+type AssessmentFormValues = Omit<AdminAssessment, "id" | "createdAt" | "updatedAt">;
 
-function getMockAggregated(vote: ConfidenceVote | undefined) {
-  const base = { confident: 42, neutral: 35, struggling: 23 };
-  if (vote === "confident") return { confident: 48, neutral: 32, struggling: 20 };
-  if (vote === "struggling") return { confident: 38, neutral: 33, struggling: 29 };
-  return base;
+function getAggregatedConfidence(vote: ConfidenceVote | undefined) {
+  return {
+    confident: vote === "confident" ? 100 : 0,
+    neutral: vote === "neutral" ? 100 : 0,
+    struggling: vote === "struggling" ? 100 : 0,
+  };
+}
+
+function getDistributionPercentages(assignment: Assignment) {
+  if (assignment.confidencePercentages) {
+    return assignment.confidencePercentages;
+  }
+
+  const dist = assignment.confidenceDistribution;
+  if (!dist || dist.total <= 0) {
+    return getAggregatedConfidence((assignment.userConfidence || undefined) as ConfidenceVote | undefined);
+  }
+
+  return {
+    confident: Math.round((dist.confident / dist.total) * 100),
+    neutral: Math.round((dist.neutral / dist.total) * 100),
+    struggling: Math.round((dist.struggling / dist.total) * 100),
+  };
+}
+
+function isEdited(item: { createdAt?: string; updatedAt?: string }) {
+  if (!item.createdAt || !item.updatedAt) return false;
+  const created = new Date(item.createdAt).getTime();
+  const updated = new Date(item.updatedAt).getTime();
+  if (Number.isNaN(created) || Number.isNaN(updated)) return false;
+  return updated - created > 1000;
+}
+
+function formatEditedAtLocal(updatedAt?: string) {
+  if (!updatedAt) return "";
+  const date = new Date(updatedAt);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 function ConfidenceButton({ type, active, onClick }: { type: ConfidenceVote; active: boolean; onClick: () => void }) {
@@ -125,21 +188,37 @@ function AssessmentFormDialog({
   onOpenChange,
   initial,
   semesterId,
+  getCourseName,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: AdminAssessment | null;
   semesterId: string;
-  onSave: (a: AdminAssessment) => void;
+  getCourseName: (code: string) => string;
+  onSave: (a: AssessmentFormValues) => void;
 }) {
   const [title, setTitle] = useState(initial?.title || "");
   const [type, setType] = useState<AdminAssessment["type"]>(initial?.type || "assignment");
   const [courseCode, setCourseCode] = useState(initial?.courseCode || "");
+  const [selectedCourseSemesterId, setSelectedCourseSemesterId] = useState(initial?.semesterId || "");
   const [dueDate, setDueDate] = useState(initial?.dueDate || "");
   const [description, setDescription] = useState(initial?.description || "");
   const [maxScore, setMaxScore] = useState(String(initial?.maxScore || 100));
   const [weight, setWeight] = useState(String(initial?.weight || 10));
+  const [source, setSource] = useState<AssessmentSource>(initial?.source || "classroom");
+  
+  useEffect(() => {
+    setTitle(initial?.title || "");
+    setType(initial?.type || "assignment");
+    setCourseCode(initial?.courseCode || "");
+    setSelectedCourseSemesterId(initial?.semesterId || "");
+    setDueDate(initial?.dueDate || "");
+    setDescription(initial?.description || "");
+    setMaxScore(String(initial?.maxScore || 100));
+    setWeight(String(initial?.weight || 10));
+    setSource(initial?.source || "classroom");
+  }, [initial, open]);
 
   const isValid = title.trim() && courseCode && dueDate;
 
@@ -171,14 +250,22 @@ function AssessmentFormDialog({
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Course</label>
-              <Select value={courseCode} onValueChange={setCourseCode}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select course" /></SelectTrigger>
-                <SelectContent>
-                  {COURSES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>{c.code} — {c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CourseSelectDropdown
+                value={courseCode || undefined}
+                onChange={(value, course) => {
+                  setCourseCode(value === "none" || value === "all" ? "" : value);
+                  setSelectedCourseSemesterId(course?.semesterId || "");
+                }}
+                placeholder="Select course"
+                className="w-full h-9 text-xs"
+                selectedLabel={
+                  courseCode
+                    ? getCourseName(courseCode) !== courseCode
+                      ? `${courseCode} — ${getCourseName(courseCode)}`
+                      : courseCode
+                    : undefined
+                }
+              />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -196,6 +283,19 @@ function AssessmentFormDialog({
             </div>
           </div>
           <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Source</label>
+            <Select value={source} onValueChange={(v) => setSource(v as AssessmentSource)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {sourceOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Description</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Assessment details..." className="text-sm min-h-[80px]" />
           </div>
@@ -206,7 +306,6 @@ function AssessmentFormDialog({
               disabled={!isValid}
               onClick={() => {
                 onSave({
-                  id: initial?.id || `assess-${Date.now()}`,
                   title: title.trim(),
                   type,
                   courseCode,
@@ -214,8 +313,9 @@ function AssessmentFormDialog({
                   description: description.trim(),
                   maxScore: Number(maxScore),
                   weight: Number(weight),
-                  semesterId,
-                  createdAt: initial?.createdAt || new Date().toISOString().split("T")[0],
+                  semesterId: semesterId || selectedCourseSemesterId || initial?.semesterId || "",
+                  source,
+                  ...(initial?.status ? { status: initial.status } : {}),
                 });
                 onOpenChange(false);
               }}
@@ -232,18 +332,20 @@ function AssessmentFormDialog({
 // ─── Assessment Card (Admin view) ───
 function AssessmentCard({
   assessment,
+  courseName,
   isAdmin,
   onEdit,
   onDelete,
 }: {
   assessment: AdminAssessment;
+  courseName: string;
   isAdmin: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const typeInfo = assessmentTypeConfig[assessment.type];
   const TypeIcon = typeInfo.icon;
-  const courseName = COURSES.find((c) => c.code === assessment.courseCode)?.name || assessment.courseCode;
+  const edited = isEdited(assessment);
   const dueDate = new Date(assessment.dueDate);
   const now = new Date();
   const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -256,7 +358,14 @@ function AssessmentCard({
           <div className="flex items-start gap-2">
             {isOverdue && <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />}
             <div className="min-w-0">
-              <p className="font-bold text-sm">{assessment.title}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-sm">{assessment.title}</p>
+                {edited && (
+                  <span className="px-1.5 py-0.5 border border-border text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Edited
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {courseName} ·{" "}
                 <span className={cn(isOverdue && "text-destructive font-medium", !isOverdue && daysUntilDue <= 2 && "text-amber-600 font-medium")}>
@@ -299,15 +408,14 @@ function AssessmentCard({
 // ─── Student Assignment Row (with confidence) ───
 function AssignmentRow({
   assignment,
-  vote,
   onVote,
   onClick,
 }: {
   assignment: Assignment;
-  vote: ConfidenceVote | undefined;
-  onVote: (id: string, v: ConfidenceVote) => void;
+  onVote: (assignment: Assignment, v: ConfidenceVote) => void;
   onClick: () => void;
 }) {
+  const vote = assignment.userConfidence || undefined;
   const source = sourceConfig[assignment.source];
   const status = statusConfig[assignment.status];
   const SourceIcon = source.icon;
@@ -316,7 +424,9 @@ function AssignmentRow({
   const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   const isOverdue = daysUntilDue < 0 && assignment.status === "pending";
   const isDueSoon = daysUntilDue <= 2 && daysUntilDue >= 0 && assignment.status === "pending";
-  const aggregated = getMockAggregated(vote);
+  const aggregated = getDistributionPercentages(assignment);
+  const totalVotes = assignment.confidenceDistribution?.total || 0;
+  const edited = isEdited(assignment);
 
   return (
     <div className="border border-border p-3 sm:p-4 hover:bg-accent/30 transition-colors cursor-pointer" onClick={onClick}>
@@ -342,19 +452,23 @@ function AssignmentRow({
             <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", status.className)}>
               {status.label}
             </span>
+            {edited && (
+              <span className="px-1.5 py-0.5 border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Edited
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           {(["confident", "neutral", "struggling"] as ConfidenceVote[]).map((v) => (
-            <ConfidenceButton key={v} type={v} active={vote === v} onClick={() => onVote(assignment.id, v)} />
+            <ConfidenceButton key={v} type={v} active={vote === v} onClick={() => onVote(assignment, v)} />
           ))}
         </div>
       </div>
-      {vote && (
-        <div className="mt-2">
-          <ConfidenceBar data={aggregated} />
-        </div>
-      )}
+      <div className="mt-2">
+        <ConfidenceBar data={aggregated} />
+        <p className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground">{totalVotes} votes</p>
+      </div>
     </div>
   );
 }
@@ -362,26 +476,36 @@ function AssignmentRow({
 // ─── Assignment Detail Dialog ───
 function AssignmentDetailDialog({
   assignment,
-  vote,
   onVote,
+  getCourseName,
+  isAdmin,
+  onEdit,
+  onDelete,
   onClose,
 }: {
   assignment: Assignment | null;
-  vote: ConfidenceVote | undefined;
-  onVote: (id: string, v: ConfidenceVote) => void;
+  onVote: (assignment: Assignment, v: ConfidenceVote) => void;
+  getCourseName: (code: string) => string;
+  isAdmin: boolean;
+  onEdit: (assignment: Assignment) => void;
+  onDelete: (assignment: Assignment) => void;
   onClose: () => void;
 }) {
   if (!assignment) return null;
+  const vote = assignment.userConfidence || undefined;
   const source = sourceConfig[assignment.source];
   const status = statusConfig[assignment.status];
   const SourceIcon = source.icon;
   const StatusIcon = status.icon;
-  const courseName = COURSES.find((c) => c.code === assignment.course)?.name || assignment.course;
+  const courseName = getCourseName(assignment.course);
   const dueDate = new Date(assignment.dueDate);
   const now = new Date();
   const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   const isOverdue = daysUntilDue < 0 && assignment.status === "pending";
-  const aggregated = getMockAggregated(vote);
+  const aggregated = getDistributionPercentages(assignment);
+  const totalVotes = assignment.confidenceDistribution?.total || 0;
+  const edited = isEdited(assignment);
+  const editedAtLabel = formatEditedAtLocal(assignment.updatedAt);
 
   return (
     <Dialog open={!!assignment} onOpenChange={() => onClose()}>
@@ -391,8 +515,20 @@ function AssignmentDetailDialog({
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <h3 className="text-lg font-bold">{assignment.title}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold">{assignment.title}</h3>
+              {edited && (
+                <span className="px-1.5 py-0.5 border border-border text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Edited
+                </span>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground mt-1">{courseName}</p>
+            {edited && assignment.updatedAt && (
+              <p className="text-[11px] text-muted-foreground/80 mt-1">
+                Edited {editedAtLabel}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -426,16 +562,27 @@ function AssignmentDetailDialog({
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Confidence Check</p>
             <div className="flex gap-2">
               {(["confident", "neutral", "struggling"] as ConfidenceVote[]).map((v) => (
-                <ConfidenceButton key={v} type={v} active={vote === v} onClick={() => onVote(assignment.id, v)} />
+                <ConfidenceButton key={v} type={v} active={vote === v} onClick={() => onVote(assignment, v)} />
               ))}
             </div>
             <ConfidenceBar data={aggregated} />
             <div className="flex justify-between text-[9px] uppercase tracking-wider text-muted-foreground">
+              <span>{totalVotes} votes</span>
               <span>{aggregated.confident}% confident</span>
               <span>{aggregated.neutral}% neutral</span>
               <span>{aggregated.struggling}% struggling</span>
             </div>
           </div>
+          {isAdmin && (
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onEdit(assignment)}>
+                <Pencil className="h-3 w-3" /> Edit
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive hover:text-destructive" onClick={() => onDelete(assignment)}>
+                <Trash2 className="h-3 w-3" /> Delete
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -446,81 +593,238 @@ function AssignmentDetailDialog({
 const Academics = () => {
   const { isAdmin } = useAuth();
   const semId = useSemesterStore((s) => s.activeSemester?.id);
+  const classroomId = useClassroomStore((s) => s.activeClassroom?.id);
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [filterCourse, setFilterCourse] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterSource, setFilterSource] = useState<string>("all");
+  const [detailAssignment, setDetailAssignment] = useState<Assignment | null>(null);
+
+  const serverFilters = useMemo(
+    () => ({
+      semesterId: semId,
+      search: search.trim() || undefined,
+      courseCode: filterCourse !== "all" ? filterCourse : undefined,
+      status: filterStatus !== "all" ? (filterStatus as "pending" | "submitted" | "graded") : undefined,
+      source: filterSource !== "all" ? (filterSource as "classroom" | "direct" | "notice") : undefined,
+    }),
+    [semId, search, filterCourse, filterStatus, filterSource],
+  );
+
   const { data: assignments, isLoading } = useQuery({
-    queryKey: ["assignments", semId],
-    queryFn: () => fetchAssignments(semId),
+    queryKey: ["assignments", serverFilters],
+    queryFn: () => fetchAssignments(serverFilters),
+    enabled: !!classroomId,
   });
+  const statsQuery = useQuery({
+    queryKey: ["assessment-stats", serverFilters],
+    queryFn: () => fetchAssessmentStats(serverFilters),
+    enabled: !!classroomId,
+  });
+  const coursesQuery = useQuery({
+    queryKey: ["courses", classroomId],
+    queryFn: () => fetchCourses({ page: 1, limit: 100 }),
+    enabled: !!classroomId,
+  });
+  const courses = useMemo(
+    () =>
+      (coursesQuery.data?.data || [])
+        .filter((course) => Boolean(course.code?.trim()))
+        .map((course) => ({ code: course.code!.trim(), name: course.name })),
+    [coursesQuery.data],
+  );
+  const courseNameByCode = useMemo(
+    () => new Map(courses.map((course) => [course.code, course.name])),
+    [courses],
+  );
+  const getCourseName = (code: string) => courseNameByCode.get(code) || code;
 
   // Admin assessments
-  const [assessments, setAssessments] = useState<AdminAssessment[]>([]);
   const [assessFormOpen, setAssessFormOpen] = useState(false);
   const [editingAssess, setEditingAssess] = useState<AdminAssessment | null>(null);
   const [deletingAssessId, setDeletingAssessId] = useState<string | null>(null);
   const [groupOrderOpen, setGroupOrderOpen] = useState(false);
+  const assessmentsQuery = useQuery({
+    queryKey: ["assessments", semId, classroomId],
+    queryFn: () => loadAssessments(semId),
+    enabled: !!classroomId,
+  });
+  const assessments = assessmentsQuery.data || [];
 
-  // Reload assessments when semester changes
-  useMemo(() => {
-    if (semId) setAssessments(loadAssessments(semId));
-  }, [semId]);
+  const saveAssessmentMutation = useMutation({
+    mutationFn: async ({
+      mode,
+      id,
+      assessment,
+    }: {
+      mode: "create" | "update";
+      id?: string;
+      assessment: AssessmentFormValues;
+    }) => {
+      const semesterId = assessment.semesterId || semId;
+      if (!semesterId) {
+        throw new Error("Please select an active semester before saving assessments.");
+      }
 
-  const handleSaveAssessment = (a: AdminAssessment) => {
-    saveAssessment(a);
-    setAssessments(loadAssessments(semId));
-    setEditingAssess(null);
-    toast({ title: editingAssess ? "Updated" : "Created", description: `${a.title} saved.` });
+      const payload = {
+        title: assessment.title,
+        type: assessment.type,
+        courseCode: assessment.courseCode,
+        dueDate: assessment.dueDate,
+        description: assessment.description || "",
+        maxScore: assessment.maxScore,
+        weight: assessment.weight,
+        semesterId,
+        ...(assessment.status ? { status: assessment.status } : {}),
+        ...(assessment.source ? { source: assessment.source } : {}),
+      };
+
+      if (mode === "update" && id) {
+        return updateAssessment(id, payload);
+      }
+      return createAssessment(payload);
+    },
+    onSuccess: async (_saved, vars) => {
+      setEditingAssess(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["assessments"] }),
+        queryClient.invalidateQueries({ queryKey: ["assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["assessment-stats"] }),
+      ]);
+      toast({
+        title: vars.mode === "update" ? "Updated" : "Created",
+        description: `${vars.assessment.title} saved.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Could not save assessment",
+        description: getErrorMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAssessmentMutation = useMutation({
+    mutationFn: ({ id }: { id: string; name: string }) => deleteAssessment(id),
+    onSuccess: async (_res, vars) => {
+      setDeletingAssessId(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["assessments"] }),
+        queryClient.invalidateQueries({ queryKey: ["assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["assessment-stats"] }),
+      ]);
+      toast({ title: "Deleted", description: `${vars.name} removed.` });
+    },
+    onError: (error) => {
+      toast({
+        title: "Could not delete assessment",
+        description: getErrorMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveAssessment = (assessment: AssessmentFormValues) => {
+    saveAssessmentMutation.mutate({
+      mode: editingAssess ? "update" : "create",
+      id: editingAssess?.id,
+      assessment,
+    });
   };
 
   const handleDeleteAssessment = () => {
     if (!deletingAssessId) return;
     const name = assessments.find((a) => a.id === deletingAssessId)?.title || "Assessment";
-    deleteAssessment(deletingAssessId);
-    setAssessments(loadAssessments(semId));
-    setDeletingAssessId(null);
-    toast({ title: "Deleted", description: `${name} removed.` });
+    deleteAssessmentMutation.mutate({ id: deletingAssessId, name });
   };
 
-  // Student filters
-  const [search, setSearch] = useState("");
-  const [filterCourse, setFilterCourse] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterSource, setFilterSource] = useState<string>("all");
-  const [confidenceVotes, setConfidenceVotes] = useState<ConfidenceState>({});
-  const [detailAssignment, setDetailAssignment] = useState<Assignment | null>(null);
+  const handleEditFromDetail = async (assignment: Assignment) => {
+    let target = assessments.find((a) => a.id === assignment.id);
 
-  const handleVote = (id: string, vote: ConfidenceVote) => {
-    setConfidenceVotes((prev) => ({ ...prev, [id]: prev[id] === vote ? undefined! : vote }));
+    if (!target) {
+      try {
+        const refreshed = await queryClient.fetchQuery({
+          queryKey: ["assessments", semId, classroomId, "resolve-edit"],
+          queryFn: () => loadAssessments(semId),
+        });
+        target = refreshed.find((a) => a.id === assignment.id);
+      } catch {}
+    }
+
+    // Last-resort fallback so edit dialog still opens.
+    if (!target) {
+      target = {
+        id: assignment.id,
+        title: assignment.title,
+        type: "assignment",
+        courseCode: assignment.course,
+        dueDate: assignment.dueDate,
+        description: "",
+        maxScore: 100,
+        weight: 10,
+        semesterId: semId || "",
+        createdAt: assignment.createdAt || new Date().toISOString(),
+        updatedAt: assignment.updatedAt,
+        status: assignment.status,
+        source: assignment.source,
+      };
+    }
+
+    setDetailAssignment(null);
+    setEditingAssess(target);
+    setAssessFormOpen(true);
+  };
+
+  const handleDeleteFromDetail = (assignment: Assignment) => {
+    setDetailAssignment(null);
+    setDeletingAssessId(assignment.id);
+  };
+
+  const confidenceMutation = useMutation({
+    mutationFn: async ({ assignment, vote }: { assignment: Assignment; vote: ConfidenceVote }) => {
+      if (assignment.userConfidence === vote) {
+        return clearAssignmentConfidence(assignment.id);
+      }
+      return rateAssignmentConfidence(assignment.id, vote);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["assessments"] }),
+      ]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Could not save confidence rating",
+        description: getErrorMessage(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleVote = (assignment: Assignment, vote: ConfidenceVote) => {
+    confidenceMutation.mutate({ assignment, vote });
   };
 
   const coursesInData = useMemo(() => {
+    if (courses.length > 0) return courses.map((c) => c.code).sort();
     if (!assignments) return [];
     return [...new Set(assignments.map((a) => a.course))].sort();
-  }, [assignments]);
+  }, [assignments, courses]);
 
-  const filtered = useMemo(() => {
-    if (!assignments) return [];
-    return assignments.filter((a) => {
-      if (filterCourse !== "all" && a.course !== filterCourse) return false;
-      if (filterStatus !== "all" && a.status !== filterStatus) return false;
-      if (filterSource !== "all" && a.source !== filterSource) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        const courseName = COURSES.find((c) => c.code === a.course)?.name || "";
-        return a.title.toLowerCase().includes(q) || a.course.toLowerCase().includes(q) || courseName.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [assignments, filterCourse, filterStatus, filterSource, search]);
+  const filtered = assignments || [];
 
-  const stats = useMemo(() => {
-    if (!assignments) return { total: 0, pending: 0, submitted: 0, overdue: 0 };
-    const now = new Date();
-    return {
-      total: assignments.length,
-      pending: assignments.filter((a) => a.status === "pending").length,
-      submitted: assignments.filter((a) => a.status === "submitted" || a.status === "graded").length,
-      overdue: assignments.filter((a) => a.status === "pending" && new Date(a.dueDate) < now).length,
-    };
-  }, [assignments]);
+  useEffect(() => {
+    if (!detailAssignment || !assignments) return;
+    const latest = assignments.find((item) => item.id === detailAssignment.id);
+    if (latest) {
+      setDetailAssignment(latest);
+    }
+  }, [assignments, detailAssignment?.id]);
+
+  const stats = statsQuery.data || { total: 0, pending: 0, submitted: 0, overdue: 0 };
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
@@ -541,24 +845,6 @@ const Academics = () => {
           </div>
         )}
       </div>
-
-      {/* Admin assessments section */}
-      {assessments.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">
-            Assessments ({assessments.length})
-          </p>
-          {assessments.map((a) => (
-            <AssessmentCard
-              key={a.id}
-              assessment={a}
-              isAdmin={isAdmin}
-              onEdit={() => { setEditingAssess(a); setAssessFormOpen(true); }}
-              onDelete={() => setDeletingAssessId(a.id)}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -619,9 +905,11 @@ const Academics = () => {
             <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="classroom">Classroom</SelectItem>
-              <SelectItem value="direct">Direct Call</SelectItem>
-              <SelectItem value="notice">Notice Board</SelectItem>
+              {sourceOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           {(filterCourse !== "all" || filterStatus !== "all" || filterSource !== "all" || search) && (
@@ -656,7 +944,6 @@ const Academics = () => {
             <AssignmentRow
               key={assignment.id}
               assignment={assignment}
-              vote={confidenceVotes[assignment.id]}
               onVote={handleVote}
               onClick={() => setDetailAssignment(assignment)}
             />
@@ -675,8 +962,11 @@ const Academics = () => {
       {/* Detail dialog */}
       <AssignmentDetailDialog
         assignment={detailAssignment}
-        vote={detailAssignment ? confidenceVotes[detailAssignment.id] : undefined}
         onVote={handleVote}
+        getCourseName={getCourseName}
+        isAdmin={isAdmin}
+        onEdit={handleEditFromDetail}
+        onDelete={handleDeleteFromDetail}
         onClose={() => setDetailAssignment(null)}
       />
 
@@ -688,6 +978,7 @@ const Academics = () => {
             onOpenChange={(o) => { setAssessFormOpen(o); if (!o) setEditingAssess(null); }}
             initial={editingAssess}
             semesterId={semId || ""}
+            getCourseName={getCourseName}
             onSave={handleSaveAssessment}
           />
           <Dialog open={groupOrderOpen} onOpenChange={setGroupOrderOpen}>

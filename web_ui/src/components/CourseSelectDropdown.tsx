@@ -10,11 +10,13 @@ import { cn } from '@/lib/utils';
 
 interface CourseSelectDropdownProps {
     value?: string;
-    onChange: (value: string) => void;
+    onChange: (value: string, course?: Course | null) => void;
     placeholder?: string;
     className?: string;
     semesterId?: string;
     allowAll?: boolean;
+    returnValue?: 'codeOrId' | 'id';
+    selectedLabel?: string;
 }
 
 export function CourseSelectDropdown({
@@ -24,18 +26,26 @@ export function CourseSelectDropdown({
     className,
     semesterId,
     allowAll = false,
+    returnValue = 'codeOrId',
+    selectedLabel,
 }: CourseSelectDropdownProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const observerRef = useRef<IntersectionObserver | null>(null);
 
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, isError } = useInfiniteQuery({
-        queryKey: ['courses-dropdown', search, semesterId],
+        queryKey: ['courses-dropdown', debouncedSearch, semesterId, value],
         queryFn: ({ pageParam = 1 }) =>
             fetchCourses({
                 page: pageParam as number,
                 limit: 20,
-                search: search || undefined,
+                search: debouncedSearch || undefined,
                 semesterId,
             }),
         getNextPageParam: (lastPage) => {
@@ -45,7 +55,7 @@ export function CourseSelectDropdown({
             return undefined;
         },
         initialPageParam: 1,
-        enabled: open, // Only fetch when popover is open
+        enabled: open || !!value, // Fetch selected option label even before opening
     });
 
     const courses = data?.pages.flatMap((page) => page.data) ?? [];
@@ -92,6 +102,8 @@ export function CourseSelectDropdown({
                         <span className="truncate">
                             {selectedCourse.code || selectedCourse.name}
                         </span>
+                    ) : selectedLabel ? (
+                        <span className="truncate">{selectedLabel}</span>
                     ) : (
                         <span className="text-muted-foreground truncate">{placeholder}</span>
                     )}
@@ -116,7 +128,7 @@ export function CourseSelectDropdown({
                         {allowAll && (
                             <button
                                 onClick={() => {
-                                    onChange('all');
+                                    onChange('all', null);
                                     setOpen(false);
                                 }}
                                 className={cn(
@@ -132,7 +144,7 @@ export function CourseSelectDropdown({
                         {!allowAll && (
                             <button
                                 onClick={() => {
-                                    onChange('none');
+                                    onChange('none', null);
                                     setOpen(false);
                                 }}
                                 className={cn(
@@ -165,7 +177,11 @@ export function CourseSelectDropdown({
                                             idx === courses.length - 1 ? lastElementRef : undefined
                                         }
                                         onClick={() => {
-                                            onChange(course.code || course.id);
+                                            const nextValue =
+                                                returnValue === 'id'
+                                                    ? course.id
+                                                    : (course.code || course.id);
+                                            onChange(nextValue, course);
                                             setOpen(false);
                                         }}
                                         className={cn(

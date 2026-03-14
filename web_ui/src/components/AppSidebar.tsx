@@ -159,7 +159,7 @@ export function AppSidebar() {
                 SKOLA
               </h1>
               <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60 mt-0.5">
-                {batchTheme.name} Division
+                {batchTheme.name} Theme
               </p>
             </div>
           ) : (

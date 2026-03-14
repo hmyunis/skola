@@ -1,21 +1,47 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { triggerSurpriseAssessment } from "@/services/admin";
+import { toast } from "@/hooks/use-toast";
+import { useClassroomStore } from "@/stores/classroomStore";
 
 export function PanicButton() {
   const [flashing, setFlashing] = useState(false);
+  const queryClient = useQueryClient();
+  const activeClassroomId = useClassroomStore((s) => s.activeClassroom?.id);
+
+  const triggerMutation = useMutation({
+    mutationFn: triggerSurpriseAssessment,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["announcements", activeClassroomId] });
+      setFlashing(true);
+      toast({
+        title: "Alarm Triggered",
+        description: "Surprise assessment alarm sent to the whole classroom.",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Trigger Failed",
+        description: error instanceof Error ? error.message : "Could not trigger surprise assessment alarm.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <>
       <button
-        onClick={() => setFlashing(true)}
-        className="relative overflow-hidden border-2 border-destructive px-6 py-3 font-black uppercase tracking-[0.15em] text-sm group hover:scale-[1.02] transition-transform"
+        onClick={() => triggerMutation.mutate()}
+        disabled={triggerMutation.isPending}
+        className="relative overflow-hidden border-2 border-destructive px-6 py-3 font-black uppercase tracking-[0.15em] text-sm group hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {/* Hazard stripes background */}
         <div className="absolute inset-0 hazard-stripes opacity-90" />
         <span className="relative z-10 flex items-center gap-2 text-destructive font-black [text-shadow:_-1px_-1px_0_hsl(var(--destructive-foreground)),_1px_-1px_0_hsl(var(--destructive-foreground)),_-1px_1px_0_hsl(var(--destructive-foreground)),_1px_1px_0_hsl(var(--destructive-foreground)),_0_0_8px_hsl(var(--destructive-foreground)/0.5)]">
           <AlertTriangle className="h-4 w-4" />
-          SURPRISE ASSESSMENT
+          {triggerMutation.isPending ? "TRIGGERING..." : "SURPRISE ASSESSMENT"}
         </span>
       </button>
 

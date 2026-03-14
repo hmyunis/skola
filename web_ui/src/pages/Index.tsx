@@ -3,13 +3,21 @@ import { fetchSemesterInfo, fetchQuickStats } from "@/services/api";
 import { LiveStatusCard } from "@/components/LiveStatusCard";
 import { PanicButton } from "@/components/PanicButton";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
+import { SurpriseAssessmentBanner } from "@/components/SurpriseAssessmentBanner";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
+import { useClassroomStore } from "@/stores/classroomStore";
+import { useFeatureEnabled } from "@/services/features";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { BookOpen, FileText, ClipboardList } from "lucide-react";
 
 function DaysRemaining({ endDate }: { endDate: string }) {
+  if (!endDate) return <span className="tabular-nums font-black text-2xl">—</span>;
   const end = new Date(endDate);
+  if (Number.isNaN(end.getTime())) {
+    return <span className="tabular-nums font-black text-2xl">—</span>;
+  }
   const now = new Date();
   const diff = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   return (
@@ -19,16 +27,34 @@ function DaysRemaining({ endDate }: { endDate: string }) {
 
 const Index = () => {
   const { isAdmin } = useAuth();
+  const panicEnabled = useFeatureEnabled("ft-panic");
   const semId = useSemesterStore((s) => s.activeSemester?.id);
+  const activeClassroomId = useClassroomStore((s) => s.activeClassroom?.id);
 
-  const { data: semester, isLoading: semLoading } = useQuery({
-    queryKey: ["semester"],
+  const {
+    data: semester,
+    isLoading: semLoading,
+    isError: semError,
+    error: semErrorObj,
+    refetch: refetchSemester,
+  } = useQuery({
+    queryKey: ["semester", activeClassroomId],
     queryFn: fetchSemesterInfo,
+    enabled: !!activeClassroomId,
+    retry: 1,
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ["quickStats", semId],
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+    error: statsErrorObj,
+    refetch: refetchStats,
+  } = useQuery({
+    queryKey: ["quickStats", activeClassroomId, semId],
     queryFn: () => fetchQuickStats(semId),
+    enabled: !!activeClassroomId,
+    retry: 1,
   });
 
   return (
@@ -61,10 +87,30 @@ const Index = () => {
             </div>
           </div>
         )}
+        {!semLoading && !semester && !semError && (
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Semester
+            </p>
+            <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+              No active semester
+            </p>
+          </div>
+        )}
         {semLoading && (
           <div className="space-y-1">
             <div className="h-3 w-24 bg-muted animate-pulse" />
             <div className="h-8 w-44 bg-muted animate-pulse" />
+          </div>
+        )}
+        {semError && (
+          <div className="text-right space-y-2">
+            <p className="text-xs text-destructive">
+              {semErrorObj instanceof Error ? semErrorObj.message : "Could not load semester info."}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetchSemester()}>
+              Retry
+            </Button>
           </div>
         )}
       </div>
@@ -72,11 +118,14 @@ const Index = () => {
       {/* Live Status */}
       <LiveStatusCard />
 
+      {/* Surprise Assessment Alarm (Class-wide) */}
+      <SurpriseAssessmentBanner />
+
       {/* Announcements */}
       <AnnouncementsBanner />
 
       {/* Admin Panic Button */}
-      {isAdmin && (
+      {isAdmin && panicEnabled && (
         <div className="border border-dashed border-destructive/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.3em] text-destructive font-bold">
@@ -91,6 +140,16 @@ const Index = () => {
       )}
 
       {/* Quick Stats */}
+      {statsError && (
+        <div className="border border-destructive/30 bg-destructive/5 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs text-destructive">
+            {statsErrorObj instanceof Error ? statsErrorObj.message : "Could not load quick stats."}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetchStats()}>
+            Retry
+          </Button>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -101,10 +160,10 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-black tabular-nums">
-              {stats?.remainingClasses ?? "—"}
+              {statsLoading ? "..." : statsError ? "—" : (stats?.remainingClasses ?? 0)}
             </p>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
-              Today
+              {statsError ? "Unavailable" : "Today"}
             </p>
           </CardContent>
         </Card>
@@ -118,10 +177,10 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-black tabular-nums">
-              {stats?.pendingAssignments ?? "—"}
+              {statsLoading ? "..." : statsError ? "—" : (stats?.pendingAssignments ?? 0)}
             </p>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
-              Assignments
+              {statsError ? "Unavailable" : "Assignments"}
             </p>
           </CardContent>
         </Card>
@@ -135,10 +194,10 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-black tabular-nums">
-              {stats?.upcomingExams ?? "—"}
+              {statsLoading ? "..." : statsError ? "—" : (stats?.upcomingExams ?? 0)}
             </p>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
-              This month
+              {statsError ? "Unavailable" : "This month"}
             </p>
           </CardContent>
         </Card>

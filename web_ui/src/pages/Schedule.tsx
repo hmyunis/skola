@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { fetchWeeklySchedule, COURSES, type ClassSlot, type DayOfWeek } from "@/services/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  fetchWeeklySchedule,
+  createScheduleItem,
+  updateScheduleItem,
+  deleteScheduleItem,
+  publishScheduleDrafts,
+  type ClassSlot,
+  type DayOfWeek,
+} from "@/services/api";
+import { CourseSelectDropdown } from "@/components/CourseSelectDropdown";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -21,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical, Trash2, X } from "lucide-react";
+import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical, Trash2, X, Plus, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,14 +42,58 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { formatTime12, hourTo12, dateToTimeInput, timeInputToDate } from "@/lib/utils";
+import { formatTime12, hourTo12, dateToTimeInput } from "@/lib/utils";
 
 const DAYS: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DAY_SHORT = ["MON", "TUE", "WED", "THU", "FRI"];
+const DAY_TO_INDEX: Record<DayOfWeek, number> = {
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+};
 const START_HOUR = 8;
 const END_HOUR = 17;
 const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
 const HOUR_HEIGHT = 64;
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
+function toTimeInput(minutesFromMidnight: number): string {
+  const normalized = ((minutesFromMidnight % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function parseTimeToMinutes(value: Date): number {
+  return value.getHours() * 60 + value.getMinutes();
+}
+
+function getTempTimeWindow(daySlots: ClassSlot[], excludeIds: string[]): { startTime: string; endTime: string } {
+  const occupied = daySlots
+    .filter((slot) => !excludeIds.includes(slot.id))
+    .map((slot) => ({ start: parseTimeToMinutes(slot.startTime), end: parseTimeToMinutes(slot.endTime) }))
+    .sort((a, b) => a.start - b.start);
+
+  let cursor = 0;
+  for (const interval of occupied) {
+    if (cursor + 1 <= interval.start) {
+      return { startTime: toTimeInput(cursor), endTime: toTimeInput(cursor + 1) };
+    }
+    cursor = Math.max(cursor, interval.end);
+  }
+
+  if (cursor <= 1438) {
+    return { startTime: toTimeInput(cursor), endTime: toTimeInput(cursor + 1) };
+  }
+
+  throw new Error("Could not find temporary time window for reordering");
+}
 
 const typeColors: Record<string, { bg: string; border: string; text: string }> = {
   lecture: { bg: "bg-primary/10", border: "border-primary/40", text: "text-primary" },
@@ -57,16 +110,46 @@ function cloneSchedule(s: Record<string, ClassSlot[]>): Record<string, ClassSlot
   return r;
 }
 
-// ─── Edit Dialog ───
-interface EditDialogProps {
+// ─── Schedule Dialog ───
+interface ScheduleFormValues {
+  courseId: string;
+  code: string;
+  name: string;
+  room: string;
+  type: "lecture" | "lab" | "exam";
+  startTime: string;
+  endTime: string;
+  selectedDay: DayOfWeek;
+  isDraft: boolean;
+}
+
+interface ScheduleDialogProps {
+  open: boolean;
+  mode: "create" | "edit";
   slot: ClassSlot | null;
   day: DayOfWeek;
-  onSave: (original: ClassSlot, updated: ClassSlot, originalDay: DayOfWeek, newDay: DayOfWeek) => void;
+  semesterId?: string;
+  isSubmitting?: boolean;
+  isDeleting?: boolean;
+  onSave: (values: ScheduleFormValues) => void;
   onDelete: (slot: ClassSlot, day: DayOfWeek) => void;
   onClose: () => void;
 }
 
-function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogProps) {
+function ScheduleItemDialog({
+  open,
+  mode,
+  slot,
+  day,
+  semesterId,
+  isSubmitting = false,
+  isDeleting = false,
+  onSave,
+  onDelete,
+  onClose,
+}: ScheduleDialogProps) {
+  const [courseId, setCourseId] = useState("");
+  const [courseLabel, setCourseLabel] = useState("");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
@@ -74,10 +157,13 @@ function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogPro
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>(day);
-  const [isDraft, setIsDraft] = useState(false);
+  const [isDraft, setIsDraft] = useState(mode === "create");
 
   useEffect(() => {
+    if (!open) return;
     if (slot) {
+      setCourseId(slot.courseId || "");
+      setCourseLabel([slot.code, slot.name].filter(Boolean).join(" — "));
       setCode(slot.code);
       setName(slot.name);
       setRoom(slot.room);
@@ -86,68 +172,91 @@ function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogPro
       setEndTime(dateToTimeInput(slot.endTime));
       setSelectedDay(day);
       setIsDraft(!!slot.draft);
+      return;
     }
-  }, [slot, day]);
 
-  const handleCourseChange = (courseCode: string) => {
-    setCode(courseCode);
-    const course = COURSES.find((c) => c.code === courseCode);
-    if (course) setName(course.name);
-  };
+    setCourseId("");
+    setCourseLabel("");
+    setCode("");
+    setName("");
+    setRoom("");
+    setType("lecture");
+    setStartTime("09:00");
+    setEndTime("10:00");
+    setSelectedDay(day);
+    setIsDraft(true);
+  }, [open, slot, day]);
 
   const handleSave = () => {
-    if (!slot) return;
-    const baseDate = slot.startTime;
-    const updated: ClassSlot = {
-      ...slot,
+    if (!courseId) {
+      toast({ title: "Course required", description: "Select a course before saving.", variant: "destructive" });
+      return;
+    }
+    if (startTime >= endTime) {
+      toast({ title: "Invalid time", description: "End time must be after start time.", variant: "destructive" });
+      return;
+    }
+
+    onSave({
+      courseId,
       code,
       name,
       room,
       type,
-      startTime: timeInputToDate(baseDate, startTime),
-      endTime: timeInputToDate(baseDate, endTime),
-      draft: isDraft,
-    };
-    onSave(slot, updated, day, selectedDay);
+      startTime,
+      endTime,
+      selectedDay,
+      isDraft,
+    });
   };
 
+  const title = mode === "create" ? "Add Class" : "Edit Class";
+
   return (
-    <Dialog open={!!slot} onOpenChange={() => onClose()}>
+    <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="uppercase tracking-wider text-sm">Edit Class</DialogTitle>
+          <DialogTitle className="uppercase tracking-wider text-sm">{title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          {/* Course dropdown */}
           <div className="space-y-1.5">
             <Label className="text-[10px] uppercase tracking-widest">Course</Label>
-            <Select value={code} onValueChange={handleCourseChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select course" />
-              </SelectTrigger>
-              <SelectContent>
-                {COURSES.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    {c.code} — {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CourseSelectDropdown
+              value={courseId || undefined}
+              onChange={(value, course) => {
+                const nextId = value === "none" ? "" : value;
+                setCourseId(nextId);
+                if (!course) {
+                  if (!nextId) {
+                    setCourseLabel("");
+                    setCode("");
+                    setName("");
+                  }
+                  return;
+                }
+                const nextCode = course.code || "";
+                setCode(nextCode);
+                setName(course.name || "");
+                setCourseLabel(nextCode ? `${nextCode} — ${course.name}` : course.name);
+              }}
+              placeholder="Select course"
+              className="w-full h-10 text-sm"
+              semesterId={semesterId}
+              returnValue="id"
+              selectedLabel={courseLabel || undefined}
+            />
           </div>
 
-          {/* Name override */}
           <div className="space-y-1.5">
             <Label className="text-[10px] uppercase tracking-widest">Session Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. DSA Lab" />
+            <Input value={name} readOnly placeholder="Auto from selected course" />
           </div>
 
-          {/* Room */}
           <div className="space-y-1.5">
             <Label className="text-[10px] uppercase tracking-widest">Room</Label>
             <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. Lab 302" />
           </div>
 
-          {/* Type + Day row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[10px] uppercase tracking-widest">Type</Label>
@@ -177,7 +286,6 @@ function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogPro
             </div>
           </div>
 
-          {/* Times row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[10px] uppercase tracking-widest">Start Time</Label>
@@ -189,7 +297,6 @@ function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogPro
             </div>
           </div>
 
-          {/* Draft */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -202,17 +309,25 @@ function EditClassDialog({ slot, day, onSave, onDelete, onClose }: EditDialogPro
         </div>
 
         <DialogFooter className="flex !justify-between">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => slot && onDelete(slot, day)}
-          >
-            <Trash2 className="h-3 w-3" />
-            Remove
-          </Button>
+          {mode === "edit" ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => slot && onDelete(slot, day)}
+              disabled={isDeleting || isSubmitting}
+            >
+              {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+              Remove
+            </Button>
+          ) : (
+            <div />
+          )}
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSave}>Save Changes</Button>
+            <Button variant="outline" size="sm" onClick={onClose} disabled={isSubmitting || isDeleting}>Cancel</Button>
+            <Button size="sm" onClick={handleSave} disabled={isSubmitting || isDeleting}>
+              {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              {mode === "create" ? "Add Class" : "Save Changes"}
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -456,85 +571,201 @@ const Schedule = () => {
   const { isAdmin } = useAuth();
   const semId = useSemesterStore((s) => s.activeSemester?.id);
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [editMode, setEditMode] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [localSchedule, setLocalSchedule] = useState<Record<string, ClassSlot[]>>({});
   const [editingSlot, setEditingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
   const [deletingSlot, setDeletingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
 
-  const { data: fetchedSchedule, isLoading } = useQuery({
+  const { data: fetchedSchedule, isLoading, isError, refetch } = useQuery({
     queryKey: ["weeklySchedule", semId],
     queryFn: () => fetchWeeklySchedule(semId),
   });
 
-  // Sync fetched data → local state when not editing
-  useEffect(() => {
-    if (fetchedSchedule && !editMode) {
-      setLocalSchedule(cloneSchedule(fetchedSchedule));
-    }
-  }, [fetchedSchedule, editMode]);
+  const refreshScheduleQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["weeklySchedule"] }),
+      queryClient.invalidateQueries({ queryKey: ["todaySchedule"] }),
+      queryClient.invalidateQueries({ queryKey: ["quickStats"] }),
+    ]);
+  }, [queryClient]);
 
-  // Enter edit mode → snapshot current data
-  const enterEditMode = () => {
+  const createMutation = useMutation({
+    mutationFn: createScheduleItem,
+    onSuccess: async () => {
+      await refreshScheduleQueries();
+      setCreateOpen(false);
+      toast({ title: "Class Added", description: "New schedule item added successfully." });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Create failed",
+        description: getErrorMessage(error, "Could not add class."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateScheduleItem>[1] }) =>
+      updateScheduleItem(id, payload),
+    onSuccess: async () => {
+      await refreshScheduleQueries();
+      setEditingSlot(null);
+      toast({ title: "Class Updated", description: "Schedule item saved successfully." });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Update failed",
+        description: getErrorMessage(error, "Could not save class changes."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteScheduleItem(id),
+    onSuccess: async () => {
+      await refreshScheduleQueries();
+      if (deletingSlot) {
+        toast({ title: "Class Removed", description: `${deletingSlot.slot.name} removed from ${deletingSlot.day}.` });
+      }
+      setDeletingSlot(null);
+      setEditingSlot(null);
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Delete failed",
+        description: getErrorMessage(error, "Could not remove class."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: publishScheduleDrafts,
+    onSuccess: async (result) => {
+      await refreshScheduleQueries();
+      setEditMode(false);
+      toast({
+        title: "Schedule Published",
+        description: result.updated > 0 ? `${result.updated} draft item(s) are now live.` : "No drafts to publish.",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Publish failed",
+        description: getErrorMessage(error, "Could not publish schedule drafts."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async ({ day, fromIdx, toIdx }: { day: DayOfWeek; fromIdx: number; toIdx: number }) => {
+      const daySlots = localSchedule[day] || [];
+      const source = daySlots[fromIdx];
+      const target = daySlots[toIdx];
+      if (!source || !target) return;
+
+      const sourceStart = dateToTimeInput(source.startTime);
+      const sourceEnd = dateToTimeInput(source.endTime);
+      const targetStart = dateToTimeInput(target.startTime);
+      const targetEnd = dateToTimeInput(target.endTime);
+      const tempWindow = getTempTimeWindow(daySlots, [source.id, target.id]);
+
+      await updateScheduleItem(source.id, {
+        startTime: tempWindow.startTime,
+        endTime: tempWindow.endTime,
+        isDraft: true,
+      });
+
+      await updateScheduleItem(target.id, {
+        startTime: sourceStart,
+        endTime: sourceEnd,
+        isDraft: true,
+      });
+
+      await updateScheduleItem(source.id, {
+        startTime: targetStart,
+        endTime: targetEnd,
+        isDraft: true,
+      });
+    },
+    onSuccess: async () => {
+      await refreshScheduleQueries();
+      toast({ title: "Order Updated", description: "Class times swapped and marked as draft." });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Reorder failed",
+        description: getErrorMessage(error, "Could not reorder classes."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isMutating =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending ||
+    publishMutation.isPending ||
+    reorderMutation.isPending;
+
+  // Sync fetched data → local state
+  useEffect(() => {
     if (fetchedSchedule) {
       setLocalSchedule(cloneSchedule(fetchedSchedule));
     }
+  }, [fetchedSchedule]);
+
+  const enterEditMode = () => {
     setEditMode(true);
   };
 
-  const handlePublish = () => {
-    // In production, this would POST to API. For mock, just clear drafts.
-    const published: Record<string, ClassSlot[]> = {};
-    for (const [day, slots] of Object.entries(localSchedule)) {
-      published[day] = slots.map((s) => ({ ...s, draft: false }));
-    }
-    setLocalSchedule(published);
+  const cancelEditMode = () => {
     setEditMode(false);
-    toast({ title: "Schedule Published", description: "All draft items are now live." });
-  };
-
-  // Save edit from dialog
-  const handleSaveEdit = (original: ClassSlot, updated: ClassSlot, originalDay: DayOfWeek, newDay: DayOfWeek) => {
-    setLocalSchedule((prev) => {
-      const next = cloneSchedule(prev);
-      // Remove from original day
-      next[originalDay] = (next[originalDay] || []).filter((s) => s.id !== original.id);
-      // Add to new day
-      if (!next[newDay]) next[newDay] = [];
-      next[newDay].push(updated);
-      // Sort by start time
-      next[newDay].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-      return next;
-    });
+    setCreateOpen(false);
     setEditingSlot(null);
+    if (fetchedSchedule) setLocalSchedule(cloneSchedule(fetchedSchedule));
   };
 
-  // Drag-and-drop reorder — swap time slots
-  const handleReorder = useCallback((day: DayOfWeek, fromIdx: number, toIdx: number) => {
-    setLocalSchedule((prev) => {
-      const next = cloneSchedule(prev);
-      const slots = next[day];
-      if (!slots || !slots[fromIdx] || !slots[toIdx]) return prev;
-
-      // Swap times between the two slots
-      const fromStart = new Date(slots[fromIdx].startTime);
-      const fromEnd = new Date(slots[fromIdx].endTime);
-      slots[fromIdx].startTime = new Date(slots[toIdx].startTime);
-      slots[fromIdx].endTime = new Date(slots[toIdx].endTime);
-      slots[toIdx].startTime = fromStart;
-      slots[toIdx].endTime = fromEnd;
-
-      // Mark both as draft
-      slots[fromIdx].draft = true;
-      slots[toIdx].draft = true;
-
-      // Re-sort by start time
-      next[day] = slots.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-      return next;
+  const handleCreateItem = (values: ScheduleFormValues) => {
+    createMutation.mutate({
+      courseId: values.courseId,
+      dayOfWeek: DAY_TO_INDEX[values.selectedDay],
+      startTime: values.startTime,
+      endTime: values.endTime,
+      type: values.type,
+      location: values.room.trim() || undefined,
+      isDraft: values.isDraft,
     });
-  }, []);
+  };
+
+  const handleSaveEdit = (values: ScheduleFormValues) => {
+    if (!editingSlot) return;
+    updateMutation.mutate({
+      id: editingSlot.slot.id,
+      payload: {
+        courseId: values.courseId,
+        dayOfWeek: DAY_TO_INDEX[values.selectedDay],
+        startTime: values.startTime,
+        endTime: values.endTime,
+        type: values.type,
+        location: values.room.trim() || undefined,
+        isDraft: values.isDraft,
+      },
+    });
+  };
+
+  const handleReorder = useCallback((day: DayOfWeek, fromIdx: number, toIdx: number) => {
+    if (!editMode || !isAdmin || isMutating) return;
+    reorderMutation.mutate({ day, fromIdx, toIdx });
+  }, [editMode, isAdmin, isMutating, reorderMutation]);
 
   const onClickSlot = (slot: ClassSlot, day: DayOfWeek) => {
-    if (editMode) setEditingSlot({ slot, day });
+    if (editMode && isAdmin) setEditingSlot({ slot, day });
   };
 
   const handleDeleteSlot = (slot: ClassSlot, day: DayOfWeek) => {
@@ -544,16 +775,22 @@ const Schedule = () => {
 
   const confirmDelete = () => {
     if (!deletingSlot) return;
-    setLocalSchedule((prev) => {
-      const next = cloneSchedule(prev);
-      next[deletingSlot.day] = (next[deletingSlot.day] || []).filter((s) => s.id !== deletingSlot.slot.id);
-      return next;
-    });
-    toast({ title: "Class Removed", description: `${deletingSlot.slot.name} removed from ${deletingSlot.day}.` });
-    setDeletingSlot(null);
+    deleteMutation.mutate(deletingSlot.slot.id);
   };
 
-  const showDraft = editMode || Object.values(localSchedule).some((slots) => slots.some((s) => s.draft));
+  const hasDraft = useMemo(
+    () => Object.values(localSchedule).some((slots) => slots.some((slot) => slot.draft)),
+    [localSchedule],
+  );
+  const showDraft = isAdmin && (editMode || hasDraft);
+  const scheduleForView = useMemo(() => {
+    if (isAdmin) return localSchedule;
+    const filtered: Record<string, ClassSlot[]> = {};
+    for (const [day, slots] of Object.entries(localSchedule)) {
+      filtered[day] = slots.filter((slot) => !slot.draft);
+    }
+    return filtered;
+  }, [isAdmin, localSchedule]);
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl">
@@ -567,17 +804,21 @@ const Schedule = () => {
           <div className="flex items-center gap-2">
             {editMode ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => setEditMode(false)}>
+                <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)} disabled={isMutating}>
+                  <Plus className="h-3 w-3" />
+                  Add Class
+                </Button>
+                <Button variant="outline" size="sm" onClick={cancelEditMode} disabled={isMutating}>
                   <X className="h-3 w-3" />
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handlePublish}>
-                  <Check className="h-3 w-3" />
+                <Button size="sm" onClick={() => publishMutation.mutate()} disabled={isMutating}>
+                  {publishMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                   Publish
                 </Button>
               </>
             ) : (
-              <Button variant="outline" size="sm" onClick={enterEditMode}>
+              <Button variant="outline" size="sm" onClick={enterEditMode} disabled={isMutating}>
                 <Pencil className="h-3 w-3" />
                 Edit Mode
               </Button>
@@ -625,33 +866,54 @@ const Schedule = () => {
             </div>
           ))}
         </div>
+      ) : isError ? (
+        <div className="border border-dashed border-border p-8 text-center">
+          <p className="text-sm text-muted-foreground uppercase tracking-wider">Could not load schedule</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </div>
       ) : isMobile ? (
         <DailyAgenda
-          schedule={localSchedule}
+          schedule={scheduleForView}
           showDraft={showDraft}
-          editMode={editMode}
+          editMode={editMode && isAdmin}
           onClickSlot={onClickSlot}
           onReorder={handleReorder}
         />
       ) : (
         <WeeklyGrid
-          schedule={localSchedule}
+          schedule={scheduleForView}
           showDraft={showDraft}
-          editMode={editMode}
+          editMode={editMode && isAdmin}
           onClickSlot={onClickSlot}
         />
       )}
 
-      {/* Edit dialog */}
-      {editingSlot && (
-        <EditClassDialog
-          slot={editingSlot.slot}
-          day={editingSlot.day}
-          onSave={handleSaveEdit}
-          onDelete={handleDeleteSlot}
-          onClose={() => setEditingSlot(null)}
-        />
-      )}
+      <ScheduleItemDialog
+        open={createOpen}
+        mode="create"
+        slot={null}
+        day="Monday"
+        semesterId={semId}
+        isSubmitting={createMutation.isPending}
+        onSave={handleCreateItem}
+        onDelete={handleDeleteSlot}
+        onClose={() => setCreateOpen(false)}
+      />
+
+      <ScheduleItemDialog
+        open={!!editingSlot}
+        mode="edit"
+        slot={editingSlot?.slot || null}
+        day={editingSlot?.day || "Monday"}
+        semesterId={semId}
+        isSubmitting={updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        onSave={handleSaveEdit}
+        onDelete={handleDeleteSlot}
+        onClose={() => setEditingSlot(null)}
+      />
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deletingSlot} onOpenChange={() => setDeletingSlot(null)}>
@@ -663,12 +925,13 @@ const Schedule = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
             >
-              <Trash2 className="h-3 w-3" />
+              {deleteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

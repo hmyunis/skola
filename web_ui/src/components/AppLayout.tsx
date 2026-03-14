@@ -10,7 +10,7 @@ import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useSyncClassroom } from "@/hooks/use-classroom";
-import { Sun, Moon, LogOut, GraduationCap, Shield, Crown, User, CalendarDays, Ban, Clock } from "lucide-react";
+import { Sun, Moon, LogOut, GraduationCap, CalendarDays, Ban, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const roleLabels = { owner: "Owner", admin: "Admin", student: "Student" };
-const roleIcons = { owner: Crown, admin: Shield, student: User };
 
 function UserMenu() {
   const navigate = useNavigate();
@@ -32,8 +31,6 @@ function UserMenu() {
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  const RoleIcon = roleIcons[user?.role || "student"];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -91,10 +88,6 @@ function UserMenu() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <GraduationCap className="h-3.5 w-3.5 shrink-0" />
               <span>Year {user?.year || "—"}, Semester {user?.semester || "—"}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <RoleIcon className="h-3.5 w-3.5 shrink-0" />
-              <span>{user?.batch || "—"} Division</span>
             </div>
           </div>
 
@@ -191,10 +184,6 @@ export function AppLayout() {
               <SidebarTrigger className="hidden md:flex text-inherit hover:bg-white/10" />
               <div className="h-5 w-px bg-current opacity-20 hidden md:block" />
               <span className="text-xs font-bold uppercase tracking-[0.2em]">SKOLA</span>
-              <span className="text-[10px] uppercase tracking-widest opacity-60 hidden sm:inline">
-                {batchTheme.name} Division
-              </span>
-
               {activeSemester && (
                 <Tooltip>
                   <TooltipTrigger asChild>

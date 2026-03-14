@@ -83,16 +83,16 @@ export const patternTemplates = [
 ];
 
 export const primaryPresets = [
-  { name: "Blue", hsl: "210 80% 45%", hex: "%232563eb" },
-  { name: "Red", hsl: "0 80% 50%", hex: "%23ef4444" },
-  { name: "Green", hsl: "142 70% 40%", hex: "%2316a34a" },
-  { name: "Orange", hsl: "25 90% 50%", hex: "%23f97316" },
-  { name: "Purple", hsl: "270 70% 50%", hex: "%239333ea" },
-  { name: "Teal", hsl: "180 70% 38%", hex: "%230d9488" },
-  { name: "Pink", hsl: "330 80% 55%", hex: "%23ec4899" },
-  { name: "Gold", hsl: "40 75% 42%", hex: "%23b8860b" },
-  { name: "Indigo", hsl: "240 60% 50%", hex: "%234f46e5" },
-  { name: "Slate", hsl: "220 15% 40%", hex: "%23586070" },
+  { name: "Blue", hsl: "210 80% 45%", hex: "#2563eb" },
+  { name: "Red", hsl: "0 80% 50%", hex: "#ef4444" },
+  { name: "Green", hsl: "142 70% 40%", hex: "#16a34a" },
+  { name: "Orange", hsl: "25 90% 50%", hex: "#f97316" },
+  { name: "Purple", hsl: "270 70% 50%", hex: "#9333ea" },
+  { name: "Teal", hsl: "180 70% 38%", hex: "#0d9488" },
+  { name: "Pink", hsl: "330 80% 55%", hex: "#ec4899" },
+  { name: "Gold", hsl: "40 75% 42%", hex: "#b8860b" },
+  { name: "Indigo", hsl: "240 60% 50%", hex: "#4f46e5" },
+  { name: "Slate", hsl: "220 15% 40%", hex: "#586070" },
 ];
 
 export const headerPresets = [
@@ -110,37 +110,37 @@ export const batchThemes: BatchTheme[] = [
   {
     id: "electrical", name: "Electrical", primary: "210 100% 50%", primaryForeground: "0 0% 100%",
     headerBg: "45 90% 48%", headerFg: "0 0% 10%", sidebarBg: "220 30% 14%", sidebarFg: "45 30% 85%", sidebarAccent: "220 25% 20%",
-    pattern: patternTemplates[0].build("%233b82f6"),
+    pattern: patternTemplates[0].build("#3b82f6"),
   },
   {
     id: "medical", name: "Medical", primary: "200 80% 45%", primaryForeground: "0 0% 100%",
     headerBg: "200 70% 40%", headerFg: "0 0% 98%", sidebarBg: "200 30% 12%", sidebarFg: "200 20% 85%", sidebarAccent: "200 25% 18%",
-    pattern: patternTemplates[1].build("%23ef4444"),
+    pattern: patternTemplates[1].build("#ef4444"),
   },
   {
     id: "civil", name: "Civil", primary: "25 90% 50%", primaryForeground: "0 0% 100%",
     headerBg: "25 80% 48%", headerFg: "0 0% 100%", sidebarBg: "30 15% 14%", sidebarFg: "30 15% 82%", sidebarAccent: "30 12% 20%",
-    pattern: patternTemplates[2].build("%23f97316"),
+    pattern: patternTemplates[2].build("#f97316"),
   },
   {
     id: "mechanical", name: "Mechanical", primary: "15 60% 42%", primaryForeground: "0 0% 100%",
     headerBg: "0 0% 65%", headerFg: "0 0% 10%", sidebarBg: "0 0% 14%", sidebarFg: "0 0% 78%", sidebarAccent: "0 0% 20%",
-    pattern: patternTemplates[3].build("%2378716c"),
+    pattern: patternTemplates[3].build("#78716c"),
   },
   {
     id: "software", name: "Software", primary: "142 70% 40%", primaryForeground: "0 0% 100%",
     headerBg: "0 0% 8%", headerFg: "142 80% 55%", sidebarBg: "0 0% 6%", sidebarFg: "142 40% 65%", sidebarAccent: "0 0% 12%",
-    pattern: patternTemplates[4].build("%2322c55e"),
+    pattern: patternTemplates[4].build("#22c55e"),
   },
   {
     id: "law", name: "Law", primary: "40 75% 42%", primaryForeground: "0 0% 100%",
     headerBg: "30 40% 28%", headerFg: "40 30% 90%", sidebarBg: "30 25% 12%", sidebarFg: "40 20% 78%", sidebarAccent: "30 20% 18%",
-    pattern: patternTemplates[5].build("%23a16207"),
+    pattern: patternTemplates[5].build("#a16207"),
   },
   {
     id: "architecture", name: "Architecture", primary: "210 80% 45%", primaryForeground: "0 0% 100%",
     headerBg: "210 60% 30%", headerFg: "210 20% 92%", sidebarBg: "210 40% 14%", sidebarFg: "210 20% 82%", sidebarAccent: "210 30% 20%",
-    pattern: patternTemplates[6].build("%232563eb"),
+    pattern: patternTemplates[6].build("#2563eb"),
   },
 ];
 

@@ -5,11 +5,14 @@ import { ArenaService } from './arena.service';
 import { Quiz } from './entities/quiz.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizAttempt } from './entities/quiz-attempt.entity';
+import { QuizReport } from './entities/quiz-report.entity';
 import { ClassroomsModule } from '../classrooms/classrooms.module';
+import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
+import { Course } from '../academics/entities/course.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Quiz, QuizQuestion, QuizAttempt]),
+    TypeOrmModule.forFeature([Quiz, QuizQuestion, QuizAttempt, QuizReport, ClassroomMember, Course]),
     ClassroomsModule,
   ],
   controllers: [ArenaController],

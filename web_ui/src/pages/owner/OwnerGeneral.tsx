@@ -93,10 +93,6 @@ function hslWithLightness(hsl: string, lightness: number): string {
   return `${h} ${s} ${lightness}%`;
 }
 
-function hexToEncoded(hex: string): string {
-  return `%23${hex.replace("#", "")}`;
-}
-
 function CustomThemeCreator({ onCreated }: { onCreated: (theme: BatchTheme) => void }) {
   const [name, setName] = useState("");
   const [primaryIdx, setPrimaryIdx] = useState(0);
@@ -126,7 +122,7 @@ function CustomThemeCreator({ onCreated }: { onCreated: (theme: BatchTheme) => v
       sidebarBg: headerHsl,
       sidebarFg: headerFg,
       sidebarAccent: hslWithLightness(headerHsl, 24),
-      pattern: pat.build(primarySource === "custom" ? hexToEncoded(customPrimaryHex) : pPreset.hex),
+      pattern: pat.build(primarySource === "custom" ? customPrimaryHex : pPreset.hex),
       isCustom: true,
     };
 

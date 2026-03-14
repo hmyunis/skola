@@ -44,6 +44,16 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Post('surprise-assessment/trigger')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async triggerSurpriseAssessment(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.adminService.triggerSurpriseAssessment(classroomId, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Put('announcements/:id')
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
   async updateAnnouncement(

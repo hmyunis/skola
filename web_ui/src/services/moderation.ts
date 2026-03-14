@@ -1,8 +1,20 @@
 import type { FlaggedContent, UserReport } from "@/types/admin";
 import { fetchResourceReports, reviewResourceReport } from "@/services/resources";
 import { fetchLoungeReports, reviewLoungeReport } from "@/services/lounge";
+import { fetchArenaReports, reviewArenaReport } from "@/services/arena";
 
 export type { FlaggedContent, UserReport } from "@/types/admin";
+
+interface LoungeModerationReport {
+  id: string;
+  type: "post" | "reply";
+  content: string;
+  author: string;
+  reason: string;
+  reportedBy: string;
+  reportedAt: string;
+  status: FlaggedContent["status"];
+}
 
 const REPORTS_KEY = "skola-user-reports";
 
@@ -36,11 +48,13 @@ export async function fetchAllFlaggedContent(filters?: {
   const shouldFetchResource = !typeFilter || typeFilter === "resource";
   const loungeTypeFilter = typeFilter === "post" || typeFilter === "reply" ? typeFilter : undefined;
   const shouldFetchLounge = !typeFilter || Boolean(loungeTypeFilter);
-  const shouldLoadLocal = !typeFilter || typeFilter === "quiz";
+  const shouldFetchArena = !typeFilter || typeFilter === "quiz";
+  const shouldLoadLocal = !typeFilter;
 
-  const [resourceReports, loungeReports, localReports] = await Promise.all([
+  const [resourceReports, loungeReports, arenaReports, localReports] = await Promise.all([
     shouldFetchResource ? fetchResourceReports(statusFilter) : Promise.resolve([]),
     shouldFetchLounge ? fetchLoungeReports(statusFilter, loungeTypeFilter) : Promise.resolve([]),
+    shouldFetchArena ? fetchArenaReports(statusFilter) : Promise.resolve([]),
     shouldLoadLocal ? Promise.resolve(loadUserReports()) : Promise.resolve([]),
   ]);
 
@@ -55,9 +69,20 @@ export async function fetchAllFlaggedContent(filters?: {
     status: report.status,
   }));
 
-  const loungeItems: FlaggedContent[] = loungeReports.map((report: any) => ({
+  const loungeItems: FlaggedContent[] = (loungeReports as LoungeModerationReport[]).map((report) => ({
     id: report.id,
     type: report.type,
+    content: report.content,
+    author: report.author,
+    reason: report.reason,
+    reportedBy: report.reportedBy,
+    reportedAt: report.reportedAt,
+    status: report.status,
+  }));
+
+  const arenaItems: FlaggedContent[] = arenaReports.map((report) => ({
+    id: report.id,
+    type: "quiz",
     content: report.content,
     author: report.author,
     reason: report.reason,
@@ -81,7 +106,7 @@ export async function fetchAllFlaggedContent(filters?: {
       status: r.status,
     }));
 
-  return [...resourceItems, ...loungeItems, ...localItems].sort(
+  return [...resourceItems, ...loungeItems, ...arenaItems, ...localItems].sort(
     (a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime(),
   );
 }
@@ -100,4 +125,12 @@ export async function resolveLoungeReport(reportId: string, removeContent: boole
 
 export async function dismissLoungeReport(reportId: string) {
   return reviewLoungeReport(reportId, { status: "dismissed" });
+}
+
+export async function resolveArenaReport(reportId: string, removeQuiz: boolean) {
+  return reviewArenaReport(reportId, { status: "resolved", removeQuiz });
+}
+
+export async function dismissArenaReport(reportId: string) {
+  return reviewArenaReport(reportId, { status: "dismissed" });
 }
