@@ -34,15 +34,16 @@ import { isFeatureEnabled, useFeatureEnabled } from "@/services/features";
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Schedule", url: "/schedule", icon: Calendar, featureId: "ft-schedule" },
-  { title: "Assessments", url: "/academics", icon: BookOpen, featureId: "ft-academics" },
   { title: "Lounge", url: "/lounge", icon: MessageSquare, featureId: "ft-lounge" },
+  { title: "Arena", url: "/arena", icon: Swords, featureId: "ft-arena" },
 ];
 
 const moreItems = [
+  { title: "Assessments", url: "/academics", icon: BookOpen, featureId: "ft-academics" },
   { title: "Resources", url: "/resources", icon: FolderOpen, featureId: "ft-resources" },
-  { title: "Arena", url: "/arena", icon: Swords, featureId: "ft-arena" },
-  { title: "Members", url: "/members", icon: Users },
-  { title: "Appearance", url: "/settings", icon: Settings },
+  { title: "Announcements", url: "/announcements", icon: Megaphone, featureId: "ft-announcements" },
+  { title: "Members", url: "/members", icon: Users, featureId: "ft-members" },
+  { title: "Appearance", url: "/settings", icon: Settings, featureId: "ft-appearance" },
 ];
 
 const adminItems = [

@@ -15,16 +15,22 @@ export { fetchManagedUsers, saveUserStatus, saveUserRole } from './users';
 export type { ManagedUser } from './users';
 
 export {
-    fetchFlaggedContent,
     loadUserReports,
     saveUserReport,
+    updateUserReportStatus,
     fetchAllFlaggedContent,
+    resolveResourceReport,
+    dismissResourceReport,
+    resolveLoungeReport,
+    dismissLoungeReport,
 } from './moderation';
 export type { FlaggedContent, UserReport } from './moderation';
 
 export {
-    loadAnnouncements,
-    saveAnnouncements,
+    fetchAnnouncements,
+    createAnnouncement,
+    updateAnnouncement,
+    deleteAnnouncement,
     getDismissedAnnouncementIds,
     dismissAnnouncement,
 } from './announcements';
@@ -33,7 +39,7 @@ export type { Announcement } from './announcements';
 export { fetchAnalytics } from './analytics';
 export type { AnalyticsData } from './analytics';
 
-export { loadFeatures, saveFeatures } from './features';
+export { loadFeatures, saveFeatures, getMergedFeatures } from './features';
 export type { FeatureToggle } from './features';
 
 export { loadAssessments, saveAssessment, deleteAssessment } from './assessments';

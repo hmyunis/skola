@@ -28,6 +28,33 @@ export class ClassroomsService {
     private jwtService: JwtService,
   ) {}
 
+  private async syncGlobalUserRoleFromMemberships(userId: string): Promise<UserRole> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const memberships = await this.membersRepository.find({
+      where: { user: { id: userId } },
+    });
+
+    const hasOwner = memberships.some((m) => m.role === UserRole.OWNER);
+    const hasAdmin = memberships.some((m) => m.role === UserRole.ADMIN);
+
+    const effectiveRole = hasOwner
+      ? UserRole.OWNER
+      : hasAdmin
+        ? UserRole.ADMIN
+        : UserRole.STUDENT;
+
+    if (user.role !== effectiveRole) {
+      user.role = effectiveRole;
+      await this.usersRepository.save(user);
+    }
+
+    return effectiveRole;
+  }
+
   async checkGroupMembership(telegramGroupId: string, telegramUserId: number): Promise<boolean> {
     const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
     if (!botToken) {
@@ -145,7 +172,12 @@ export class ClassroomsService {
 
   async updateTheme(id: string, theme: any): Promise<Classroom> {
     const classroom = await this.getClassroomById(id);
-    classroom.theme = theme;
+    if (theme && typeof theme === 'object' && (theme.activeTheme || Array.isArray(theme.customThemes))) {
+      classroom.theme = theme.activeTheme || classroom.theme;
+      classroom.customThemes = Array.isArray(theme.customThemes) ? theme.customThemes : classroom.customThemes;
+    } else {
+      classroom.theme = theme;
+    }
     return this.classroomsRepository.save(classroom);
   }
 
@@ -155,7 +187,34 @@ export class ClassroomsService {
     return this.classroomsRepository.save(classroom);
   }
 
-  async joinClassroom(inviteCode: string, user: User): Promise<{ member: ClassroomMember; classroom: Classroom; user: User; accessToken: string }> {
+  async updateTelegramGroupId(id: string, telegramGroupId: string, user: User): Promise<Classroom> {
+    const trimmed = (telegramGroupId || '').trim();
+    if (!trimmed) {
+      throw new BadRequestException('Telegram group ID is required.');
+    }
+
+    const tgIdRegex = /^-?\d+$/;
+    if (!tgIdRegex.test(trimmed)) {
+      throw new BadRequestException('Invalid Telegram group ID format.');
+    }
+
+    const classroom = await this.getClassroomById(id);
+
+    const existing = await this.classroomsRepository.findOne({ where: { telegramGroupId: trimmed } });
+    if (existing && existing.id !== id) {
+      throw new BadRequestException('Another classroom already uses this Telegram group ID.');
+    }
+
+    const isMember = await this.checkGroupMembership(trimmed, user.telegramId);
+    if (!isMember) {
+      throw new ForbiddenException('You are not a member of this Telegram group. Join the group first, then update the ID.');
+    }
+
+    classroom.telegramGroupId = trimmed;
+    return this.classroomsRepository.save(classroom);
+  }
+
+  async joinClassroom(inviteCode: string, user: User, providedTelegramGroupId?: string): Promise<{ member: ClassroomMember; classroom: Classroom; user: User; accessToken: string }> {
     let classroom: Classroom | null = null;
     let inviteEntity: InviteCode | null = null;
 
@@ -190,6 +249,10 @@ export class ClassroomsService {
     
     if (!classroom) {
       throw new BadRequestException('Invalid or inactive invite code');
+    }
+
+    if (providedTelegramGroupId && providedTelegramGroupId.trim() !== classroom.telegramGroupId) {
+      throw new BadRequestException('Telegram group ID does not match this invite code.');
     }
 
     // 3. Verify membership in the Telegram group
@@ -248,6 +311,7 @@ export class ClassroomsService {
     });
 
     const classrooms = members.map(member => member.classroom);
+    user.role = await this.syncGlobalUserRoleFromMemberships(userId);
     return { classrooms, user };
   }
 
@@ -290,28 +354,22 @@ export class ClassroomsService {
 
     // Update the role in this specific classroom
     member.role = dto.role;
-    
-    // Also update the global user role to ensure correct UI visibility on login.
-    // We only upgrade the role (e.g., student -> admin), we don't downgrade it 
-    // globally if they are still an admin in another classroom.
-    // For simplicity, we'll sync the role if it's an upgrade.
-    const user = member.user;
-    if (dto.role === UserRole.OWNER) {
-      user.role = UserRole.OWNER;
-    } else if (dto.role === UserRole.ADMIN && user.role === UserRole.STUDENT) {
-      user.role = UserRole.ADMIN;
-    }
-    
-    await this.usersRepository.save(user);
-    return this.membersRepository.save(member);
+
+    const updatedMember = await this.membersRepository.save(member);
+    await this.syncGlobalUserRoleFromMemberships(member.user.id);
+    return updatedMember;
   }
 
   async removeMember(memberId: string): Promise<void> {
-    const member = await this.membersRepository.findOne({ where: { id: memberId } });
+    const member = await this.membersRepository.findOne({
+      where: { id: memberId },
+      relations: ['user'],
+    });
     if (!member) {
       throw new NotFoundException('Member not found');
     }
     await this.membersRepository.remove(member);
+    await this.syncGlobalUserRoleFromMemberships(member.user.id);
   }
 
   private generateInviteCode(): string {

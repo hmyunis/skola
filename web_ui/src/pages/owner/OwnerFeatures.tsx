@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  loadFeatures,
+  getMergedFeatures,
   saveFeatures,
   type FeatureToggle,
 } from "@/services/admin";
@@ -12,9 +12,11 @@ import {
   MessageSquare,
   Gamepad2,
   FlaskConical,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useClassroomStore } from "@/stores/classroomStore";
 
 const categoryConfig = {
   core: { label: "Core", icon: Layers, color: "text-primary" },
@@ -24,29 +26,39 @@ const categoryConfig = {
 };
 
 const OwnerFeatures = () => {
-  const [features, setFeatures] = useState<FeatureToggle[]>(loadFeatures);
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  // Derive features directly from store data
+  const features = useMemo(() => {
+    return getMergedFeatures(activeClassroom?.featureToggles);
+  }, [activeClassroom?.featureToggles]);
 
   const toggleFeature = async (id: string) => {
+    if (isUpdating) return;
+
+    const ft = features.find((f) => f.id === id);
+    if (!ft) return;
+
     const updated = features.map((f) =>
       f.id === id ? { ...f, enabled: !f.enabled } : f
     );
-    setFeatures(updated);
     
+    setIsUpdating(id);
     try {
       await saveFeatures(updated);
-      const ft = updated.find((f) => f.id === id)!;
       toast({
-        title: ft.enabled ? "Enabled" : "Disabled",
-        description: `${ft.name} has been ${ft.enabled ? "enabled" : "disabled"}.`,
+        title: !ft.enabled ? "Enabled" : "Disabled",
+        description: `${ft.name} has been ${!ft.enabled ? "enabled" : "disabled"}.`,
       });
     } catch (error) {
-      // Revert on error
-      setFeatures(features);
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to save feature toggle. Please try again.",
       });
+    } finally {
+      setIsUpdating(null);
     }
   };
 
@@ -96,10 +108,14 @@ const OwnerFeatures = () => {
                     <p className="text-xs font-bold">{ft.name}</p>
                     <p className="text-[10px] text-muted-foreground">{ft.description}</p>
                   </div>
-                  <Switch
-                    checked={ft.enabled}
-                    onCheckedChange={() => toggleFeature(ft.id)}
-                  />
+                  {isUpdating === ft.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <Switch
+                      checked={ft.enabled}
+                      onCheckedChange={() => toggleFeature(ft.id)}
+                    />
+                  )}
                 </div>
               ))}
             </div>

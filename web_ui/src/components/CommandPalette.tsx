@@ -38,9 +38,9 @@ const pages = [
   { title: "Resources", url: "/resources", icon: FolderOpen, group: "pages", featureId: "ft-resources" },
   { title: "Lounge", url: "/lounge", icon: MessageSquare, group: "pages", featureId: "ft-lounge" },
   { title: "Arena", url: "/arena", icon: Swords, group: "pages", featureId: "ft-arena" },
-  { title: "Members", url: "/members", icon: Users, group: "pages" },
-  { title: "Appearance", url: "/settings", icon: Settings, group: "pages" },
-  { title: "Announcements", url: "/announcements", icon: Megaphone, group: "pages" },
+  { title: "Announcements", url: "/announcements", icon: Megaphone, group: "pages", featureId: "ft-announcements" },
+  { title: "Members", url: "/members", icon: Users, group: "pages", featureId: "ft-members" },
+  { title: "Appearance", url: "/settings", icon: Settings, group: "pages", featureId: "ft-appearance" },
 ];
 
 const adminPages = [
@@ -96,12 +96,12 @@ export function CommandPalette() {
       {/* Trigger button */}
       <button
         onClick={() => setOpen(true)}
-        className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-background/50 border border-border hover:border-muted-foreground/50 transition-colors"
+        className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs text-foreground bg-background/50 border border-border hover:border-muted-foreground/50 transition-colors"
       >
         <Search className="h-3 w-3" />
         <span>Search…</span>
         <kbd className="pointer-events-none ml-2 inline-flex h-5 items-center gap-0.5 border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-          ⌘K
+          ⌘ K
         </kbd>
       </button>
 

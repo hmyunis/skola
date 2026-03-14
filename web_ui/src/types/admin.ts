@@ -84,6 +84,7 @@ export interface Announcement {
   content: string;
   priority: "low" | "normal" | "high" | "urgent";
   createdAt: string;
+  updatedAt?: string;
   expiresAt?: string;
   createdBy: string;
   targetAudience: "all" | "students" | "admins";

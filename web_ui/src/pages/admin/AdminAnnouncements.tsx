@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  loadAnnouncements,
-  saveAnnouncements,
+  fetchAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
   type Announcement,
 } from "@/services/admin";
-import { useAuth } from "@/stores/authStore";
-import { Card, CardContent } from "@/components/ui/card";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DatePicker } from "@/components/DatePicker";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/DateTimePicker";
 import {
   Dialog,
   DialogContent,
@@ -34,17 +35,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Megaphone,
   Plus,
   Pencil,
   Trash2,
   Pin,
-  AlertTriangle,
   Send,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useClassroomStore } from "@/stores/classroomStore";
 
 const priorityConfig = {
   low: { label: "Low", color: "bg-muted text-muted-foreground border-border" },
@@ -52,6 +52,27 @@ const priorityConfig = {
   high: { label: "High", color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
   urgent: { label: "Urgent", color: "bg-destructive/10 text-destructive border-destructive/30" },
 };
+
+function formatDateTime(value?: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getEditStatus(createdAt?: string, updatedAt?: string): "Edited" | "Not edited" {
+  if (!createdAt || !updatedAt) return "Not edited";
+  const created = new Date(createdAt).getTime();
+  const updated = new Date(updatedAt).getTime();
+  if (Number.isNaN(created) || Number.isNaN(updated)) return "Not edited";
+  return updated - created > 1000 ? "Edited" : "Not edited";
+}
 
 function AnnouncementFormDialog({
   open,
@@ -62,9 +83,8 @@ function AnnouncementFormDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: Announcement | null;
-  onSave: (a: Announcement) => void;
+  onSave: (a: Omit<Announcement, "id" | "createdAt" | "createdBy"> & { sendTelegram?: boolean }) => void;
 }) {
-  const { userName } = useAuth();
   const [title, setTitle] = useState(initial?.title || "");
   const [content, setContent] = useState(initial?.content || "");
   const [priority, setPriority] = useState<Announcement["priority"]>(initial?.priority || "normal");
@@ -72,6 +92,16 @@ function AnnouncementFormDialog({
   const [expiresAt, setExpiresAt] = useState(initial?.expiresAt || "");
   const [pinned, setPinned] = useState(initial?.pinned || false);
   const [sendTelegram, setSendTelegram] = useState(false);
+
+  useEffect(() => {
+    setTitle(initial?.title || "");
+    setContent(initial?.content || "");
+    setPriority(initial?.priority || "normal");
+    setTarget(initial?.targetAudience || "all");
+    setExpiresAt(initial?.expiresAt || "");
+    setPinned(initial?.pinned || false);
+    setSendTelegram(false);
+  }, [initial, open]);
 
   const isValid = title.trim() && content.trim();
 
@@ -117,8 +147,8 @@ function AnnouncementFormDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Expires</label>
-              <DatePicker value={expiresAt} onChange={setExpiresAt} placeholder="No expiry" />
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Expires At</label>
+              <DateTimePicker value={expiresAt} onChange={setExpiresAt} placeholder="No expiry" />
             </div>
           </div>
           <button
@@ -139,7 +169,7 @@ function AnnouncementFormDialog({
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold">Send via Telegram</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Broadcast this announcement to all Telegram bot subscribers
+                  Post this announcement to the classroom Telegram group
                 </p>
               </div>
               <Switch
@@ -153,22 +183,14 @@ function AnnouncementFormDialog({
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button className="w-full sm:w-auto" disabled={!isValid} onClick={() => {
               onSave({
-                id: initial?.id || `ann-${Date.now()}`,
                 title: title.trim(),
                 content: content.trim(),
                 priority,
-                createdAt: initial?.createdAt || new Date().toISOString(),
                 expiresAt: expiresAt || undefined,
-                createdBy: initial?.createdBy || userName,
                 targetAudience: target,
                 pinned,
+                sendTelegram: !initial ? sendTelegram : undefined,
               });
-              if (sendTelegram && !initial) {
-                toast({
-                  title: "Telegram Broadcast Queued",
-                  description: "The announcement will be sent to all Telegram subscribers.",
-                });
-              }
               onOpenChange(false);
             }}>
               {initial ? (
@@ -188,33 +210,78 @@ function AnnouncementFormDialog({
 }
 
 const AdminAnnouncements = () => {
-  const [announcements, setAnnouncements] = useState<Announcement[]>(loadAnnouncements);
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const queryClient = useQueryClient();
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const save = (updated: Announcement[]) => {
-    setAnnouncements(updated);
-    saveAnnouncements(updated);
-  };
+  const { data = [], isLoading } = useQuery<Announcement[]>({
+    queryKey: ["announcements", activeClassroom?.id],
+    queryFn: fetchAnnouncements,
+    enabled: !!activeClassroom?.id,
+  });
 
-  const handleSave = (a: Announcement) => {
-    const exists = announcements.find((x) => x.id === a.id);
-    if (exists) {
-      save(announcements.map((x) => (x.id === a.id ? a : x)));
-      toast({ title: "Updated", description: "Announcement updated." });
-    } else {
-      save([a, ...announcements]);
+  useEffect(() => {
+    setAnnouncements(data);
+  }, [data]);
+
+  const createMutation = useMutation({
+    mutationFn: createAnnouncement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["announcements", activeClassroom?.id] });
       toast({ title: "Published", description: "Announcement is now live." });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Omit<Announcement, "id" | "createdAt" | "createdBy"> }) =>
+      updateAnnouncement(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["announcements", activeClassroom?.id] });
+      toast({ title: "Updated", description: "Announcement updated." });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteAnnouncement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["announcements", activeClassroom?.id] });
+      toast({ title: "Deleted", description: "Announcement removed." });
+    },
+  });
+
+  const handleSave = async (payload: Omit<Announcement, "id" | "createdAt" | "createdBy"> & { sendTelegram?: boolean }) => {
+    try {
+      if (editing?.id) {
+        await updateMutation.mutateAsync({ id: editing.id, payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
+      setFormOpen(false);
+      setEditing(null);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save announcement.",
+      });
     }
-    setEditing(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deletingId) return;
-    save(announcements.filter((a) => a.id !== deletingId));
-    setDeletingId(null);
-    toast({ title: "Deleted", description: "Announcement removed." });
+    try {
+      await deleteMutation.mutateAsync(deletingId);
+      setDeletingId(null);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete announcement.",
+      });
+    }
   };
 
   const sorted = [...announcements].sort((a, b) => {
@@ -236,6 +303,11 @@ const AdminAnnouncements = () => {
       </div>
 
       <div className="space-y-2">
+        {isLoading && (
+          <div className="text-center py-12 text-sm text-muted-foreground">
+            Loading announcements...
+          </div>
+        )}
         {sorted.map((a) => {
           const pCfg = priorityConfig[a.priority];
           return (
@@ -245,7 +317,7 @@ const AdminAnnouncements = () => {
                 <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", pCfg.color)}>{pCfg.label}</span>
                 <span className="px-1.5 py-0.5 border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{a.targetAudience}</span>
                 <div className="flex-1" />
-                <span className="text-[10px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
+                <span className="text-[10px] text-muted-foreground">{formatDateTime(a.createdAt)}</span>
                 <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setEditing(a); setFormOpen(true); }}>
                   <Pencil className="h-3 w-3" />
                 </Button>
@@ -255,7 +327,7 @@ const AdminAnnouncements = () => {
               </div>
               <h3 className="text-sm font-bold">{a.title}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
-              <p className="text-[10px] text-muted-foreground">By {a.createdBy}{a.expiresAt ? ` · Expires ${a.expiresAt}` : ""}</p>
+              <p className="text-[10px] text-muted-foreground">By {a.createdBy} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}</p>
             </div>
           );
         })}

@@ -3,6 +3,7 @@ import { User } from '../../users/entities/user.entity';
 import { Classroom } from '../../classrooms/entities/classroom.entity';
 import { Course } from '../../academics/entities/course.entity';
 import { ResourceVote } from './resource-vote.entity';
+import { ResourceReport } from './resource-report.entity';
 
 export enum ResourceType {
   NOTE = 'note',
@@ -48,14 +49,17 @@ export class Resource {
   type: ResourceType;
 
   // File Metadata
-  @Column()
-  fileUrl: string; // e.g., "/uploads/resources/math_notes.pdf"
+  @Column({ nullable: true })
+  fileUrl: string; // e.g., "/public/uploads/resources/math_notes.pdf"
 
-  @Column()
+  @Column({ nullable: true })
   fileName: string;
 
-  @Column()
+  @Column({ type: 'int', nullable: true })
   fileSize: number; // in bytes
+
+  @Column({ nullable: true })
+  externalUrl: string; // For link-only resources
 
   @Column({ type: 'simple-array', nullable: true })
   tags: string[];
@@ -69,6 +73,9 @@ export class Resource {
 
   @OneToMany(() => ResourceVote, (vote) => vote.resource)
   votes: ResourceVote[];
+
+  @OneToMany(() => ResourceReport, (report) => report.resource)
+  reports: ResourceReport[];
 
   @CreateDateColumn()
   createdAt: Date;

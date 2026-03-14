@@ -5,6 +5,10 @@ import { CurrentClassroom } from '../../core/decorators/current-classroom.decora
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { LoungeFeedQueryDto } from './dto/lounge-feed-query.dto';
+import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
+import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
+import { LoungeReportQueryDto } from './dto/lounge-report-query.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('lounge')
@@ -76,5 +80,38 @@ export class LoungeController {
     @CurrentUser() user: User,
   ) {
     return this.loungeService.deleteReply(id, user);
+  }
+
+  @Post('reports')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async reportContent(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Body() dto: { contentType: 'post' | 'reply'; contentId: string; reason: string; details?: string },
+  ) {
+    return this.loungeService.reportContent(classroomId, user.id, dto);
+  }
+
+  @Get('reports')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async getReports(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: LoungeReportQueryDto,
+  ) {
+    return this.loungeService.listReports(classroomId, query.status, query.type);
+  }
+
+  @Post('reports/:id/review')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async reviewReport(
+    @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Body() dto: { status: 'resolved' | 'dismissed'; removeContent?: boolean },
+  ) {
+    return this.loungeService.reviewReport(id, classroomId, user.id, dto);
   }
 }

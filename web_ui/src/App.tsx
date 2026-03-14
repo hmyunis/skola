@@ -1,10 +1,11 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeBackground } from "@/components/ThemeBackground";
 import { AppLayout } from "@/components/AppLayout";
+import { queryClient } from "@/lib/queryClient";
 import Landing from "./pages/Landing";
 import Onboarding from "./pages/Onboarding";
 import Index from "./pages/Index";
@@ -35,8 +36,6 @@ import { FeatureGuard } from "@/components/FeatureGuard";
 
 import { useEffect } from "react";
 import { useThemeStore } from "@/stores/themeStore";
-
-const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
@@ -81,9 +80,17 @@ const App = () => {
                 <Route path="/arena" element={<Arena />} />
               </Route>
               
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/members" element={<Members />} />
-              <Route path="/announcements" element={<Announcements />} />
+              <Route element={<FeatureGuard featureId="ft-appearance" />}>
+                <Route path="/settings" element={<SettingsPage />} />
+              </Route>
+              
+              <Route element={<FeatureGuard featureId="ft-members" />}>
+                <Route path="/members" element={<Members />} />
+              </Route>
+              
+              <Route element={<FeatureGuard featureId="ft-announcements" />}>
+                <Route path="/announcements" element={<Announcements />} />
+              </Route>
 
               {/* Admin/Moderator routes */}
               <Route element={<RoleGuard allowedRoles={["owner", "admin"]} />}>

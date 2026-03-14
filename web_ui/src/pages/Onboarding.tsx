@@ -232,6 +232,9 @@ const Onboarding = () => {
                       className="font-mono text-sm"
                       disabled={loading}
                     />
+                    <p className="text-[10px] text-muted-foreground">
+                      Required to create a class. You can edit it later in Owner Settings.
+                    </p>
                   </div>
 
                   {error && <p className="text-[10px] text-destructive font-bold">{error}</p>}

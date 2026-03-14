@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Param, Put, Delete } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
@@ -7,7 +7,7 @@ import { CurrentClassroom } from '../../core/decorators/current-classroom.decora
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { AdminService } from './admin.service';
-import { PriorityLevel } from './entities/announcement.entity';
+import { AnnouncementTargetAudience, PriorityLevel } from './entities/announcement.entity';
 
 @Controller('admin')
 export class AdminController {
@@ -15,14 +15,60 @@ export class AdminController {
 
   // ================= ADMIN ROUTES =================
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Get('announcements')
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async getAnnouncements(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.adminService.getAnnouncements(classroomId, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('announcements')
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
   async createAnnouncement(
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body() dto: { title: string; content: string; priority?: PriorityLevel }
+    @Body() dto: {
+      title: string;
+      content: string;
+      priority?: PriorityLevel;
+      targetAudience?: AnnouncementTargetAudience;
+      pinned?: boolean;
+      expiresAt?: string | Date;
+      sendTelegram?: boolean;
+    }
   ) {
     return this.adminService.createAnnouncement(classroomId, user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Put('announcements/:id')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async updateAnnouncement(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+    @Body() dto: {
+      title: string;
+      content: string;
+      priority?: PriorityLevel;
+      targetAudience?: AnnouncementTargetAudience;
+      pinned?: boolean;
+      expiresAt?: string | Date;
+    }
+  ) {
+    return this.adminService.updateAnnouncement(classroomId, id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Delete('announcements/:id')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async deleteAnnouncement(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.deleteAnnouncement(classroomId, id);
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)

@@ -41,6 +41,26 @@ const statusDot: Record<string, string> = {
   banned: "text-destructive",
 };
 
+function formatLastActive(value?: string): string {
+  if (!value) return "recently";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "recently";
+
+  const diffMs = Date.now() - date.getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return "just now";
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)}m ago`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)}h ago`;
+  if (diffMs < 2 * day) return "yesterday";
+  if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d ago`;
+
+  return date.toLocaleDateString();
+}
+
 const Members = () => {
   const { isAdmin, isOwner } = useAuth();
   const activeClassroom = useClassroomStore((s) => s.activeClassroom);
@@ -128,7 +148,7 @@ const Members = () => {
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground truncate">Last active {user.lastActive}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">Last active {formatLastActive(user.lastActive)}</p>
                   </div>
                   {user.telegramUsername && (
                     <a

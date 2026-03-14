@@ -1,199 +1,149 @@
-import type { Resource, ResourceType, ResourceCategory } from "@/types/resources";
+import { apiFetch } from "./api";
+import type { Resource, ResourceType, VoteType, ResourceReport } from "@/types/resources";
 
-// Re-export types for backward compatibility
-export type { Resource, ResourceType, ResourceCategory } from "@/types/resources";
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export type { Resource, ResourceType, VoteType, ResourceReport } from "@/types/resources";
 
 export const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
-  { value: "pdf", label: "PDF" },
-  { value: "slides", label: "Slides" },
-  { value: "notes", label: "Notes" },
-  { value: "video", label: "Video" },
-  { value: "code", label: "Code" },
-  { value: "link", label: "Link" },
+  { value: "note", label: "Note" },
+  { value: "slide", label: "Slide" },
+  { value: "past_paper", label: "Past Paper" },
+  { value: "ebook", label: "E-Book" },
+  { value: "other", label: "Other" },
 ];
 
-export const RESOURCE_CATEGORIES: { value: ResourceCategory; label: string }[] = [
-  { value: "lecture", label: "Lecture Material" },
-  { value: "lab", label: "Lab Resources" },
-  { value: "reference", label: "Reference" },
-  { value: "exam-prep", label: "Exam Prep" },
-  { value: "project", label: "Project" },
-];
+export interface ResourceListResponse {
+  data: Resource[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+  stats: {
+    totalResources: number;
+    totalUpvotes: number;
+    totalDownvotes: number;
+    totalTypes: number;
+  };
+}
 
-export async function fetchResources(semesterId?: string): Promise<Resource[]> {
-  await delay(350);
-  return [
-    {
-      id: "r1",
-      title: "Binary Trees — Complete Notes",
-      course: "CS301",
-      type: "pdf",
-      category: "lecture",
-      uploadedBy: "Prof. Tigist",
-      uploadedAt: "2026-02-28",
-      size: "2.4 MB",
-      rating: 4.7,
-      totalRatings: 23,
-      upvotes: 31,
-      downvotes: 2,
-      downloads: 47,
-      description: "Comprehensive notes covering binary trees, BST, AVL trees, and B-trees with diagrams and complexity analysis.",
-      tags: ["trees", "bst", "avl", "data-structures"],
-    },
-    {
-      id: "r2",
-      title: "DBMS ER Diagram Tutorial Slides",
-      course: "CS302",
-      type: "slides",
-      category: "lecture",
-      uploadedBy: "Prof. Hana",
-      uploadedAt: "2026-03-01",
-      size: "5.1 MB",
-      rating: 4.2,
-      totalRatings: 15,
-      upvotes: 18,
-      downvotes: 3,
-      downloads: 28,
-      description: "Slide deck covering ER diagrams, relationships, cardinality, and mapping to relational schemas.",
-      tags: ["er-diagram", "database", "schema"],
-    },
-    {
-      id: "r3",
-      title: "TCP/IP Protocol Stack — Lab Manual",
-      course: "CS303",
-      type: "pdf",
-      category: "lab",
-      uploadedBy: "Lab TA",
-      uploadedAt: "2026-02-20",
-      size: "1.8 MB",
-      rating: 3.9,
-      totalRatings: 12,
-      upvotes: 14,
-      downvotes: 4,
-      downloads: 19,
-      description: "Lab manual covering TCP/IP socket programming, Wireshark captures, and packet analysis exercises.",
-      tags: ["tcp", "ip", "wireshark", "sockets"],
-    },
-    {
-      id: "r4",
-      title: "OS Process Scheduling Simulator",
-      course: "CS304",
-      type: "code",
-      category: "project",
-      uploadedBy: "Dawit T.",
-      uploadedAt: "2026-03-03",
-      size: "340 KB",
-      rating: 4.8,
-      totalRatings: 8,
-      upvotes: 22,
-      downvotes: 0,
-      downloads: 35,
-      description: "Python-based simulator for FCFS, SJF, Round Robin, and Priority scheduling algorithms with Gantt chart output.",
-      tags: ["scheduling", "fcfs", "sjf", "python"],
-    },
-    {
-      id: "r5",
-      title: "DSA Mid-Sem Previous Year Papers",
-      course: "CS301",
-      type: "pdf",
-      category: "exam-prep",
-      uploadedBy: "Amina H.",
-      uploadedAt: "2026-03-05",
-      size: "4.2 MB",
-      rating: 4.9,
-      totalRatings: 34,
-      upvotes: 45,
-      downvotes: 1,
-      downloads: 82,
-      description: "Collection of 5 previous year mid-semester papers with solutions for Data Structures & Algorithms.",
-      tags: ["previous-year", "mid-sem", "solutions"],
-    },
-    {
-      id: "r6",
-      title: "Normalization Video Lecture (3NF, BCNF)",
-      course: "CS302",
-      type: "video",
-      category: "lecture",
-      uploadedBy: "Prof. Hana",
-      uploadedAt: "2026-02-25",
-      size: "180 MB",
-      rating: 4.5,
-      totalRatings: 19,
-      upvotes: 26,
-      downvotes: 2,
-      downloads: 41,
-      description: "Recorded lecture covering functional dependencies, 1NF through BCNF normalization with worked examples.",
-      tags: ["normalization", "3nf", "bcnf", "functional-dependencies"],
-    },
-    {
-      id: "r7",
-      title: "Subnetting Cheat Sheet",
-      course: "CS303",
-      type: "notes",
-      category: "reference",
-      uploadedBy: "Mohammed Y.",
-      uploadedAt: "2026-03-02",
-      size: "120 KB",
-      rating: 4.6,
-      totalRatings: 28,
-      upvotes: 38,
-      downvotes: 1,
-      downloads: 56,
-      description: "Quick reference for subnet masks, CIDR notation, and IP address class ranges with practice problems.",
-      tags: ["subnetting", "cidr", "ip-addressing"],
-    },
-    {
-      id: "r8",
-      title: "Deadlock Detection Algorithm — Walkthrough",
-      course: "CS304",
-      type: "notes",
-      category: "exam-prep",
-      uploadedBy: "Selam B.",
-      uploadedAt: "2026-03-06",
-      size: "280 KB",
-      rating: 4.3,
-      totalRatings: 11,
-      upvotes: 15,
-      downvotes: 2,
-      downloads: 24,
-      description: "Step-by-step walkthrough of Banker's algorithm and deadlock detection using resource allocation graphs.",
-      tags: ["deadlock", "bankers-algorithm", "rag"],
-    },
-    {
-      id: "r9",
-      title: "Graph Algorithms Visualizer",
-      course: "CS301",
-      type: "link",
-      category: "reference",
-      uploadedBy: "Nahom T.",
-      uploadedAt: "2026-03-04",
-      size: "—",
-      rating: 4.4,
-      totalRatings: 16,
-      upvotes: 20,
-      downvotes: 3,
-      downloads: 0,
-      description: "Interactive web tool for visualizing BFS, DFS, Dijkstra's, and Kruskal's algorithms on custom graphs.",
-      tags: ["graphs", "bfs", "dfs", "dijkstra", "visualization"],
-    },
-    {
-      id: "r10",
-      title: "SQL Joins — Practice Problem Set",
-      course: "CS302",
-      type: "pdf",
-      category: "lab",
-      uploadedBy: "Lab TA",
-      uploadedAt: "2026-03-07",
-      size: "950 KB",
-      rating: 4.1,
-      totalRatings: 9,
-      upvotes: 12,
-      downvotes: 1,
-      downloads: 15,
-      description: "30 practice problems on SQL joins (INNER, LEFT, RIGHT, FULL) with expected output tables and solutions.",
-      tags: ["sql", "joins", "practice"],
-    },
-  ];
+export async function fetchResources(params?: {
+  page?: number;
+  limit?: number;
+  courseId?: string;
+  search?: string;
+  type?: ResourceType;
+}): Promise<ResourceListResponse> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.courseId) query.set("courseId", params.courseId);
+  if (params?.search) query.set("search", params.search);
+  if (params?.type) query.set("type", params.type);
+  const qs = query.toString();
+  return apiFetch(`/resources${qs ? `?${qs}` : ""}`);
+}
+
+export async function uploadResourceFile(data: {
+  file: File;
+  courseId: string;
+  title: string;
+  description?: string;
+  type: ResourceType;
+  tags?: string[];
+}): Promise<Resource> {
+  const form = new FormData();
+  form.append("file", data.file);
+  form.append("courseId", data.courseId);
+  form.append("title", data.title);
+  form.append("description", data.description || "");
+  form.append("type", data.type);
+  form.append("tags", JSON.stringify(data.tags || []));
+
+  return apiFetch("/resources/upload", {
+    method: "POST",
+    body: form,
+  });
+}
+
+export async function createLinkResource(data: {
+  courseId: string;
+  title: string;
+  description?: string;
+  externalUrl: string;
+  type?: ResourceType;
+  tags?: string[];
+}): Promise<Resource> {
+  return apiFetch("/resources", {
+    method: "POST",
+    body: JSON.stringify({
+      ...data,
+      type: data.type || "other",
+    }),
+  });
+}
+
+export async function updateResource(resourceId: string, data: Partial<Resource>): Promise<Resource> {
+  return apiFetch(`/resources/${resourceId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateResourceFile(
+  resourceId: string,
+  data: {
+    file: File;
+    title: string;
+    description?: string;
+    courseId: string;
+    type: ResourceType;
+    tags?: string[];
+  },
+): Promise<Resource> {
+  const form = new FormData();
+  form.append("file", data.file);
+  form.append("title", data.title);
+  form.append("description", data.description || "");
+  form.append("courseId", data.courseId);
+  form.append("type", data.type);
+  form.append("tags", JSON.stringify(data.tags || []));
+
+  return apiFetch(`/resources/${resourceId}/upload`, {
+    method: "PUT",
+    body: form,
+  });
+}
+
+export async function deleteResource(resourceId: string): Promise<{ success: boolean }> {
+  return apiFetch(`/resources/${resourceId}`, { method: "DELETE" });
+}
+
+export async function voteResource(resourceId: string, voteType: VoteType): Promise<{ upvotes: number; downvotes: number; userVote: VoteType | null }> {
+  return apiFetch(`/resources/${resourceId}/vote`, {
+    method: "POST",
+    body: JSON.stringify({ voteType }),
+  });
+}
+
+export async function reportResource(resourceId: string, payload: { reason: string; details?: string }) {
+  return apiFetch(`/resources/${resourceId}/report`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchResourceReports(status?: "pending" | "resolved" | "dismissed"): Promise<ResourceReport[]> {
+  const qs = status ? `?status=${status}` : "";
+  return apiFetch(`/resources/moderation/reports${qs}`);
+}
+
+export async function reviewResourceReport(
+  reportId: string,
+  payload: { status: "resolved" | "dismissed"; removeResource?: boolean },
+) {
+  return apiFetch(`/resources/moderation/reports/${reportId}/review`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

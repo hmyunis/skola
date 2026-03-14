@@ -11,13 +11,17 @@ const MOCK_SEMESTER_ID = "mock-semester-id";
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = useAuthStore.getState().accessToken;
   const activeClassroom = useClassroomStore.getState().activeClassroom;
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   
-  const headers = {
-    "Content-Type": "application/json",
+  const headers: Record<string, string> = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(activeClassroom ? { "x-classroom-id": activeClassroom.id } : {}),
-    ...options.headers,
+    ...((options.headers as Record<string, string> | undefined) || {}),
   };
+
+  if (!isFormData && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,

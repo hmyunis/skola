@@ -75,6 +75,19 @@ function formatRemaining(until: string): string {
   return `${hours}h remaining`;
 }
 
+function formatDate(value?: string): string {
+  if (!value) return "unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 const AdminUsers = () => {
   const { isOwner } = useAuth();
   const { activeClassroom } = useClassroomStore();
@@ -248,7 +261,7 @@ const AdminUsers = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground truncate">{user.email} · Joined {user.joinedAt}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{user.email} · Joined {formatDate(user.joinedAt)}</p>
                       </div>
                     </div>
                     {user.role !== "owner" && (isOwner || user.role !== "admin") && (

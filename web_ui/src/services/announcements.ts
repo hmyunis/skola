@@ -1,27 +1,37 @@
 import type { Announcement } from "@/types/admin";
+import { apiFetch } from "./api";
 
 // Re-export type for backward compatibility
 export type { Announcement } from "@/types/admin";
 
-const ANNOUNCEMENTS_KEY = "skola-admin-announcements";
 const DISMISSED_KEY = "skola-dismissed-announcements";
 
-const DEFAULT_ANNOUNCEMENTS: Announcement[] = [
-  { id: "a1", title: "Mid-Semester Examination Schedule Released", content: "The mid-semester examination schedule for Spring 2026 has been published. Please check your schedule page for details.", priority: "high", createdAt: "2026-03-01T09:00:00", expiresAt: "2026-03-20", createdBy: "Dawit Tadesse", targetAudience: "all", pinned: true },
-  { id: "a2", title: "Lab 302 Maintenance", content: "Lab 302 will be unavailable for maintenance on March 10-11. All lab sessions will be relocated to Lab 204.", priority: "normal", createdAt: "2026-03-05T14:00:00", expiresAt: "2026-03-12", createdBy: "Meron Kebede", targetAudience: "students", pinned: false },
-  { id: "a3", title: "Spring Break Reminder", content: "Spring break is from March 20-27. Campus facilities will operate on reduced hours.", priority: "low", createdAt: "2026-03-08T08:00:00", createdBy: "Dawit Tadesse", targetAudience: "all", pinned: false },
-];
+type AnnouncementPayload = Omit<Announcement, "id" | "createdAt" | "createdBy"> & {
+  sendTelegram?: boolean;
+};
 
-export function loadAnnouncements(): Announcement[] {
-  try {
-    const s = localStorage.getItem(ANNOUNCEMENTS_KEY);
-    if (s) return JSON.parse(s);
-  } catch {}
-  return DEFAULT_ANNOUNCEMENTS;
+export async function fetchAnnouncements(): Promise<Announcement[]> {
+  return apiFetch("/admin/announcements");
 }
 
-export function saveAnnouncements(announcements: Announcement[]) {
-  localStorage.setItem(ANNOUNCEMENTS_KEY, JSON.stringify(announcements));
+export async function createAnnouncement(payload: AnnouncementPayload): Promise<Announcement> {
+  return apiFetch("/admin/announcements", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAnnouncement(id: string, payload: AnnouncementPayload): Promise<Announcement> {
+  return apiFetch(`/admin/announcements/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await apiFetch(`/admin/announcements/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export function getDismissedAnnouncementIds(): string[] {

@@ -1,15 +1,19 @@
-import { useState, useMemo, useRef, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchCourses } from "@/services/courses";
 import {
-  fetchResources,
   RESOURCE_TYPES,
-  RESOURCE_CATEGORIES,
+  createLinkResource,
+  deleteResource,
+  fetchResources,
+  updateResource,
+  updateResourceFile,
+  uploadResourceFile,
+  voteResource,
   type Resource,
   type ResourceType,
-  type ResourceCategory,
 } from "@/services/resources";
-import { COURSES } from "@/services/api";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,455 +40,165 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  FolderOpen,
-  Search,
-  Filter,
-  Star,
-  ThumbsUp,
-  ThumbsDown,
-  FileText,
-  Presentation,
-  StickyNote,
-  Video,
-  Code2,
-  ExternalLink,
-  Calendar,
-  User,
-  HardDrive,
-  Tag,
-  Plus,
-  Pencil,
-  Trash2,
-  Flag,
-  Download,
-  Upload,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-
-import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
+import { useAuth } from "@/stores/authStore";
 import { ReportDialog } from "@/components/ReportDialog";
+import {
+  Download,
+  ExternalLink,
+  Loader2,
+  Plus,
+  Search,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  Pencil,
+  Upload,
+  Link as LinkIcon,
+  FolderOpen,
+} from "lucide-react";
 
-// ─── Type icon map ───
-const typeIcons: Record<ResourceType, typeof FileText> = {
-  pdf: FileText,
-  slides: Presentation,
-  notes: StickyNote,
-  video: Video,
-  code: Code2,
-  link: ExternalLink,
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
+const typeTone: Record<ResourceType, string> = {
+  note: "bg-primary/10 text-primary border-primary/30",
+  slide: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+  past_paper: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
+  ebook: "bg-sky-500/10 text-sky-600 border-sky-500/30",
+  other: "bg-muted text-muted-foreground border-border",
 };
 
-const typeColors: Record<ResourceType, string> = {
-  pdf: "bg-destructive/10 text-destructive border-destructive/30",
-  slides: "bg-amber-500/10 text-amber-600 border-amber-500/30",
-  notes: "bg-primary/10 text-primary border-primary/30",
-  video: "bg-violet-500/10 text-violet-600 border-violet-500/30",
-  code: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
-  link: "bg-sky-500/10 text-sky-600 border-sky-500/30",
-};
-
-const categoryColors: Record<ResourceCategory, string> = {
-  lecture: "bg-primary/10 text-primary border-primary/30",
-  lab: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
-  reference: "bg-sky-500/10 text-sky-600 border-sky-500/30",
-  "exam-prep": "bg-amber-500/10 text-amber-600 border-amber-500/30",
-  project: "bg-violet-500/10 text-violet-600 border-violet-500/30",
-};
-
-// ─── Star Rating Component ───
-function StarRating({
-  rating,
-  totalRatings,
-  userRating,
-  onRate,
-  size = "sm",
-}: {
-  rating: number;
-  totalRatings: number;
-  userRating?: number;
-  onRate?: (stars: number) => void;
-  size?: "sm" | "md";
-}) {
-  const [hoverStar, setHoverStar] = useState(0);
-  const iconSize = size === "md" ? "h-4 w-4" : "h-3 w-3";
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex items-center gap-0.5" onMouseLeave={() => setHoverStar(0)}>
-        {[1, 2, 3, 4, 5].map((s) => {
-          const filled = hoverStar ? s <= hoverStar : s <= Math.round(userRating || rating);
-          return (
-            <button
-              key={s}
-              onMouseEnter={() => onRate && setHoverStar(s)}
-              onClick={() => onRate?.(s)}
-              className={cn("transition-colors", onRate ? "cursor-pointer" : "cursor-default")}
-            >
-              <Star className={cn(iconSize, filled ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
-            </button>
-          );
-        })}
-      </div>
-      <span className="text-[10px] text-muted-foreground tabular-nums">
-        {rating.toFixed(1)} ({totalRatings})
-      </span>
-    </div>
-  );
+function formatBytes(bytes?: number) {
+  if (!bytes) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ─── Vote Buttons ───
-function VoteButtons({
-  upvotes,
-  downvotes,
-  userVote,
-  onVote,
-}: {
-  upvotes: number;
-  downvotes: number;
-  userVote?: "up" | "down";
-  onVote: (dir: "up" | "down") => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={(e) => { e.stopPropagation(); onVote("up"); }}
-        className={cn(
-          "flex items-center gap-1 px-2 py-1 border text-[10px] font-bold uppercase tracking-wider transition-all",
-          userVote === "up"
-            ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-600"
-            : "border-border text-muted-foreground hover:bg-accent"
-        )}
-      >
-        <ThumbsUp className="h-3 w-3" />
-        <span className="tabular-nums">{upvotes + (userVote === "up" ? 1 : 0)}</span>
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onVote("down"); }}
-        className={cn(
-          "flex items-center gap-1 px-2 py-1 border text-[10px] font-bold uppercase tracking-wider transition-all",
-          userVote === "down"
-            ? "bg-destructive/15 border-destructive/50 text-destructive"
-            : "border-border text-muted-foreground hover:bg-accent"
-        )}
-      >
-        <ThumbsDown className="h-3 w-3" />
-        <span className="tabular-nums">{downvotes + (userVote === "down" ? 1 : 0)}</span>
-      </button>
-    </div>
-  );
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
-// ─── File size formatter ───
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-}
-
-// ─── Extension → ResourceType map ───
-const extToType: Record<string, ResourceType> = {
-  pdf: "pdf",
-  pptx: "slides",
-  ppt: "slides",
-  key: "slides",
-  odp: "slides",
-  txt: "notes",
-  md: "notes",
-  doc: "notes",
-  docx: "notes",
-  mp4: "video",
-  mkv: "video",
-  avi: "video",
-  mov: "video",
-  webm: "video",
-  py: "code",
-  js: "code",
-  ts: "code",
-  java: "code",
-  c: "code",
-  cpp: "code",
-  zip: "code",
-  rar: "code",
-};
-
-// ─── Resource Form Dialog (Create / Edit) ───
-function ResourceFormDialog({
+function ResourceDialog({
   open,
   onOpenChange,
-  onSubmit,
   initial,
+  courseOptions,
+  onSubmit,
+  isPending,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => void;
   initial?: Resource | null;
+  courseOptions: Array<{ id: string; label: string }>;
+  onSubmit: (payload: {
+    title: string;
+    description: string;
+    courseId: string;
+    type: ResourceType;
+    tags: string[];
+    file?: File | null;
+    externalUrl?: string;
+  }) => void;
+  isPending: boolean;
 }) {
   const [title, setTitle] = useState(initial?.title || "");
   const [description, setDescription] = useState(initial?.description || "");
-  const [course, setCourse] = useState(initial?.course || "CS301");
-  const [type, setType] = useState<ResourceType>(initial?.type || "pdf");
-  const [category, setCategory] = useState<ResourceCategory>(initial?.category || "lecture");
-  const [size, setSize] = useState(initial?.size || "");
-  const [tagsStr, setTagsStr] = useState(initial?.tags.join(", ") || "");
-
-  // File upload state
+  const [courseId, setCourseId] = useState(initial?.courseId || "");
+  const [type, setType] = useState<ResourceType>(initial?.type || "note");
+  const [tags, setTags] = useState((initial?.tags || []).join(", "));
+  const [mode, setMode] = useState<"file" | "link">(initial?.externalUrl ? "link" : "file");
+  const [externalUrl, setExternalUrl] = useState(initial?.externalUrl || "");
   const [file, setFile] = useState<File | null>(null);
-  const [fileDataUrl, setFileDataUrl] = useState<string | undefined>(initial?.fileDataUrl);
-  const [fileName, setFileName] = useState<string | undefined>(initial?.fileName);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset when initial changes
-  useState(() => {
-    if (initial) {
-      setTitle(initial.title);
-      setDescription(initial.description);
-      setCourse(initial.course);
-      setType(initial.type);
-      setCategory(initial.category);
-      setSize(initial.size);
-      setTagsStr(initial.tags.join(", "));
-      setFileDataUrl(initial.fileDataUrl);
-      setFileName(initial.fileName);
-      setFile(null);
-    }
-  });
-
-  const handleFileSelect = useCallback((selectedFile: File) => {
-    setFile(selectedFile);
-    setFileName(selectedFile.name);
-    setSize(formatFileSize(selectedFile.size));
-
-    // Auto-detect type from extension
-    const ext = selectedFile.name.split(".").pop()?.toLowerCase() || "";
-    if (extToType[ext]) {
-      setType(extToType[ext]);
-    }
-
-    // Auto-fill title if empty
-    if (!title.trim()) {
-      const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
-      setTitle(nameWithoutExt.replace(/[-_]/g, " "));
-    }
-
-    // Read file as data URL
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setFileDataUrl(e.target?.result as string);
-    };
-    reader.readAsDataURL(selectedFile);
-  }, [title]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile) handleFileSelect(droppedFile);
-  }, [handleFileSelect]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const removeFile = () => {
+  useEffect(() => {
+    setTitle(initial?.title || "");
+    setDescription(initial?.description || "");
+    setCourseId(initial?.courseId || "");
+    setType(initial?.type || "note");
+    setTags((initial?.tags || []).join(", "));
+    setMode(initial?.externalUrl ? "link" : "file");
+    setExternalUrl(initial?.externalUrl || "");
     setFile(null);
-    setFileDataUrl(undefined);
-    setFileName(undefined);
-    setSize("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  }, [initial, open]);
 
-  const isValid = title.trim() && description.trim();
+  const normalizedUrl = externalUrl.trim();
+  const urlValid = mode === "link" ? isValidHttpUrl(normalizedUrl) : true;
+  const valid = title.trim() && description.trim() && courseId && (mode === "link" ? normalizedUrl && urlValid : file || initial?.fileUrl);
 
-  const handleSubmit = () => {
-    if (!isValid) return;
+  const submit = () => {
+    if (!valid) return;
     onSubmit({
       title: title.trim(),
       description: description.trim(),
-      course,
+      courseId,
       type,
-      category,
-      size: size.trim() || "—",
-      tags: tagsStr
+      tags: tags
         .split(",")
-        .map((t) => t.trim().toLowerCase())
+        .map((t) => t.trim())
         .filter(Boolean),
-      fileDataUrl,
-      fileName,
+      file,
+      externalUrl: mode === "link" ? externalUrl.trim() : undefined,
     });
-    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle className="uppercase tracking-wider text-sm">
-            {initial ? "Edit Resource" : "Add Resource"}
-          </DialogTitle>
+          <DialogTitle>{initial ? "Edit Resource" : "Add Resource"}</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4">
-          {/* File upload area */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-              File Upload
-            </label>
-            {fileName && fileDataUrl ? (
-              <div className="border border-border p-3 flex items-center gap-3">
-                <div className="p-2 bg-primary/10 border border-primary/30">
-                  <FileText className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{fileName}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{size}</p>
-                </div>
-                <button
-                  onClick={removeFile}
-                  className="h-7 w-7 flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                  "border-2 border-dashed p-6 flex flex-col items-center gap-2 cursor-pointer transition-colors",
-                  isDragging
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground/50 hover:bg-accent/30"
-                )}
-              >
-                <Upload className="h-6 w-6 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground text-center">
-                  <span className="font-bold text-foreground">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
-                  PDF, PPTX, DOCX, MP4, ZIP, and more
-                </p>
-              </div>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFileSelect(f);
-              }}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Title</label>
-            <Input
-              placeholder="e.g. Binary Trees — Complete Notes"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-9 text-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Description</label>
-            <Textarea
-              placeholder="What does this resource contain?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[70px] text-sm resize-none"
-              rows={3}
-            />
-          </div>
-
+        <div className="space-y-3">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Course</label>
-              <Select value={course} onValueChange={setCourse}>
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {COURSES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Type</label>
-              <Select value={type} onValueChange={(v) => setType(v as ResourceType)}>
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESOURCE_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Category</label>
-              <Select value={category} onValueChange={(v) => setCategory(v as ResourceCategory)}>
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESOURCE_CATEGORIES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Size</label>
-              <Input
-                placeholder="e.g. 2.4 MB"
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-                className="h-9 text-xs"
-                disabled={!!file}
-              />
-            </div>
+            <Select value={courseId} onValueChange={setCourseId}>
+              <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
+              <SelectContent>
+                {courseOptions.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>{course.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={type} onValueChange={(v) => setType(v as ResourceType)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {RESOURCE_TYPES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-              Tags <span className="font-normal">(comma-separated)</span>
-            </label>
-            <Input
-              placeholder="e.g. trees, bst, avl"
-              value={tagsStr}
-              onChange={(e) => setTagsStr(e.target.value)}
-              className="h-9 text-xs"
-            />
+          <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma separated)" />
+          <div className="flex gap-2">
+            <Button type="button" variant={mode === "file" ? "default" : "outline"} onClick={() => setMode("file")}>
+              <Upload className="h-3.5 w-3.5" /> File
+            </Button>
+            <Button type="button" variant={mode === "link" ? "default" : "outline"} onClick={() => setMode("link")}>
+              <LinkIcon className="h-3.5 w-3.5" /> Link
+            </Button>
           </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={!isValid}>
-              {initial ? (
-                <><Pencil className="h-3 w-3" /> Save Changes</>
-              ) : (
-                <><Plus className="h-3 w-3" /> Add Resource</>
+          {mode === "file" ? (
+            <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          ) : (
+            <div className="space-y-1">
+              <Input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://..." />
+              {normalizedUrl && !urlValid && (
+                <p className="text-[11px] text-destructive">Enter a valid http/https URL.</p>
               )}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button disabled={!valid || isPending} onClick={submit}>
+              {initial ? <><Pencil className="h-3.5 w-3.5" /> Save</> : <><Plus className="h-3.5 w-3.5" /> Create</>}
             </Button>
           </div>
         </div>
@@ -493,641 +207,370 @@ function ResourceFormDialog({
   );
 }
 
-// ─── Resource Detail Dialog ───
-function ResourceDetailDialog({
-  resource,
-  userRating,
-  userVote,
-  downloadCount,
-  isOwner,
-  isAdmin,
-  onRate,
-  onVote,
-  onDownload,
-  onEdit,
-  onDelete,
-  onClose,
-}: {
-  resource: Resource | null;
-  userRating?: number;
-  userVote?: "up" | "down";
-  downloadCount: number;
-  isOwner: boolean;
-  isAdmin: boolean;
-  onRate: (id: string, stars: number) => void;
-  onVote: (id: string, dir: "up" | "down") => void;
-  onDownload: (id: string) => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onClose: () => void;
-}) {
-  const [reportOpen, setReportOpen] = useState(false);
-  if (!resource) return null;
-
-  const TypeIcon = typeIcons[resource.type];
-  const courseName = COURSES.find((c) => c.code === resource.course)?.name || resource.course;
-  const catLabel = RESOURCE_CATEGORIES.find((c) => c.value === resource.category)?.label || resource.category;
-  const typeLabel = RESOURCE_TYPES.find((t) => t.value === resource.type)?.label || resource.type;
-
-  return (
-    <Dialog open={!!resource} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="uppercase tracking-wider text-sm">Resource Details</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          {/* Title + icon */}
-          <div className="flex items-start gap-3">
-            <div className={cn("p-2.5 border", typeColors[resource.type])}>
-              <TypeIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold leading-tight">{resource.title}</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">{courseName}</p>
-            </div>
-          </div>
-
-          <p className="text-sm text-muted-foreground leading-relaxed">{resource.description}</p>
-
-          {/* Metadata grid */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <User className="h-3.5 w-3.5 shrink-0" />
-              <span>{resource.uploadedBy}</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5 shrink-0" />
-              <span>{new Date(resource.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <HardDrive className="h-3.5 w-3.5 shrink-0" />
-              <span>{resource.size}{resource.fileName ? ` · ${resource.fileName}` : ""}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", typeColors[resource.type])}>
-                <TypeIcon className="h-2.5 w-2.5" />
-                {typeLabel}
-              </span>
-            </div>
-          </div>
-
-          {/* Category + Tags */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className={cn("px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider", categoryColors[resource.category])}>
-                {catLabel}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {resource.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-muted text-muted-foreground border border-border text-[10px] uppercase tracking-wider"
-                >
-                  <Tag className="h-2 w-2" />
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Rating */}
-          <div className="border border-border p-3 space-y-2">
-            <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Your Rating</p>
-            <StarRating
-              rating={resource.rating}
-              totalRatings={resource.totalRatings}
-              userRating={userRating}
-              onRate={(stars) => onRate(resource.id, stars)}
-              size="md"
-            />
-          </div>
-
-          {/* Download / Open button */}
-          <div className="flex items-center justify-between">
-            {resource.type === "link" ? (
-              <Button size="sm" className="gap-1.5" onClick={() => {
-                onDownload(resource.id);
-                if (resource.fileDataUrl && resource.fileName) {
-                  const link = document.createElement("a");
-                  link.href = resource.fileDataUrl;
-                  link.download = resource.fileName;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                } else {
-                  window.open("#", "_blank");
-                }
-              }}>
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open Link
-              </Button>
-            ) : (
-              <Button size="sm" className="gap-1.5" onClick={() => {
-                onDownload(resource.id);
-                if (resource.fileDataUrl && resource.fileName) {
-                  const link = document.createElement("a");
-                  link.href = resource.fileDataUrl;
-                  link.download = resource.fileName;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                } else {
-                  toast({ title: "No file attached", description: "This resource has no uploaded file." });
-                }
-              }}>
-                <Download className="h-3.5 w-3.5" />
-                Download
-              </Button>
-            )}
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider tabular-nums">
-              <Download className="h-3 w-3 inline mr-1" />{downloadCount} downloads
-            </span>
-          </div>
-
-          {/* Votes */}
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Helpful?</p>
-            <VoteButtons
-              upvotes={resource.upvotes}
-              downvotes={resource.downvotes}
-              userVote={userVote}
-              onVote={(dir) => onVote(resource.id, dir)}
-            />
-          </div>
-
-          {/* Owner / Admin / Report actions */}
-          <div className="flex items-center gap-2 border-t border-border pt-3">
-            {(isOwner || isAdmin) ? (
-              <>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-1">
-                  {isOwner ? "Your resource" : "Admin moderation"}
-                </p>
-                {isOwner && (
-                  <Button size="sm" variant="outline" onClick={onEdit}>
-                    <Pencil className="h-3 w-3" /> Edit
-                  </Button>
-                )}
-                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={onDelete}>
-                  <Trash2 className="h-3 w-3" /> Delete
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="flex-1" />
-                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => setReportOpen(true)}>
-                  <Flag className="h-3 w-3" /> Report
-                </Button>
-              </>
-            )}
-          </div>
-          <ReportDialog
-            open={reportOpen}
-            onOpenChange={setReportOpen}
-            contentType="resource"
-            contentId={resource.id}
-            contentPreview={resource.title + " — " + resource.description}
-            contentAuthor={resource.uploadedBy}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Resource Card ───
-function ResourceCard({
-  resource,
-  userVote,
-  onVote,
-  onClick,
-}: {
-  resource: Resource;
-  userVote?: "up" | "down";
-  onVote: (id: string, dir: "up" | "down") => void;
-  onClick: () => void;
-}) {
-  const TypeIcon = typeIcons[resource.type];
-  const catLabel = RESOURCE_CATEGORIES.find((c) => c.value === resource.category)?.label || resource.category;
-
-  return (
-    <div
-      className="border border-border p-3 sm:p-4 hover:bg-accent/30 transition-colors cursor-pointer"
-      onClick={onClick}
-    >
-      <div className="flex items-start gap-3">
-        <div className={cn("p-2 border shrink-0", typeColors[resource.type])}>
-          <TypeIcon className="h-4 w-4" />
-        </div>
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <div>
-            <p className="font-bold text-sm truncate">{resource.title}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {resource.course} · {resource.uploadedBy} · {resource.size}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", typeColors[resource.type])}>
-              {RESOURCE_TYPES.find((t) => t.value === resource.type)?.label}
-            </span>
-            <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", categoryColors[resource.category])}>
-              {catLabel}
-            </span>
-            {resource.type !== "link" && (
-              <span className="text-[10px] text-muted-foreground tabular-nums flex items-center gap-0.5">
-                <Download className="h-2.5 w-2.5" />{resource.downloads}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <StarRating rating={resource.rating} totalRatings={resource.totalRatings} />
-            <VoteButtons
-              upvotes={resource.upvotes}
-              downvotes={resource.downvotes}
-              userVote={userVote}
-              onVote={(dir) => onVote(resource.id, dir)}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Page ───
 const Resources = () => {
-  const { isAdmin, userName } = useAuth();
+  const queryClient = useQueryClient();
   const semId = useSemesterStore((s) => s.activeSemester?.id);
-  const { data: fetchedResources, isLoading } = useQuery({
-    queryKey: ["resources", semId],
-    queryFn: () => fetchResources(semId),
-  });
-
-  const [localResources, setLocalResources] = useState<Resource[]>([]);
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
-  const [editedResources, setEditedResources] = useState<Record<string, Partial<Resource>>>({});
+  const { user, isAdmin } = useAuth();
 
   const [search, setSearch] = useState("");
-  const [filterCourse, setFilterCourse] = useState<string>("all");
-  const [filterType, setFilterType] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("rating");
-  const [votes, setVotes] = useState<Record<string, "up" | "down">>({});
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const [detailResource, setDetailResource] = useState<Resource | null>(null);
-
+  const [courseFilter, setCourseFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
-  const [editingResource, setEditingResource] = useState<Resource | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [downloadCounts, setDownloadCounts] = useState<Record<string, number>>({});
+  const [editing, setEditing] = useState<Resource | null>(null);
+  const [deleting, setDeleting] = useState<Resource | null>(null);
+  const [reporting, setReporting] = useState<Resource | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Merge fetched + local, apply edits, remove deleted
-  const allResources = useMemo(() => {
-    const fetched = (fetchedResources || [])
-      .filter((r) => !deletedIds.has(r.id))
-      .map((r) => (editedResources[r.id] ? { ...r, ...editedResources[r.id] } : r));
-    return [...localResources, ...fetched] as Resource[];
-  }, [fetchedResources, localResources, deletedIds, editedResources]);
+  const coursesQuery = useQuery({
+    queryKey: ["courses", "resources", semId],
+    queryFn: () => fetchCourses({ page: 1, limit: 100, semesterId: semId || undefined }),
+  });
 
-  const handleVote = (id: string, dir: "up" | "down") => {
-    setVotes((prev) => ({ ...prev, [id]: prev[id] === dir ? undefined! : dir }));
-  };
+  const courseOptions = useMemo(
+    () =>
+      (coursesQuery.data?.data || []).map((course) => ({
+        id: course.id,
+        label: course.code ? `${course.code} - ${course.name}` : course.name,
+      })),
+    [coursesQuery.data?.data],
+  );
 
-  const handleRate = (id: string, stars: number) => {
-    setRatings((prev) => ({ ...prev, [id]: stars }));
-  };
+  const resourcesQuery = useInfiniteQuery({
+    queryKey: ["resources", "infinite", { courseFilter, typeFilter, search }],
+    queryFn: ({ pageParam = 1 }) =>
+      fetchResources({
+        page: pageParam,
+        limit: 20,
+        courseId: courseFilter === "all" ? undefined : courseFilter,
+        type: typeFilter === "all" ? undefined : (typeFilter as ResourceType),
+        search: search.trim() || undefined,
+      }),
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.page < lastPage.meta.lastPage ? lastPage.meta.page + 1 : undefined,
+    initialPageParam: 1,
+  });
 
-  const handleDownload = (id: string) => {
-    setDownloadCounts((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-  };
-
-  const getDownloadCount = (r: Resource) => r.downloads + (downloadCounts[r.id] || 0);
-
-  const handleAddResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => {
-    const newResource: Resource = {
-      ...data,
-      id: `local-${Date.now()}`,
-      uploadedAt: new Date().toISOString().split("T")[0],
-      uploadedBy: userName,
-      rating: 0,
-      totalRatings: 0,
-      upvotes: 0,
-      downvotes: 0,
-      downloads: 0,
-    };
-    setLocalResources((prev) => [newResource, ...prev]);
-    toast({ title: "Resource Added!", description: `"${newResource.title}" is now available.` });
-  };
-
-  const handleEditResource = (data: Omit<Resource, "id" | "uploadedAt" | "uploadedBy" | "rating" | "totalRatings" | "upvotes" | "downvotes" | "downloads">) => {
-    if (!editingResource) return;
-    const id = editingResource.id;
-
-    // Check if it's a local resource
-    const localIdx = localResources.findIndex((r) => r.id === id);
-    if (localIdx >= 0) {
-      setLocalResources((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...data } : r))
-      );
-    } else {
-      setEditedResources((prev) => ({ ...prev, [id]: data }));
-    }
-
-    // Update detail view
-    setDetailResource((prev) => prev && prev.id === id ? { ...prev, ...data } : prev);
-    setEditingResource(null);
-    toast({ title: "Updated!", description: "Resource has been updated." });
-  };
-
-  const handleDeleteResource = () => {
-    if (!deletingId) return;
-    const localIdx = localResources.findIndex((r) => r.id === deletingId);
-    if (localIdx >= 0) {
-      setLocalResources((prev) => prev.filter((r) => r.id !== deletingId));
-    } else {
-      setDeletedIds((prev) => new Set([...prev, deletingId]));
-    }
-    if (detailResource?.id === deletingId) setDetailResource(null);
-    setDeletingId(null);
-    toast({ title: "Deleted", description: "Resource has been removed." });
-  };
-
-  const coursesInData = useMemo(() => {
-    return [...new Set(allResources.map((r) => r.course))].sort();
-  }, [allResources]);
-
-  const filtered = useMemo(() => {
-    let result = allResources.filter((r) => {
-      if (filterCourse !== "all" && r.course !== filterCourse) return false;
-      if (filterType !== "all" && r.type !== filterType) return false;
-      if (filterCategory !== "all" && r.category !== filterCategory) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return (
-          r.title.toLowerCase().includes(q) ||
-          r.description.toLowerCase().includes(q) ||
-          r.tags.some((t) => t.includes(q)) ||
-          r.course.toLowerCase().includes(q) ||
-          r.uploadedBy.toLowerCase().includes(q)
-        );
+  const createMutation = useMutation({
+    mutationFn: async (payload: {
+      title: string;
+      description: string;
+      courseId: string;
+      type: ResourceType;
+      tags: string[];
+      file?: File | null;
+      externalUrl?: string;
+    }) => {
+      if (payload.file) {
+        return uploadResourceFile({
+          file: payload.file,
+          courseId: payload.courseId,
+          title: payload.title,
+          description: payload.description,
+          type: payload.type,
+          tags: payload.tags,
+        });
       }
-      return true;
-    });
+      if (!payload.externalUrl) {
+        throw new Error("External URL is required for link resources");
+      }
+      return createLinkResource({
+        courseId: payload.courseId,
+        title: payload.title,
+        description: payload.description,
+        externalUrl: payload.externalUrl,
+        type: payload.type,
+        tags: payload.tags,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      toast({ title: "Resource created" });
+      setFormOpen(false);
+    },
+    onError: (err: any) => toast({ title: "Create failed", description: err.message, variant: "destructive" }),
+  });
 
-    if (sortBy === "rating") result.sort((a, b) => b.rating - a.rating);
-    else if (sortBy === "upvotes") result.sort((a, b) => b.upvotes - a.upvotes);
-    else if (sortBy === "newest") result.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-    else if (sortBy === "name") result.sort((a, b) => a.title.localeCompare(b.title));
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Resource> }) => updateResource(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      toast({ title: "Resource updated" });
+      setFormOpen(false);
+      setEditing(null);
+    },
+    onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
+  });
 
-    return result;
-  }, [allResources, filterCourse, filterType, filterCategory, search, sortBy]);
+  const updateFileMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        file: File;
+        title: string;
+        description?: string;
+        courseId: string;
+        type: ResourceType;
+        tags?: string[];
+      };
+    }) => updateResourceFile(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      toast({ title: "Resource updated" });
+      setFormOpen(false);
+      setEditing(null);
+    },
+    onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
+  });
 
-  const stats = useMemo(() => {
-    const total = allResources.length;
-    if (total === 0) return { total: 0, types: 0, courses: 0, avgRating: 0 };
-    return {
-      total,
-      types: new Set(allResources.map((r) => r.type)).size,
-      courses: new Set(allResources.map((r) => r.course)).size,
-      avgRating: +(allResources.reduce((s, r) => s + r.rating, 0) / total).toFixed(1),
-    };
-  }, [allResources]);
+  const voteMutation = useMutation({
+    mutationFn: ({ id, vote }: { id: string; vote: "up" | "down" }) => voteResource(id, vote),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] }),
+  });
 
-  const isOwner = (resource: Resource) => resource.uploadedBy === userName;
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteResource(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      toast({ title: "Resource deleted" });
+      setDeleting(null);
+    },
+    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+  });
+
+  const resources = resourcesQuery.data?.pages.flatMap((page) => page.data) || [];
+  const stats = resourcesQuery.data?.pages[0]?.stats;
+  const totalCount = resourcesQuery.data?.pages[0]?.meta.total || 0;
+
+  const lastElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (resourcesQuery.isFetchingNextPage) return;
+      if (observerRef.current) observerRef.current.disconnect();
+
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && resourcesQuery.hasNextPage) {
+          resourcesQuery.fetchNextPage();
+        }
+      });
+
+      if (node) observerRef.current.observe(node);
+    },
+    [resourcesQuery],
+  );
+
+  const canEdit = (resource: Resource) => {
+    if (!user) return false;
+    return resource.uploader?.id === user.id;
+  };
+
+  const canDelete = (resource: Resource) => {
+    if (!user) return false;
+    return Boolean(isAdmin || resource.uploader?.id === user.id);
+  };
+
+  const canReport = (resource: Resource) => {
+    if (!user) return false;
+    return resource.uploader?.id !== user.id;
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
-      {/* Header */}
       <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">File Hub</p>
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Resources</h1>
         </div>
-        <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingResource(null); setFormOpen(true); }}>
-          <Plus className="h-3 w-3" />
-          Add Resource
+        <Button size="sm" className="uppercase tracking-wider text-[11px] font-bold" onClick={() => { setEditing(null); setFormOpen(true); }}>
+          <Plus className="h-4 w-4" /> Add Resource
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Files</p>
-            <p className="text-2xl font-black tabular-nums mt-1">{stats.total}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">File Types</p>
-            <p className="text-2xl font-black tabular-nums mt-1">{stats.types}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Courses</p>
-            <p className="text-2xl font-black tabular-nums mt-1">{stats.courses}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] uppercase tracking-widest text-primary">Avg Rating</p>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <p className="text-2xl font-black tabular-nums">{stats.avgRating}</p>
-              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search + Filters */}
-      <div className="space-y-3">
-        <div className="relative">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="relative md:col-span-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search files, tags, courses..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-sm"
-          />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search resources..." className="pl-9" />
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Filter className="h-3.5 w-3.5" />
-            <span className="text-[10px] uppercase tracking-widest font-bold">Filters</span>
-          </div>
-
-          <Select value={filterCourse} onValueChange={setFilterCourse}>
-            <SelectTrigger className="w-[130px] h-8 text-xs">
-              <SelectValue placeholder="Course" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Courses</SelectItem>
-              {coursesInData.map((code) => (
-                <SelectItem key={code} value={code}>{code}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {RESOURCE_TYPES.map((t) => (
-                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[150px] h-8 text-xs">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {RESOURCE_CATEGORIES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="rating">Top Rated</SelectItem>
-              <SelectItem value="upvotes">Most Upvoted</SelectItem>
-              <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="name">Name A-Z</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {(filterCourse !== "all" || filterType !== "all" || filterCategory !== "all" || search) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => {
-                setFilterCourse("all");
-                setFilterType("all");
-                setFilterCategory("all");
-                setSearch("");
-              }}
-            >
-              Clear
-            </Button>
-          )}
-        </div>
+        <Select value={courseFilter} onValueChange={setCourseFilter}>
+          <SelectTrigger><SelectValue placeholder="All courses" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All courses</SelectItem>
+            {courseOptions.map((course) => (
+              <SelectItem key={course.id} value={course.id}>{course.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger><SelectValue placeholder="All types" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {RESOURCE_TYPES.map((item) => (
+              <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Results count */}
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-        {filtered.length} resource{filtered.length !== 1 ? "s" : ""}
-        {search && ` matching "${search}"`}
-      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="rounded-none"><CardContent className="p-3 sm:p-4"><p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Files</p><p className="text-2xl font-black tabular-nums mt-1">{stats?.totalResources ?? 0}</p></CardContent></Card>
+        <Card className="rounded-none"><CardContent className="p-3 sm:p-4"><p className="text-[10px] uppercase tracking-widest text-muted-foreground">File Types</p><p className="text-2xl font-black tabular-nums mt-1">{stats?.totalTypes ?? 0}</p></CardContent></Card>
+        <Card className="rounded-none"><CardContent className="p-3 sm:p-4"><p className="text-[10px] uppercase tracking-widest text-muted-foreground">Upvotes</p><p className="text-2xl font-black tabular-nums mt-1">{stats?.totalUpvotes ?? 0}</p></CardContent></Card>
+        <Card className="rounded-none"><CardContent className="p-3 sm:p-4"><p className="text-[10px] uppercase tracking-widest text-muted-foreground">Downvotes</p><p className="text-2xl font-black tabular-nums mt-1">{stats?.totalDownvotes ?? 0}</p></CardContent></Card>
+      </div>
 
-      {/* Resource list */}
-      {isLoading ? (
+      {resourcesQuery.isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="border border-border p-4 space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 bg-muted animate-pulse shrink-0" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3.5 w-40 bg-muted animate-pulse" />
-                  <div className="h-2.5 w-56 bg-muted animate-pulse" />
-                </div>
-                <div className="h-5 w-12 bg-muted animate-pulse" />
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-14 bg-muted animate-pulse" />
-                <div className="h-4 w-10 bg-muted animate-pulse" />
-                <div className="flex-1" />
-                <div className="h-3 w-20 bg-muted animate-pulse" />
-              </div>
-            </div>
-          ))}
+          {[1, 2, 3].map((i) => <div key={i} className="h-24 border border-border animate-pulse bg-muted/30" />)}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="border border-dashed border-muted-foreground/30 p-12 flex flex-col items-center gap-2">
-          <FolderOpen className="h-8 w-8 text-muted-foreground/40" />
+      ) : resources.length === 0 ? (
+        <div className="border border-dashed border-border p-10 text-center space-y-2">
+          <FolderOpen className="h-7 w-7 mx-auto text-muted-foreground" />
           <p className="text-sm uppercase tracking-wider text-muted-foreground">No resources found</p>
-          <p className="text-xs text-muted-foreground/60">Try adjusting filters or search terms</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((resource) => (
-            <ResourceCard
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{totalCount} result{totalCount === 1 ? "" : "s"}</p>
+          {resources.map((resource, idx) => (
+            <div
               key={resource.id}
-              resource={resource}
-              userVote={votes[resource.id]}
-              onVote={handleVote}
-              onClick={() => setDetailResource(resource)}
-            />
+              ref={idx === resources.length - 1 ? lastElementRef : undefined}
+              className="border border-border p-3 sm:p-4 hover:bg-accent/20 transition-colors space-y-2"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-bold text-sm truncate">{resource.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {(resource.course?.code || resource.course?.name || "Unknown course")} · {(resource.uploader?.name || "Unknown uploader")} · {formatBytes(resource.fileSize)}
+                  </p>
+                </div>
+                <span className={`px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${typeTone[resource.type]}`}>
+                  {RESOURCE_TYPES.find((t) => t.value === resource.type)?.label || resource.type}
+                </span>
+              </div>
+
+              <p className="text-sm text-muted-foreground line-clamp-2">{resource.description || "No description"}</p>
+
+              <div className="flex flex-wrap gap-1">
+                {resource.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="rounded-none text-[10px]">{tag}</Badge>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant={resource.userVote === "up" ? "default" : "outline"} className="h-7 text-[11px]" onClick={() => voteMutation.mutate({ id: resource.id, vote: "up" })}>
+                  <ThumbsUp className="h-3 w-3" /> {resource.upvotes}
+                </Button>
+                <Button size="sm" variant={resource.userVote === "down" ? "default" : "outline"} className="h-7 text-[11px]" onClick={() => voteMutation.mutate({ id: resource.id, vote: "down" })}>
+                  <ThumbsDown className="h-3 w-3" /> {resource.downvotes}
+                </Button>
+                {resource.fileUrl && (
+                  <Button size="sm" variant="outline" className="h-7 text-[11px]" asChild>
+                    <a href={`${FILE_BASE}${resource.fileUrl}`} target="_blank" rel="noreferrer">
+                      <Download className="h-3 w-3" /> Download
+                    </a>
+                  </Button>
+                )}
+                {resource.externalUrl && (
+                  <Button size="sm" variant="outline" className="h-7 text-[11px]" asChild>
+                    <a href={resource.externalUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-3 w-3" /> Open Link
+                    </a>
+                  </Button>
+                )}
+                {canReport(resource) && (
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setReporting(resource)}>
+                    Report
+                  </Button>
+                )}
+                {canEdit(resource) && (
+                  <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => { setEditing(resource); setFormOpen(true); }}>
+                    <Pencil className="h-3 w-3" /> Edit
+                  </Button>
+                )}
+                {canDelete(resource) && (
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px] text-destructive hover:text-destructive" onClick={() => setDeleting(resource)}>
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </Button>
+                )}
+                </div>
+            </div>
           ))}
+          {resourcesQuery.isFetchingNextPage && (
+            <div className="flex justify-center py-3">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Detail dialog */}
-      <ResourceDetailDialog
-        resource={detailResource}
-        userRating={detailResource ? ratings[detailResource.id] : undefined}
-        userVote={detailResource ? votes[detailResource.id] : undefined}
-        downloadCount={detailResource ? getDownloadCount(detailResource) : 0}
-        isOwner={detailResource ? isOwner(detailResource) : false}
-        isAdmin={isAdmin}
-        onRate={handleRate}
-        onVote={handleVote}
-        onDownload={handleDownload}
-        onEdit={() => {
-          setEditingResource(detailResource);
-          setDetailResource(null);
-          setFormOpen(true);
-        }}
-        onDelete={() => {
-          if (detailResource) {
-            setDeletingId(detailResource.id);
-            setDetailResource(null);
-          }
-        }}
-        onClose={() => setDetailResource(null)}
-      />
-
-      {/* Create / Edit form dialog */}
-      <ResourceFormDialog
+      <ResourceDialog
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open);
-          if (!open) setEditingResource(null);
+          if (!open) setEditing(null);
         }}
-        onSubmit={editingResource ? handleEditResource : handleAddResource}
-        initial={editingResource}
+        initial={editing}
+        courseOptions={courseOptions}
+        isPending={createMutation.isPending || updateMutation.isPending || updateFileMutation.isPending}
+        onSubmit={(payload) => {
+          if (editing) {
+            if (payload.file) {
+              updateFileMutation.mutate({
+                id: editing.id,
+                data: {
+                  file: payload.file,
+                  title: payload.title,
+                  description: payload.description,
+                  courseId: payload.courseId,
+                  type: payload.type,
+                  tags: payload.tags,
+                },
+              });
+              return;
+            }
+            updateMutation.mutate({
+              id: editing.id,
+              data: {
+                title: payload.title,
+                description: payload.description,
+                courseId: payload.courseId,
+                type: payload.type,
+                tags: payload.tags,
+                externalUrl: payload.externalUrl || undefined,
+              },
+            });
+            return;
+          }
+          createMutation.mutate(payload);
+        }}
       />
 
-      {/* Delete confirmation */}
-      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Resource</AlertDialogTitle>
             <AlertDialogDescription>
-              This resource will be permanently removed. This action cannot be undone.
+              This will permanently remove "{deleting?.title}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteResource}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleting && deleteMutation.mutate(deleting.id)}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReportDialog
+        open={!!reporting}
+        onOpenChange={(open) => !open && setReporting(null)}
+        contentType="resource"
+        contentId={reporting?.id || ""}
+        contentPreview={`${reporting?.title || ""} ${reporting?.description || ""}`.trim()}
+        contentAuthor={reporting?.uploader?.name || "Unknown"}
+      />
     </div>
   );
 };

@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  loadAnnouncements,
+  fetchAnnouncements,
   getDismissedAnnouncementIds,
   dismissAnnouncement,
   type Announcement,
 } from "@/services/admin";
+import { useQuery } from "@tanstack/react-query";
+import { useClassroomStore } from "@/stores/classroomStore";
 import { Megaphone, Pin, AlertTriangle, X, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,13 +18,38 @@ const priorityConfig = {
   urgent: { label: "Urgent", color: "bg-destructive/10 text-destructive border-destructive/30" },
 };
 
+function formatDateTime(value?: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getEditStatus(createdAt?: string, updatedAt?: string): "Edited" | "Not edited" {
+  if (!createdAt || !updatedAt) return "Not edited";
+  const created = new Date(createdAt).getTime();
+  const updated = new Date(updatedAt).getTime();
+  if (Number.isNaN(created) || Number.isNaN(updated)) return "Not edited";
+  return updated - created > 1000 ? "Edited" : "Not edited";
+}
+
 const Announcements = () => {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const { data: announcements = [], isLoading } = useQuery<Announcement[]>({
+    queryKey: ["announcements", activeClassroom?.id],
+    queryFn: fetchAnnouncements,
+    enabled: !!activeClassroom?.id,
+  });
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [showDismissed, setShowDismissed] = useState(false);
 
   useEffect(() => {
-    setAnnouncements(loadAnnouncements());
     setDismissed(getDismissedAnnouncementIds());
   }, []);
 
@@ -69,7 +96,7 @@ const Announcements = () => {
 
       {displayList.length === 0 ? (
         <div className="text-center py-12 text-sm text-muted-foreground">
-          {showDismissed ? "No dismissed announcements" : "No announcements right now"}
+          {isLoading ? "Loading announcements..." : showDismissed ? "No dismissed announcements" : "No announcements right now"}
         </div>
       ) : (
         <div className="space-y-2">
@@ -92,7 +119,7 @@ const Announcements = () => {
                   </span>
                   <div className="flex-1" />
                   <span className="text-[10px] text-muted-foreground">
-                    {new Date(a.createdAt).toLocaleDateString()}
+                    {formatDateTime(a.createdAt)}
                   </span>
                   {!isDismissed && (
                     <button
@@ -106,7 +133,7 @@ const Announcements = () => {
                 <h3 className="text-sm font-bold">{a.title}</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  By {a.createdBy}{a.expiresAt ? ` · Expires ${a.expiresAt}` : ""}
+                  By {a.createdBy} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}
                 </p>
               </div>
             );

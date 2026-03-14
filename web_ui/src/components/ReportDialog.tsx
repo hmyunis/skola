@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Flag } from "lucide-react";
 import { saveUserReport, type UserReport } from "@/services/admin";
+import { reportResource } from "@/services/resources";
+import { reportLoungeContent } from "@/services/lounge";
 import { useAuth } from "@/stores/authStore";
 import { toast } from "@/hooks/use-toast";
 
@@ -51,23 +53,43 @@ export function ReportDialog({
 
   const { userName } = useAuth();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!reason) return;
-    saveUserReport({
-      id: `report-${Date.now()}`,
-      type: contentType,
-      contentId,
-      content: contentPreview.slice(0, 200),
-      author: contentAuthor,
-      reason: reason === "Other" && details.trim() ? details.trim() : reason,
-      reportedBy: userName,
-      reportedAt: new Date().toISOString(),
-      status: "pending",
-    });
-    toast({ title: "Report Submitted", description: "An admin will review this content." });
-    setReason("");
-    setDetails("");
-    onOpenChange(false);
+    const resolvedReason = reason === "Other" && details.trim() ? details.trim() : reason;
+    try {
+      if (contentType === "resource") {
+        await reportResource(contentId, { reason: resolvedReason, details: details.trim() || undefined });
+      } else if (contentType === "post" || contentType === "reply") {
+        await reportLoungeContent({
+          contentType,
+          contentId,
+          reason: resolvedReason,
+          details: details.trim() || undefined,
+        });
+      } else {
+        saveUserReport({
+          id: `report-${Date.now()}`,
+          type: contentType,
+          contentId,
+          content: contentPreview.slice(0, 200),
+          author: contentAuthor,
+          reason: resolvedReason,
+          reportedBy: userName,
+          reportedAt: new Date().toISOString(),
+          status: "pending",
+        });
+      }
+      toast({ title: "Report Submitted", description: "An admin will review this content." });
+      setReason("");
+      setDetails("");
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({
+        title: "Report Failed",
+        description: err?.message || "Could not submit report.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

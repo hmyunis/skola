@@ -6,6 +6,7 @@ import { LoungeReaction } from './entities/lounge-reaction.entity';
 import { PaginationQueryDto, PaginatedResult } from '../../core/dto/pagination-query.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { ClassroomsService } from '../classrooms/classrooms.service';
+import { LoungeReport, LoungeReportContentType, LoungeReportStatus } from './entities/lounge-report.entity';
 
 interface LoungeFeedQueryDto {
   page?: number;
@@ -28,6 +29,7 @@ export class LoungeService {
   constructor(
     @InjectRepository(LoungePost) private postRepo: Repository<LoungePost>,
     @InjectRepository(LoungeReaction) private reactionRepo: Repository<LoungeReaction>,
+    @InjectRepository(LoungeReport) private reportRepo: Repository<LoungeReport>,
     private classroomService: ClassroomsService,
   ) {}
 
@@ -235,6 +237,126 @@ export class LoungeService {
 
     await this.postRepo.remove(reply);
     return { deleted: true };
+  }
+
+  async reportContent(
+    classroomId: string,
+    reporterId: string,
+    dto: { contentType: 'post' | 'reply'; contentId: string; reason: string; details?: string },
+  ) {
+    const content = await this.postRepo.findOne({
+      where: { id: dto.contentId, classroomId },
+      relations: ['author'],
+    });
+    if (!content) throw new NotFoundException('Content not found');
+
+    if (dto.contentType === 'reply' && !content.parentId) {
+      throw new BadRequestException('Reply content ID is invalid');
+    }
+    if (dto.contentType === 'post' && content.parentId) {
+      throw new BadRequestException('Post content ID is invalid');
+    }
+    if (content.authorId === reporterId) {
+      throw new BadRequestException('You cannot report your own content');
+    }
+
+    const reason = (dto.reason || '').trim();
+    if (!reason) {
+      throw new BadRequestException('Reason is required');
+    }
+
+    const existing = await this.reportRepo.findOne({
+      where: {
+        classroomId,
+        postId: content.id,
+        reporterId,
+        contentType: dto.contentType === 'reply' ? LoungeReportContentType.REPLY : LoungeReportContentType.POST,
+        status: LoungeReportStatus.PENDING,
+      },
+    });
+    if (existing) {
+      throw new BadRequestException('You already submitted a pending report for this content');
+    }
+
+    const report = this.reportRepo.create({
+      classroomId,
+      postId: content.id,
+      reporterId,
+      contentType: dto.contentType === 'reply' ? LoungeReportContentType.REPLY : LoungeReportContentType.POST,
+      reason,
+      details: dto.details?.trim() || undefined,
+    });
+    return this.reportRepo.save(report);
+  }
+
+  async listReports(
+    classroomId: string,
+    status?: LoungeReportStatus,
+    type?: LoungeReportContentType,
+  ) {
+    const where: any = { classroomId };
+    if (status) where.status = status;
+    if (type) where.contentType = type;
+
+    const reports = await this.reportRepo.find({
+      where,
+      relations: ['post', 'post.author', 'reporter', 'reviewedBy'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return reports.map((report) => ({
+      id: report.id,
+      type: report.contentType,
+      contentId: report.postId,
+      content: report.post?.content || 'Deleted content',
+      author: report.post?.author?.name || 'Unknown',
+      reason: report.reason,
+      details: report.details,
+      reportedBy: report.reporter?.name || 'Unknown',
+      reportedAt: report.createdAt,
+      status: report.status,
+      reviewedAt: report.reviewedAt,
+      reviewedBy: report.reviewedBy?.name,
+    }));
+  }
+
+  async reviewReport(
+    reportId: string,
+    classroomId: string,
+    reviewerId: string,
+    dto: { status: 'resolved' | 'dismissed'; removeContent?: boolean },
+  ) {
+    const report = await this.reportRepo.findOne({
+      where: { id: reportId, classroomId },
+      relations: ['post'],
+    });
+    if (!report) throw new NotFoundException('Report not found');
+    if (report.status !== LoungeReportStatus.PENDING) {
+      throw new BadRequestException('This report was already reviewed');
+    }
+
+    report.status = dto.status === 'resolved' ? LoungeReportStatus.RESOLVED : LoungeReportStatus.DISMISSED;
+    report.reviewedById = reviewerId;
+    report.reviewedAt = new Date();
+    await this.reportRepo.save(report);
+
+    if (dto.status === 'resolved' && dto.removeContent && report.post) {
+      await this.postRepo.remove(report.post);
+      await this.reportRepo.update(
+        {
+          classroomId,
+          postId: report.postId,
+          status: LoungeReportStatus.PENDING,
+        },
+        {
+          status: LoungeReportStatus.RESOLVED,
+          reviewedById: reviewerId,
+          reviewedAt: new Date(),
+        },
+      );
+    }
+
+    return { success: true };
   }
 
   // ─── Helpers ───

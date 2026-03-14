@@ -16,6 +16,9 @@ export class Classroom {
   @Column({ type: 'simple-json', nullable: true })
   theme: any; // Store the whole theme object
 
+  @Column({ type: 'simple-json', nullable: true })
+  customThemes: any[]; // Owner-created themes for this classroom
+
   @Column({ unique: true })
   telegramGroupId: string;
 

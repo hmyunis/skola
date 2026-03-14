@@ -1,26 +1,46 @@
-/** Shared resource types — safe to import from backend monorepo */
-
-export type ResourceType = "pdf" | "slides" | "notes" | "video" | "code" | "link";
-export type ResourceCategory = "lecture" | "lab" | "reference" | "exam-prep" | "project";
+export type ResourceType = "note" | "slide" | "past_paper" | "ebook" | "other";
+export type VoteType = "up" | "down";
 
 export interface Resource {
   id: string;
+  classroomId: string;
+  courseId: string;
   title: string;
-  course: string;
+  description?: string;
   type: ResourceType;
-  category: ResourceCategory;
-  uploadedBy: string;
-  uploadedAt: string;
-  size: string;
-  rating: number;
-  totalRatings: number;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  externalUrl?: string;
+  tags: string[];
   upvotes: number;
   downvotes: number;
-  downloads: number;
-  description: string;
-  tags: string[];
-  /** Data URL of uploaded file (client-side only) */
-  fileDataUrl?: string;
-  /** Original file name */
-  fileName?: string;
+  createdAt: string;
+  updatedAt: string;
+  userVote?: VoteType | null;
+  uploader?: {
+    id: string;
+    name: string;
+    initials?: string;
+  } | null;
+  course?: {
+    id: string;
+    code?: string;
+    name?: string;
+  } | null;
+}
+
+export interface ResourceReport {
+  id: string;
+  type: "resource";
+  contentId: string;
+  content: string;
+  author: string;
+  reason: string;
+  details?: string;
+  reportedBy: string;
+  reportedAt: string;
+  status: "pending" | "resolved" | "dismissed";
+  reviewedAt?: string;
+  reviewedBy?: string;
 }

@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  loadAnnouncements,
+  fetchAnnouncements,
   getDismissedAnnouncementIds,
   dismissAnnouncement,
   type Announcement,
 } from "@/services/admin";
 import { X, Megaphone, ChevronRight, AlertTriangle, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useClassroomStore } from "@/stores/classroomStore";
 
 const priorityStyles = {
   low: "border-border bg-muted/50",
@@ -19,11 +20,15 @@ const priorityStyles = {
 
 export function AnnouncementsBanner() {
   const navigate = useNavigate();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const { data: announcements = [] } = useQuery<Announcement[]>({
+    queryKey: ["announcements", activeClassroom?.id],
+    queryFn: fetchAnnouncements,
+    enabled: !!activeClassroom?.id,
+  });
   const [dismissed, setDismissed] = useState<string[]>([]);
 
   useEffect(() => {
-    setAnnouncements(loadAnnouncements());
     setDismissed(getDismissedAnnouncementIds());
   }, []);
 

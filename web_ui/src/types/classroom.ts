@@ -3,6 +3,9 @@
 export interface Classroom {
   id: string;
   name: string;
+  telegramGroupId?: string;
+  theme?: any;
+  customThemes?: any[];
   code: string; // unique join code e.g. "SOFT-2025"
   batch: string;
   year: number;

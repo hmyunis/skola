@@ -64,36 +64,74 @@ import { toast } from "@/hooks/use-toast";
 
 // ─── Custom Theme Creator ───
 
-function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
-  const { addCustomTheme } = useTheme();
+function hexToHsl(hex: string): string {
+  const clean = hex.replace("#", "");
+  const parsed = clean.length === 3
+    ? clean.split("").map((c) => c + c).join("")
+    : clean;
+  const r = parseInt(parsed.slice(0, 2), 16) / 255;
+  const g = parseInt(parsed.slice(2, 4), 16) / 255;
+  const b = parseInt(parsed.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  let h = 0;
+  const l = (max + min) / 2;
+  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6;
+    else if (max === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+  }
+  h = Math.round(h * 60);
+  if (h < 0) h += 360;
+  return `${h} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
+function hslWithLightness(hsl: string, lightness: number): string {
+  const [h = "0", s = "0%"] = hsl.split(/\s+/);
+  return `${h} ${s} ${lightness}%`;
+}
+
+function hexToEncoded(hex: string): string {
+  return `%23${hex.replace("#", "")}`;
+}
+
+function CustomThemeCreator({ onCreated }: { onCreated: (theme: BatchTheme) => void }) {
   const [name, setName] = useState("");
   const [primaryIdx, setPrimaryIdx] = useState(0);
   const [headerIdx, setHeaderIdx] = useState(0);
   const [patternIdx, setPatternIdx] = useState(6);
+  const [customPrimaryHex, setCustomPrimaryHex] = useState("#2563eb");
+  const [customHeaderHex, setCustomHeaderHex] = useState("#1f2937");
+  const [primarySource, setPrimarySource] = useState<"preset" | "custom">("preset");
+  const [headerSource, setHeaderSource] = useState<"preset" | "custom">("preset");
 
   const handleCreate = () => {
     if (!name.trim()) return;
-    const p = primaryPresets[primaryIdx];
-    const h = headerPresets[headerIdx];
+    const pPreset = primaryPresets[primaryIdx];
+    const hPreset = headerPresets[headerIdx];
+    const primaryHsl = primarySource === "custom" ? hexToHsl(customPrimaryHex) : pPreset.hsl;
+    const headerHsl = headerSource === "custom" ? hexToHsl(customHeaderHex) : hPreset.hsl;
+    const headerFg = headerSource === "custom" ? "0 0% 92%" : hPreset.fg;
     const pat = patternTemplates[patternIdx];
 
     const theme: BatchTheme = {
       id: `custom-${Date.now()}`,
       name: name.trim(),
-      primary: p.hsl,
+      primary: primaryHsl,
       primaryForeground: "0 0% 100%",
-      headerBg: h.hsl,
-      headerFg: h.fg,
-      sidebarBg: h.hsl,
-      sidebarFg: h.fg,
-      sidebarAccent: h.hsl.replace(/(\d+)%\s*$/, (_, l) => `${Math.min(100, parseInt(l) + 6)}%`),
-      pattern: pat.build(p.hex),
+      headerBg: headerHsl,
+      headerFg: headerFg,
+      sidebarBg: headerHsl,
+      sidebarFg: headerFg,
+      sidebarAccent: hslWithLightness(headerHsl, 24),
+      pattern: pat.build(primarySource === "custom" ? hexToEncoded(customPrimaryHex) : pPreset.hex),
       isCustom: true,
     };
 
-    addCustomTheme(theme);
     setName("");
-    onCreated();
+    onCreated(theme);
   };
 
   return (
@@ -107,37 +145,53 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
 
       <div>
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 block">Primary Color</label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {primaryPresets.map((p, i) => (
             <Tooltip key={p.name}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => setPrimaryIdx(i)}
-                  className={`w-9 h-9 border-2 transition-all ${i === primaryIdx ? "border-foreground scale-110" : "border-transparent"}`}
+                  onClick={() => { setPrimaryIdx(i); setPrimarySource("preset"); }}
+                  className={`w-9 h-9 border-2 transition-all ${i === primaryIdx && primarySource === "preset" ? "border-foreground scale-110" : "border-transparent"}`}
                   style={{ backgroundColor: `hsl(${p.hsl})` }}
                 />
               </TooltipTrigger>
               <TooltipContent side="top"><span>{p.name}</span></TooltipContent>
             </Tooltip>
           ))}
+          <label className={`w-9 h-9 border-2 cursor-pointer ${primarySource === "custom" ? "border-foreground scale-110" : "border-transparent"}`}>
+            <input
+              type="color"
+              value={customPrimaryHex}
+              onChange={(e) => { setCustomPrimaryHex(e.target.value); setPrimarySource("custom"); }}
+              className="h-full w-full cursor-pointer p-0"
+            />
+          </label>
         </div>
       </div>
 
       <div>
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 block">Header / Sidebar</label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {headerPresets.map((h, i) => (
             <Tooltip key={h.name}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => setHeaderIdx(i)}
-                  className={`w-9 h-9 border-2 transition-all ${i === headerIdx ? "border-foreground scale-110" : "border-transparent"}`}
+                  onClick={() => { setHeaderIdx(i); setHeaderSource("preset"); }}
+                  className={`w-9 h-9 border-2 transition-all ${i === headerIdx && headerSource === "preset" ? "border-foreground scale-110" : "border-transparent"}`}
                   style={{ backgroundColor: `hsl(${h.hsl})` }}
                 />
               </TooltipTrigger>
               <TooltipContent side="top"><span>{h.name}</span></TooltipContent>
             </Tooltip>
           ))}
+          <label className={`w-9 h-9 border-2 cursor-pointer ${headerSource === "custom" ? "border-foreground scale-110" : "border-transparent"}`}>
+            <input
+              type="color"
+              value={customHeaderHex}
+              onChange={(e) => { setCustomHeaderHex(e.target.value); setHeaderSource("custom"); }}
+              className="h-full w-full cursor-pointer p-0"
+            />
+          </label>
         </div>
       </div>
 
@@ -169,17 +223,42 @@ function CustomThemeCreator({ onCreated }: { onCreated: () => void }) {
 // ─── Batch Theme Selector ───
 
 function BatchThemeSelector() {
-  const { batchTheme, setBatchTheme, customThemes, removeCustomTheme } = useTheme();
+  const { batchTheme, setBatchTheme, customThemes, removeCustomTheme, addCustomTheme } = useTheme();
   const activeClassroom = useClassroomStore((s) => s.activeClassroom);
   const updateClassroomTheme = useUpdateClassroomTheme();
   const [showCreator, setShowCreator] = useState(false);
   const allThemes = [...batchThemes, ...customThemes];
 
+  const persistThemeState = (activeTheme: BatchTheme, nextCustomThemes: BatchTheme[]) => {
+    if (!activeClassroom) return;
+    updateClassroomTheme.mutate({
+      classroomId: activeClassroom.id,
+      theme: {
+        activeTheme,
+        customThemes: nextCustomThemes,
+      },
+    });
+  };
+
   const handleSelectTheme = (theme: BatchTheme) => {
     setBatchTheme(theme);
-    if (activeClassroom) {
-      updateClassroomTheme.mutate({ classroomId: activeClassroom.id, theme });
-    }
+    persistThemeState(theme, customThemes);
+  };
+
+  const handleCreateTheme = (theme: BatchTheme) => {
+    const nextCustomThemes = [...customThemes, theme];
+    addCustomTheme(theme);
+    setBatchTheme(theme);
+    persistThemeState(theme, nextCustomThemes);
+    setShowCreator(false);
+  };
+
+  const handleDeleteTheme = (theme: BatchTheme) => {
+    const nextCustomThemes = customThemes.filter((t) => t.id !== theme.id);
+    removeCustomTheme(theme.id);
+    const fallbackTheme = batchTheme.id === theme.id ? batchThemes[6] : batchTheme;
+    setBatchTheme(fallbackTheme);
+    persistThemeState(fallbackTheme, nextCustomThemes);
   };
 
   return (
@@ -193,7 +272,7 @@ function BatchThemeSelector() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {showCreator && <CustomThemeCreator onCreated={() => setShowCreator(false)} />}
+        {showCreator && <CustomThemeCreator onCreated={handleCreateTheme} />}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {allThemes.map((theme) => (
@@ -213,7 +292,7 @@ function BatchThemeSelector() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => removeCustomTheme(theme.id)}
+                      onClick={() => handleDeleteTheme(theme)}
                       className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="h-3 w-3" />
@@ -659,7 +738,40 @@ function SemesterManagement() {
 function SettingsTab() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
-  const { clearActiveClassroom } = useClassroomStore();
+  const { activeClassroom, setActiveClassroom, clearActiveClassroom } = useClassroomStore();
+  const [telegramGroupId, setTelegramGroupId] = useState(activeClassroom?.telegramGroupId || "");
+  const [savingTelegramGroupId, setSavingTelegramGroupId] = useState(false);
+
+  useEffect(() => {
+    setTelegramGroupId(activeClassroom?.telegramGroupId || "");
+  }, [activeClassroom?.telegramGroupId]);
+
+  const handleSaveTelegramGroupId = async () => {
+    if (!activeClassroom) return;
+    const trimmed = telegramGroupId.trim();
+    if (!trimmed) {
+      toast({ title: "Missing Group ID", description: "Telegram group ID is required.", variant: "destructive" });
+      return;
+    }
+    if (!/^-?\d+$/.test(trimmed)) {
+      toast({ title: "Invalid Format", description: "Telegram group IDs must be numbers (e.g. -100123456789).", variant: "destructive" });
+      return;
+    }
+
+    setSavingTelegramGroupId(true);
+    try {
+      const updated = await apiFetch(`/classrooms/${activeClassroom.id}/telegram-group`, {
+        method: "PUT",
+        body: JSON.stringify({ telegramGroupId: trimmed }),
+      });
+      setActiveClassroom(updated);
+      toast({ title: "Saved", description: "Telegram group ID updated successfully." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingTelegramGroupId(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     try {
@@ -675,6 +787,42 @@ function SettingsTab() {
 
   return (
      <div className="space-y-8">
+       {/* Telegram Group Settings */}
+       <div className="space-y-4">
+         <div className="border-b border-border pb-2">
+           <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Integrations</p>
+           <h2 className="text-sm font-black uppercase tracking-wider">Telegram Group</h2>
+         </div>
+         <Card>
+           <CardHeader>
+             <CardTitle className="text-xs">Telegram Group ID</CardTitle>
+             <CardDescription className="text-[10px]">
+               This is required for onboarding and can be updated any time here.
+             </CardDescription>
+           </CardHeader>
+           <CardContent className="space-y-3">
+             <Input
+               value={telegramGroupId}
+               onChange={(e) => setTelegramGroupId(e.target.value)}
+               placeholder="e.g. -100123456789"
+               className="font-mono text-sm"
+             />
+             <div className="flex justify-end">
+               <Button size="sm" onClick={handleSaveTelegramGroupId} disabled={savingTelegramGroupId}>
+                 {savingTelegramGroupId ? (
+                   <div className="h-3 w-3 border-2 border-primary-foreground border-t-transparent animate-spin" />
+                 ) : (
+                   <>
+                     <Save className="h-3 w-3" />
+                     Save Group ID
+                   </>
+                 )}
+               </Button>
+             </div>
+           </CardContent>
+         </Card>
+       </div>
+
        {/* Theme Settings */}
        <div className="space-y-4">
          <div className="border-b border-border pb-2">

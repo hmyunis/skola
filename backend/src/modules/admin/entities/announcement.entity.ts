@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Classroom } from '../../classrooms/entities/classroom.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -7,6 +7,12 @@ export enum PriorityLevel {
   NORMAL = 'normal',
   HIGH = 'high',
   URGENT = 'urgent', // Urgent creates the persistent banner
+}
+
+export enum AnnouncementTargetAudience {
+  ALL = 'all',
+  STUDENTS = 'students',
+  ADMINS = 'admins',
 }
 
 @Entity('announcements')
@@ -30,6 +36,15 @@ export class Announcement {
   @Column({ type: 'enum', enum: PriorityLevel, default: PriorityLevel.NORMAL })
   priority: PriorityLevel;
 
+  @Column({ type: 'enum', enum: AnnouncementTargetAudience, default: AnnouncementTargetAudience.ALL })
+  targetAudience: AnnouncementTargetAudience;
+
+  @Column({ default: false })
+  pinned: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  expiresAt: Date | null;
+
   @ManyToOne(() => User, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'authorId' })
   author: User;
@@ -39,4 +54,7 @@ export class Announcement {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

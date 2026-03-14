@@ -11,6 +11,22 @@ import {
 import { useAuthStore } from "./authStore";
 import { useClassroomStore } from "./classroomStore";
 
+const THEME_MODE_KEY = "skola-theme-mode";
+
+function loadStoredColorMode(): ColorMode | null {
+  try {
+    const mode = localStorage.getItem(THEME_MODE_KEY);
+    if (mode === "light" || mode === "dark") return mode;
+  } catch {}
+  return null;
+}
+
+function persistColorMode(mode: ColorMode) {
+  try {
+    localStorage.setItem(THEME_MODE_KEY, mode);
+  } catch {}
+}
+
 export const FONT_FAMILIES = [
   { id: "system", name: "System Default", value: "ui-sans-serif, system-ui, sans-serif" },
   { id: "inter", name: "Inter", value: "'Inter', sans-serif" },
@@ -83,6 +99,7 @@ interface ThemeState {
   setFontFamily: (id: string) => void;
   addCustomTheme: (theme: BatchTheme) => void;
   removeCustomTheme: (id: string) => void;
+  setCustomThemes: (themes: BatchTheme[]) => void;
   syncThemeWithStores: () => void;
 }
 
@@ -107,6 +124,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setColorMode: (mode) => {
     set({ colorMode: mode });
+    persistColorMode(mode);
     const { batchTheme, userAccent } = get();
     applyThemeToDOM(batchTheme, userAccent, mode);
   },
@@ -134,19 +152,31 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     }
   },
 
+  setCustomThemes: (themes) => {
+    set({ customThemes: themes });
+  },
+
   syncThemeWithStores: () => {
       const { user } = useAuthStore.getState();
       const { activeClassroom } = useClassroomStore.getState();
 
       const userTheme = user?.themeSettings;
       const classroomTheme = activeClassroom?.theme;
+      const classroomCustomThemes = Array.isArray(activeClassroom?.customThemes)
+        ? activeClassroom.customThemes
+        : [];
 
-      const colorMode = userTheme?.colorMode || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const storedColorMode = loadStoredColorMode();
+      const colorMode =
+        storedColorMode ||
+        userTheme?.colorMode ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       const fontFamily = userTheme?.fontFamily || "system";
       const batchTheme = classroomTheme || get().batchTheme || batchThemes[0];
       const userAccent = userTheme?.accentColor ? userAccents.find(a => a.id === userTheme.accentColor) || null : null;
 
-      set({ colorMode, fontFamily, batchTheme, userAccent });
+      set({ colorMode, fontFamily, batchTheme, userAccent, customThemes: classroomCustomThemes });
+      persistColorMode(colorMode);
       applyThemeToDOM(batchTheme, userAccent, colorMode);
       applyFontToDOM(fontFamily);
     },

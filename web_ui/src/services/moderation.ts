@@ -1,22 +1,10 @@
 import type { FlaggedContent, UserReport } from "@/types/admin";
+import { fetchResourceReports, reviewResourceReport } from "@/services/resources";
+import { fetchLoungeReports, reviewLoungeReport } from "@/services/lounge";
 
-// Re-export types for backward compatibility
 export type { FlaggedContent, UserReport } from "@/types/admin";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 const REPORTS_KEY = "skola-user-reports";
-
-export async function fetchFlaggedContent(): Promise<FlaggedContent[]> {
-  await delay(300);
-  return [
-    { id: "f1", type: "post", content: "Extremely inappropriate comment about a professor...", author: "Anon#6120", reason: "Harassment", reportedBy: "Anon#4821", reportedAt: "2026-03-07T14:30:00", status: "pending" },
-    { id: "f2", type: "resource", content: "Uploaded copyrighted textbook PDF", author: "Bereket Wolde", reason: "Copyright violation", reportedBy: "Meron Kebede", reportedAt: "2026-03-06T10:15:00", status: "pending" },
-    { id: "f3", type: "reply", content: "Spam link to external website", author: "Anon#9012", reason: "Spam", reportedBy: "Anon#2156", reportedAt: "2026-03-05T18:45:00", status: "resolved" },
-    { id: "f4", type: "quiz", content: "Quiz with offensive question content", author: "Anon#3367", reason: "Offensive content", reportedBy: "Anon#7733", reportedAt: "2026-03-04T09:20:00", status: "dismissed" },
-    { id: "f5", type: "post", content: "Sharing exam answers openly in the lounge", author: "Anon#5544", reason: "Academic dishonesty", reportedBy: "Anon#8891", reportedAt: "2026-03-08T08:00:00", status: "pending" },
-  ];
-}
 
 export function loadUserReports(): UserReport[] {
   try {
@@ -32,20 +20,84 @@ export function saveUserReport(report: UserReport) {
   localStorage.setItem(REPORTS_KEY, JSON.stringify(existing));
 }
 
-export async function fetchAllFlaggedContent(): Promise<FlaggedContent[]> {
-  const [defaultItems, userReports] = await Promise.all([
-    fetchFlaggedContent(),
-    Promise.resolve(loadUserReports()),
+export function updateUserReportStatus(reportId: string, status: UserReport["status"]) {
+  const existing = loadUserReports();
+  const updated = existing.map((r) => (r.id === reportId ? { ...r, status } : r));
+  localStorage.setItem(REPORTS_KEY, JSON.stringify(updated));
+}
+
+export async function fetchAllFlaggedContent(filters?: {
+  status?: FlaggedContent["status"] | "all";
+  type?: FlaggedContent["type"] | "all";
+}): Promise<FlaggedContent[]> {
+  const statusFilter = filters?.status && filters.status !== "all" ? filters.status : undefined;
+  const typeFilter = filters?.type && filters.type !== "all" ? filters.type : undefined;
+
+  const shouldFetchResource = !typeFilter || typeFilter === "resource";
+  const loungeTypeFilter = typeFilter === "post" || typeFilter === "reply" ? typeFilter : undefined;
+  const shouldFetchLounge = !typeFilter || Boolean(loungeTypeFilter);
+  const shouldLoadLocal = !typeFilter || typeFilter === "quiz";
+
+  const [resourceReports, loungeReports, localReports] = await Promise.all([
+    shouldFetchResource ? fetchResourceReports(statusFilter) : Promise.resolve([]),
+    shouldFetchLounge ? fetchLoungeReports(statusFilter, loungeTypeFilter) : Promise.resolve([]),
+    shouldLoadLocal ? Promise.resolve(loadUserReports()) : Promise.resolve([]),
   ]);
-  const mapped: FlaggedContent[] = userReports.map((r) => ({
-    id: r.id,
-    type: r.type,
-    content: r.content,
-    author: r.author,
-    reason: r.reason,
-    reportedBy: r.reportedBy,
-    reportedAt: r.reportedAt,
-    status: r.status,
+
+  const resourceItems: FlaggedContent[] = resourceReports.map((report) => ({
+    id: report.id,
+    type: "resource",
+    content: report.content,
+    author: report.author,
+    reason: report.reason,
+    reportedBy: report.reportedBy,
+    reportedAt: report.reportedAt,
+    status: report.status,
   }));
-  return [...mapped, ...defaultItems];
+
+  const loungeItems: FlaggedContent[] = loungeReports.map((report: any) => ({
+    id: report.id,
+    type: report.type,
+    content: report.content,
+    author: report.author,
+    reason: report.reason,
+    reportedBy: report.reportedBy,
+    reportedAt: report.reportedAt,
+    status: report.status,
+  }));
+
+  const localItems: FlaggedContent[] = (localReports as UserReport[])
+    .filter((r) => !statusFilter || r.status === statusFilter)
+    .filter((r) => !typeFilter || r.type === typeFilter)
+    .filter((r) => r.type !== "resource" && r.type !== "post" && r.type !== "reply")
+    .map((r) => ({
+      id: r.id,
+      type: r.type,
+      content: r.content,
+      author: r.author,
+      reason: r.reason,
+      reportedBy: r.reportedBy,
+      reportedAt: r.reportedAt,
+      status: r.status,
+    }));
+
+  return [...resourceItems, ...loungeItems, ...localItems].sort(
+    (a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime(),
+  );
+}
+
+export async function resolveResourceReport(reportId: string, removeResource: boolean) {
+  return reviewResourceReport(reportId, { status: "resolved", removeResource });
+}
+
+export async function dismissResourceReport(reportId: string) {
+  return reviewResourceReport(reportId, { status: "dismissed" });
+}
+
+export async function resolveLoungeReport(reportId: string, removeContent: boolean) {
+  return reviewLoungeReport(reportId, { status: "resolved", removeContent });
+}
+
+export async function dismissLoungeReport(reportId: string) {
+  return reviewLoungeReport(reportId, { status: "dismissed" });
 }

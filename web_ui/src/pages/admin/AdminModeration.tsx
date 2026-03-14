@@ -1,6 +1,14 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { fetchAllFlaggedContent, type FlaggedContent } from "@/services/admin";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  dismissResourceReport,
+  dismissLoungeReport,
+  fetchAllFlaggedContent,
+  resolveLoungeReport,
+  resolveResourceReport,
+  updateUserReportStatus,
+  type FlaggedContent,
+} from "@/services/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +29,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ShieldAlert,
   MessageSquare,
   FolderOpen,
   Swords,
@@ -30,6 +37,7 @@ import {
   XCircle,
   Clock,
   Trash2,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -48,43 +56,60 @@ const statusConfig = {
 };
 
 const AdminModeration = () => {
-  const { data: flaggedItems, isLoading } = useQuery({
-    queryKey: ["flaggedContent"],
-    queryFn: fetchAllFlaggedContent,
-  });
-
-  const [localChanges, setLocalChanges] = useState<Record<string, FlaggedContent["status"]>>({});
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterType, setFilterType] = useState("all");
+  const queryClient = useQueryClient();
+  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "resolved" | "dismissed">("all");
+  const [filterType, setFilterType] = useState<"all" | "post" | "resource" | "quiz" | "reply">("all");
   const [confirmAction, setConfirmAction] = useState<{
-    id: string;
-    status: FlaggedContent["status"];
+    item: FlaggedContent;
+    status: "resolved" | "dismissed";
+    removeResource?: boolean;
     label: string;
     description: string;
     destructive?: boolean;
   } | null>(null);
 
-  const items = (flaggedItems || []).map((item) => ({
-    ...item,
-    status: localChanges[item.id] || item.status,
-  }));
-
-  const filtered = items.filter((item) => {
-    if (filterStatus !== "all" && item.status !== filterStatus) return false;
-    if (filterType !== "all" && item.type !== filterType) return false;
-    return true;
+  const { data: allItems = [], isLoading } = useQuery({
+    queryKey: ["flaggedContent", { status: filterStatus, type: filterType }],
+    queryFn: () => fetchAllFlaggedContent({ status: filterStatus, type: filterType }),
   });
 
-  const stats = {
-    total: items.length,
-    pending: items.filter((i) => i.status === "pending").length,
-    resolved: items.filter((i) => i.status === "resolved").length,
-  };
+  const items = allItems;
 
-  const updateStatus = (id: string, status: FlaggedContent["status"]) => {
-    setLocalChanges((prev) => ({ ...prev, [id]: status }));
-    toast({ title: status === "resolved" ? "Resolved" : "Dismissed", description: `Report has been ${status}.` });
-  };
+  const stats = useMemo(
+    () => ({
+      total: allItems.length,
+      pending: allItems.filter((r) => r.status === "pending").length,
+      resolved: allItems.filter((r) => r.status === "resolved").length,
+    }),
+    [allItems],
+  );
+
+  const actionMutation = useMutation({
+    mutationFn: async (action: { item: FlaggedContent; status: "resolved" | "dismissed"; removeResource?: boolean }) => {
+      if (action.item.type === "resource") {
+        if (action.status === "resolved") {
+          return resolveResourceReport(action.item.id, Boolean(action.removeResource));
+        }
+        return dismissResourceReport(action.item.id);
+      }
+      if (action.item.type === "post" || action.item.type === "reply") {
+        if (action.status === "resolved") {
+          return resolveLoungeReport(action.item.id, Boolean(action.removeResource));
+        }
+        return dismissLoungeReport(action.item.id);
+      }
+      updateUserReportStatus(action.item.id, action.status);
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["flaggedContent"] });
+      toast({ title: "Moderation action applied" });
+      setConfirmAction(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Action failed", description: err.message || "Could not update report", variant: "destructive" });
+    },
+  });
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-4xl">
@@ -109,7 +134,7 @@ const AdminModeration = () => {
       </div>
 
       <div className="flex gap-2">
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
+        <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
           <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
@@ -118,7 +143,7 @@ const AdminModeration = () => {
             <SelectItem value="dismissed">Dismissed</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterType} onValueChange={setFilterType}>
+        <Select value={filterType} onValueChange={(v) => setFilterType(v as typeof filterType)}>
           <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
@@ -134,30 +159,24 @@ const AdminModeration = () => {
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="border border-border p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-12 bg-muted animate-pulse" />
-                <div className="h-4 w-20 bg-muted animate-pulse" />
-                <div className="h-4 w-16 bg-muted animate-pulse" />
-                <div className="flex-1" />
-                <div className="h-3 w-16 bg-muted animate-pulse" />
-              </div>
-              <div className="h-4 w-3/4 bg-muted animate-pulse" />
-              <div className="flex justify-between">
-                <div className="h-3 w-40 bg-muted animate-pulse" />
-                <div className="flex gap-1">
-                  <div className="h-6 w-24 bg-muted animate-pulse" />
-                  <div className="h-6 w-16 bg-muted animate-pulse" />
-                </div>
-              </div>
+              <div className="h-4 w-24 bg-muted animate-pulse" />
+              <div className="h-3 w-3/4 bg-muted animate-pulse" />
             </div>
           ))}
         </div>
+      ) : items.length === 0 ? (
+        <div className="border border-dashed border-border p-10 text-center space-y-2">
+          <ShieldAlert className="h-7 w-7 mx-auto text-muted-foreground" />
+          <p className="text-sm uppercase tracking-wider text-muted-foreground">No reports found</p>
+        </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((item) => {
+          {items.map((item) => {
             const TypeIcon = typeIcons[item.type];
             const sCfg = statusConfig[item.status];
             const SIcon = sCfg.icon;
+            const isResource = item.type === "resource";
+
             return (
               <div key={item.id} className="border border-border p-3 sm:p-4 space-y-2 hover:bg-accent/20 transition-colors">
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -171,21 +190,50 @@ const AdminModeration = () => {
                     <SIcon className="h-2.5 w-2.5" /> {sCfg.label}
                   </span>
                   <div className="hidden sm:block flex-1" />
-                  <span className="text-[10px] text-muted-foreground">{new Date(item.reportedAt).toLocaleDateString()}</span>
+                  <span className="text-[10px] text-muted-foreground">{new Date(item.reportedAt).toLocaleString()}</span>
                 </div>
+
                 <p className="text-sm break-words">{item.content}</p>
+
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[10px] text-muted-foreground">
                   <span className="break-words">By: {item.author} · Reported by: {item.reportedBy}</span>
                   {item.status === "pending" && (
                     <div className="flex gap-1 w-full sm:w-auto">
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 flex-1 sm:flex-none" onClick={() => {
-                        setConfirmAction({ id: item.id, status: "resolved", label: "Remove Content", description: "This content will be permanently removed from the platform.", destructive: true });
-                      }}>
-                        <Trash2 className="h-2.5 w-2.5" /> Remove
+                      {isResource && (
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 flex-1 sm:flex-none text-destructive" onClick={() =>
+                          setConfirmAction({
+                            item,
+                            status: "resolved",
+                            removeResource: true,
+                            label: "Remove Content",
+                            description: `This ${item.type} will be permanently removed.`,
+                            destructive: true,
+                          })
+                        }>
+                          <Trash2 className="h-2.5 w-2.5" /> Remove
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 flex-1 sm:flex-none" onClick={() =>
+                        setConfirmAction({
+                          item,
+                          status: "resolved",
+                          removeResource: false,
+                          label: "Resolve Report",
+                          description: isResource
+                            ? "Mark report resolved and keep the resource."
+                            : "Mark report resolved.",
+                        })
+                      }>
+                        <CheckCircle2 className="h-2.5 w-2.5" /> Resolve
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 flex-1 sm:flex-none" onClick={() => {
-                        setConfirmAction({ id: item.id, status: "dismissed", label: "Dismiss Report", description: "This report will be dismissed and the content will remain." });
-                      }}>
+                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 flex-1 sm:flex-none" onClick={() =>
+                        setConfirmAction({
+                          item,
+                          status: "dismissed",
+                          label: "Dismiss Report",
+                          description: "This report will be dismissed.",
+                        })
+                      }>
                         <XCircle className="h-2.5 w-2.5" /> Dismiss
                       </Button>
                     </div>
@@ -197,7 +245,6 @@ const AdminModeration = () => {
         </div>
       )}
 
-      {/* Confirmation Dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={(o) => !o && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -209,10 +256,12 @@ const AdminModeration = () => {
             <AlertDialogAction
               className={confirmAction?.destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
               onClick={() => {
-                if (confirmAction) {
-                  updateStatus(confirmAction.id, confirmAction.status);
-                  setConfirmAction(null);
-                }
+                if (!confirmAction) return;
+                actionMutation.mutate({
+                  item: confirmAction.item,
+                  status: confirmAction.status,
+                  removeResource: confirmAction.removeResource,
+                });
               }}
             >
               {confirmAction?.label}

@@ -40,6 +40,7 @@ const Login = () => {
   const { colorMode, toggleColorMode, syncThemeWithStores } = useThemeStore();
   const [view, setView] = useState<AuthView>("login");
   const [inviteCode, setInviteCode] = useState("");
+  const [signupTelegramGroupId, setSignupTelegramGroupId] = useState("");
   const [inviteStatus, setInviteStatus] = useState<InviteStatus>("idle");
   const [inviteError, setInviteError] = useState("");
   const [deniedReason, setDeniedReason] = useState<
@@ -47,7 +48,20 @@ const Login = () => {
   >("unregistered");
   const [suspendedUntil, setSuspendedUntil] = useState("");
 
+  const isValidGroupId = (id: string) => /^-?\d+$/.test(id.trim());
+
   const handleTelegramAuth = async (telegramUser: TelegramUser) => {
+    if (view === "signup") {
+      if (!signupTelegramGroupId.trim()) {
+        toast({ title: "Missing Group ID", description: "Telegram group ID is required for signup.", variant: "destructive" });
+        return;
+      }
+      if (!isValidGroupId(signupTelegramGroupId)) {
+        toast({ title: "Invalid Group ID", description: "Telegram group IDs are numeric (e.g. -100123456789).", variant: "destructive" });
+        return;
+      }
+    }
+
     setView("verifying");
 
     try {
@@ -61,7 +75,7 @@ const Login = () => {
         try {
           const joinResult = await apiFetch("/classrooms/join", {
             method: "POST",
-            body: JSON.stringify({ inviteCode }),
+            body: JSON.stringify({ inviteCode, telegramGroupId: signupTelegramGroupId.trim() }),
             headers: { Authorization: `Bearer ${data.accessToken}` }
           });
           if (joinResult) {
@@ -249,6 +263,18 @@ const Login = () => {
           <Card>
             <CardContent className="p-5 space-y-4">
               <div className="space-y-2">
+                <Label className="text-[10px] uppercase tracking-widest font-bold">Telegram Group ID</Label>
+                <Input
+                  placeholder="e.g. -100123456789"
+                  value={signupTelegramGroupId}
+                  onChange={(e) => setSignupTelegramGroupId(e.target.value)}
+                  className="text-center text-sm font-mono"
+                />
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Required for signup. Owners can edit this later in Settings.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label className="text-[10px] uppercase tracking-widest font-bold">Invite Code</Label>
                 <div className="flex gap-2">
                   <Input
@@ -300,7 +326,7 @@ const Login = () => {
 
           {/* Telegram Login */}
           <AnimatePresence mode="wait">
-            {inviteStatus === "valid" ? (
+            {inviteStatus === "valid" && isValidGroupId(signupTelegramGroupId) ? (
               <motion.div
                 key="unlocked"
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -326,7 +352,7 @@ const Login = () => {
                 <Card className="opacity-40 pointer-events-none select-none">
                   <CardContent className="p-5 space-y-3">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center flex items-center justify-center gap-1.5">
-                      <Lock className="h-3 w-3" /> Verify invite code to unlock
+                      <Lock className="h-3 w-3" /> Verify invite code + group ID to unlock
                     </p>
                     <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
                   </CardContent>

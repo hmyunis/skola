@@ -23,10 +23,10 @@ export class ClassroomsController {
   @Post('join')
   @HttpCode(HttpStatus.OK)
   async joinClassroom(
-    @Body('inviteCode') inviteCode: string,
+    @Body() dto: { inviteCode: string; telegramGroupId?: string },
     @CurrentUser() user: User
   ) {
-    return this.classroomsService.joinClassroom(inviteCode, user);
+    return this.classroomsService.joinClassroom(dto.inviteCode, user, dto.telegramGroupId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -62,6 +62,17 @@ export class ClassroomsController {
   @RequireClassroomRole(UserRole.OWNER)
   async updateClassroomFeatures(@Param('id') id: string, @Body() features: any) {
     return this.classroomsService.updateFeatures(id, features);
+  }
+
+  @Put(':id/telegram-group')
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.OWNER)
+  async updateClassroomTelegramGroup(
+    @Param('id') id: string,
+    @Body('telegramGroupId') telegramGroupId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.classroomsService.updateTelegramGroupId(id, telegramGroupId, user);
   }
 
   @Get(':id/members')

@@ -103,3 +103,36 @@ export async function addReply(
 export async function deleteReply(replyId: string): Promise<{ deleted: boolean }> {
   return apiFetch(`/lounge/replies/${replyId}`, { method: "DELETE" });
 }
+
+export async function reportLoungeContent(data: {
+  contentType: "post" | "reply";
+  contentId: string;
+  reason: string;
+  details?: string;
+}) {
+  return apiFetch("/lounge/reports", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchLoungeReports(
+  status?: "pending" | "resolved" | "dismissed",
+  type?: "post" | "reply",
+) {
+  const query = new URLSearchParams();
+  if (status) query.set("status", status);
+  if (type) query.set("type", type);
+  const qs = query.toString();
+  return apiFetch(`/lounge/reports${qs ? `?${qs}` : ""}`);
+}
+
+export async function reviewLoungeReport(
+  reportId: string,
+  payload: { status: "resolved" | "dismissed"; removeContent?: boolean },
+) {
+  return apiFetch(`/lounge/reports/${reportId}/review`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
