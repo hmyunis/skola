@@ -10,8 +10,9 @@ import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useSyncClassroom } from "@/hooks/use-classroom";
-import { Sun, Moon, LogOut, GraduationCap, CalendarDays, Ban, Clock } from "lucide-react";
+import { Sun, Moon, LogOut, GraduationCap, CalendarDays, Ban, Clock, Send } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import type { Semester } from "@/types/admin";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +26,7 @@ import {
 
 const roleLabels = { owner: "Owner", admin: "Admin", student: "Student" };
 
-function UserMenu() {
+function UserMenu({ activeSemester }: { activeSemester: Semester | null }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -39,6 +40,10 @@ function UserMenu() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const yearValue = activeSemester?.year ?? user?.year ?? "—";
+  const semesterValue = activeSemester?.name ?? user?.semester ?? "—";
+  const telegramUsername = user?.telegramUsername?.replace(/^@+/, "");
 
   return (
     <div className="relative" ref={ref}>
@@ -79,15 +84,28 @@ function UserMenu() {
 
           {/* Details */}
           <div className="p-3 space-y-2 border-b border-border">
-            {user?.telegramUsername && (
+            {telegramUsername && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-bold border border-current rounded-full shrink-0">@</span>
-                <span className="truncate">@{user.telegramUsername}</span>
+                <span className="truncate">@{telegramUsername}</span>
+                <a
+                  href={`https://t.me/${telegramUsername}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-sm border border-border text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                  title={`Open @${telegramUsername} on Telegram`}
+                  aria-label={`Open @${telegramUsername} on Telegram`}
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </a>
               </div>
             )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <GraduationCap className="h-3.5 w-3.5 shrink-0" />
-              <span>Year {user?.year || "—"}, Semester {user?.semester || "—"}</span>
+              <span className="max-w-[160px] leading-snug">
+                <span className="block">Year {yearValue}</span>
+                <span className="block break-words">Semester {semesterValue}</span>
+              </span>
             </div>
           </div>
 
@@ -214,7 +232,7 @@ export function AppLayout() {
                 </TooltipContent>
               </Tooltip>
 
-              <UserMenu />
+              <UserMenu activeSemester={activeSemester} />
             </header>
 
             <main className="flex-1 overflow-auto pb-14 md:pb-0">

@@ -15,6 +15,7 @@ import { ResourcesModule } from './modules/resources/resources.module';
 import { LoungeModule } from './modules/lounge/lounge.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports:[
@@ -69,6 +70,7 @@ import { AdminModule } from './modules/admin/admin.module';
     LoungeModule,
     ArenaModule,
     AdminModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers:[

@@ -18,8 +18,8 @@ export class CreateScheduleItemDto {
 
   @Type(() => Number)
   @IsInt()
-  @Min(1)
-  @Max(5)
+  @Min(0)
+  @Max(6)
   dayOfWeek: number;
 
   @IsMilitaryTime()
@@ -53,8 +53,8 @@ export class UpdateScheduleItemDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(1)
-  @Max(5)
+  @Min(0)
+  @Max(6)
   dayOfWeek?: number;
 
   @IsOptional()

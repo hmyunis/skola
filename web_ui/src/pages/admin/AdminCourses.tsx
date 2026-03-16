@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import {
     fetchCourses,
@@ -57,6 +57,16 @@ function CourseFormDialog({
     const [instructor, setInstructor] = useState(initial?.instructor || '');
     const [semesterId, setSemesterId] = useState(initial?.semesterId || semesters[0]?.id || '');
 
+    const defaultSemesterId = semesters[0]?.id || '';
+
+    useEffect(() => {
+        setCode(initial?.code || '');
+        setName(initial?.name || '');
+        setCredits(String(initial?.credits || 3));
+        setInstructor(initial?.instructor || '');
+        setSemesterId(initial?.semesterId || defaultSemesterId);
+    }, [initial, open, defaultSemesterId]);
+
     const isValid = name.trim() && semesterId;
 
     const handleSubmit = () => {
@@ -87,7 +97,7 @@ function CourseFormDialog({
                             <Input
                                 value={code}
                                 onChange={(e) => setCode(e.target.value)}
-                                placeholder="CS301"
+                                placeholder="Course code"
                                 className="h-9 text-sm"
                             />
                         </div>
@@ -110,7 +120,7 @@ function CourseFormDialog({
                         <Input
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Data Structures & Algorithms"
+                            placeholder="Course name"
                             className="h-9 text-sm"
                         />
                     </div>

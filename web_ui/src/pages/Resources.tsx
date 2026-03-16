@@ -435,61 +435,61 @@ const Resources = () => {
             <div
               key={resource.id}
               ref={idx === resources.length - 1 ? lastElementRef : undefined}
-              className="border border-border p-3 sm:p-4 hover:bg-accent/20 transition-colors space-y-2"
+              className="border border-border p-3 sm:p-4 hover:bg-accent/20 transition-colors space-y-2 overflow-hidden"
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-bold text-sm truncate">{resource.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="font-bold text-sm break-words line-clamp-2">{resource.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 break-words">
                     {(resource.course?.code || resource.course?.name || "Unknown course")} · {(resource.uploader?.name || "Unknown uploader")} · {formatBytes(resource.fileSize)}
                   </p>
                 </div>
-                <span className={`px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${typeTone[resource.type]}`}>
+                <span className={`self-start px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${typeTone[resource.type]}`}>
                   {RESOURCE_TYPES.find((t) => t.value === resource.type)?.label || resource.type}
                 </span>
               </div>
 
-              <p className="text-sm text-muted-foreground line-clamp-2">{resource.description || "No description"}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2 break-words">{resource.description || "No description"}</p>
 
               <div className="flex flex-wrap gap-1">
                 {resource.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="rounded-none text-[10px]">{tag}</Badge>
+                  <Badge key={tag} variant="secondary" className="rounded-none text-[10px] max-w-full break-all">{tag}</Badge>
                 ))}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant={resource.userVote === "up" ? "default" : "outline"} className="h-7 text-[11px]" onClick={() => voteMutation.mutate({ id: resource.id, vote: "up" })}>
+                <Button size="sm" variant={resource.userVote === "up" ? "default" : "outline"} className="h-7 text-[11px] shrink-0" onClick={() => voteMutation.mutate({ id: resource.id, vote: "up" })}>
                   <ThumbsUp className="h-3 w-3" /> {resource.upvotes}
                 </Button>
-                <Button size="sm" variant={resource.userVote === "down" ? "default" : "outline"} className="h-7 text-[11px]" onClick={() => voteMutation.mutate({ id: resource.id, vote: "down" })}>
+                <Button size="sm" variant={resource.userVote === "down" ? "default" : "outline"} className="h-7 text-[11px] shrink-0" onClick={() => voteMutation.mutate({ id: resource.id, vote: "down" })}>
                   <ThumbsDown className="h-3 w-3" /> {resource.downvotes}
                 </Button>
                 {resource.fileUrl && (
-                  <Button size="sm" variant="outline" className="h-7 text-[11px]" asChild>
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] shrink-0" asChild>
                     <a href={`${FILE_BASE}${resource.fileUrl}`} target="_blank" rel="noreferrer">
                       <Download className="h-3 w-3" /> Download
                     </a>
                   </Button>
                 )}
                 {resource.externalUrl && (
-                  <Button size="sm" variant="outline" className="h-7 text-[11px]" asChild>
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] shrink-0" asChild>
                     <a href={resource.externalUrl} target="_blank" rel="noreferrer">
                       <ExternalLink className="h-3 w-3" /> Open Link
                     </a>
                   </Button>
                 )}
                 {canReport(resource) && (
-                  <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setReporting(resource)}>
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px] shrink-0" onClick={() => setReporting(resource)}>
                     Report
                   </Button>
                 )}
                 {canEdit(resource) && (
-                  <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => { setEditing(resource); setFormOpen(true); }}>
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] shrink-0" onClick={() => { setEditing(resource); setFormOpen(true); }}>
                     <Pencil className="h-3 w-3" /> Edit
                   </Button>
                 )}
                 {canDelete(resource) && (
-                  <Button size="sm" variant="ghost" className="h-7 text-[11px] text-destructive hover:text-destructive" onClick={() => setDeleting(resource)}>
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px] text-destructive hover:text-destructive shrink-0" onClick={() => setDeleting(resource)}>
                     <Trash2 className="h-3 w-3" /> Delete
                   </Button>
                 )}

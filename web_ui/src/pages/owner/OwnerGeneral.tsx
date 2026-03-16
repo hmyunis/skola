@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/stores/themeStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
@@ -7,6 +8,12 @@ import { useSemesterStore } from "@/stores/semesterStore";
 import { useUpdateClassroomTheme } from "@/hooks/use-theme";
 import { apiFetch } from "@/services/api";
 import { type Semester } from "@/services/admin";
+import {
+  fetchOwnerExportDatasets,
+  exportOwnerData,
+  downloadOwnerExport,
+  type OwnerExportDatasetId,
+} from "@/services/exports";
 import { batchThemes, primaryPresets, headerPresets, patternTemplates } from "@/lib/themes";
 import type { BatchTheme } from "@/lib/themes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePicker } from "@/components/DatePicker";
 import {
   Select,
@@ -25,7 +33,6 @@ import {
 import {
   X,
   Plus,
-  Send,
   Save,
   Download,
   Database,
@@ -41,6 +48,9 @@ import {
   Archive,
   Clock,
   Play,
+  ChevronDown,
+  Search,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -307,21 +317,70 @@ function BatchThemeSelector() {
 
 // ─── Data Export Tab ───
 
-const exportItems = [
-  { id: "users", label: "Users & Profiles", icon: Users, description: "All user accounts, roles, and profile data", estimatedSize: "~2.4 MB" },
-  { id: "posts", label: "Lounge Posts & Replies", icon: MessageSquare, description: "All lounge posts, replies, and reactions", estimatedSize: "~8.1 MB" },
-  { id: "resources", label: "Resource Metadata", icon: FolderOpen, description: "All resource entries (metadata only, no files)", estimatedSize: "~1.2 MB" },
-  { id: "quizzes", label: "Quiz Data", icon: Swords, description: "All custom quizzes and leaderboard data", estimatedSize: "~3.5 MB" },
-  { id: "analytics", label: "Analytics Logs", icon: Database, description: "Activity logs and engagement metrics", estimatedSize: "~12.8 MB" },
-];
+const exportIconMap: Record<OwnerExportDatasetId, LucideIcon> = {
+  users: Users,
+  posts: MessageSquare,
+  resources: FolderOpen,
+  quizzes: Swords,
+  analytics: Database,
+};
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  const value = size >= 10 || unitIndex === 0 ? Math.round(size) : Number(size.toFixed(1));
+  return `${value} ${units[unitIndex]}`;
+}
 
 function DataExportTab() {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [exporting, setExporting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [exportedItems, setExportedItems] = useState<Set<string>>(new Set());
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["ownerExportDatasets"],
+    queryFn: fetchOwnerExportDatasets,
+    staleTime: 60_000,
+  });
+  const exportItems = data || [];
 
-  const toggleSelect = (id: string) => {
+  const [selected, setSelected] = useState<Set<OwnerExportDatasetId>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [exportedItems, setExportedItems] = useState<Set<OwnerExportDatasetId>>(new Set());
+
+  useEffect(() => {
+    setSelected((prev) => {
+      const validIds = new Set(exportItems.map((item) => item.id));
+      const filtered = Array.from(prev).filter((id) => validIds.has(id));
+      if (filtered.length === prev.size) {
+        return prev;
+      }
+      return new Set(filtered);
+    });
+  }, [exportItems]);
+
+  const exportMutation = useMutation({
+    mutationFn: (datasetIds: OwnerExportDatasetId[]) => exportOwnerData(datasetIds),
+    onSuccess: (payload, datasetIds) => {
+      downloadOwnerExport(payload);
+      setExportedItems((prev) => new Set([...prev, ...datasetIds]));
+      toast({
+        title: "Export Complete",
+        description: `${datasetIds.length} dataset(s) exported successfully.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Export Failed",
+        description: err?.message || "Failed to generate export package.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleSelect = (id: OwnerExportDatasetId) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -331,43 +390,69 @@ function DataExportTab() {
   };
 
   const selectAll = () => {
-    if (selected.size === exportItems.length) {
+    if (selected.size === exportItems.length && exportItems.length > 0) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(exportItems.map((i) => i.id)));
+      setSelected(new Set(exportItems.map((item) => item.id)));
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = () => {
+    if (!selected.size || exportMutation.isPending) return;
     setConfirmOpen(false);
-    setExporting(true);
-    for (const id of selected) {
-      await new Promise((r) => setTimeout(r, 800));
-      setExportedItems((prev) => new Set([...prev, id]));
-    }
-    setExporting(false);
-    toast({ title: "Export Complete", description: `${selected.size} dataset(s) exported successfully.` });
+    exportMutation.mutate(Array.from(selected));
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-16 bg-muted animate-pulse border border-border" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    const message = error instanceof Error ? error.message : "Failed to load export datasets.";
+    return (
+      <div className="border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-destructive">Unable to Load Export Options</p>
+        <p className="text-xs text-muted-foreground">{message}</p>
+        <Button size="sm" variant="outline" onClick={() => refetch()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const selectedCount = selected.size;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <Button variant="outline" size="sm" className="text-xs" onClick={selectAll}>
-          {selected.size === exportItems.length ? "Deselect All" : "Select All"}
+          {selectedCount === exportItems.length && exportItems.length > 0 ? "Deselect All" : "Select All"}
         </Button>
         <Button
           size="sm"
-          disabled={selected.size === 0 || exporting}
+          disabled={selectedCount === 0 || exportMutation.isPending}
           onClick={() => setConfirmOpen(true)}
         >
           <Download className="h-3 w-3" />
-          Export {selected.size > 0 ? `(${selected.size})` : ""}
+          Export {selectedCount > 0 ? `(${selectedCount})` : ""}
         </Button>
       </div>
 
+      {exportItems.length === 0 ? (
+        <div className="border border-dashed border-border p-8 text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">No export datasets available</p>
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         {exportItems.map((item) => {
-          const Icon = item.icon;
+          const Icon = exportIconMap[item.id];
           const isSelected = selected.has(item.id);
           const isExported = exportedItems.has(item.id);
           return (
@@ -386,27 +471,25 @@ function DataExportTab() {
                 <p className="text-xs font-bold">{item.label}</p>
                 <p className="text-[10px] text-muted-foreground">{item.description}</p>
               </div>
-              <span className="text-[10px] text-muted-foreground tabular-nums">{item.estimatedSize}</span>
+              <div className="flex flex-col items-end leading-tight">
+                <span className="text-[10px] text-muted-foreground tabular-nums">{formatBytes(item.estimatedSizeBytes)}</span>
+                <span className="text-[10px] text-muted-foreground tabular-nums">{item.recordCount.toLocaleString()} records</span>
+              </div>
               {isExported && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
             </button>
           );
         })}
       </div>
 
-      {exporting && (
+      {exportMutation.isPending && (
         <div className="border border-primary/30 bg-primary/5 p-4 space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider">Exporting...</p>
           <div className="space-y-1">
-            {exportItems.filter((i) => selected.has(i.id)).map((item) => {
-              const done = exportedItems.has(item.id);
+            {exportItems.filter((item) => selected.has(item.id)).map((item) => {
               return (
                 <div key={item.id} className="flex items-center gap-2 text-xs">
-                  {done ? (
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                  ) : (
-                    <div className="h-3 w-3 border border-primary/50 animate-spin" />
-                  )}
-                  <span className={cn(done ? "text-muted-foreground" : "text-foreground")}>{item.label}</span>
+                  <div className="h-3 w-3 border border-primary/50 animate-spin" />
+                  <span className="text-foreground">{item.label}</span>
                 </div>
               );
             })}
@@ -419,12 +502,14 @@ function DataExportTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Export</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to export {selected.size} dataset(s). This may take a moment.
+              You are about to export {selectedCount} dataset(s). This will generate a JSON package for download.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleExport}>Export</AlertDialogAction>
+            <AlertDialogAction onClick={handleExport} disabled={exportMutation.isPending}>
+              {exportMutation.isPending ? "Exporting..." : "Export"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -731,16 +816,57 @@ function SemesterManagement() {
 
 // ─── Settings Tab ───
 
+type ClassroomMemberWithUser = {
+  id: string;
+  role: "owner" | "admin" | "student";
+  user: {
+    id: string;
+    name: string;
+    telegramUsername?: string | null;
+  };
+};
+
 function SettingsTab() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
   const { activeClassroom, setActiveClassroom, clearActiveClassroom } = useClassroomStore();
   const [telegramGroupId, setTelegramGroupId] = useState(activeClassroom?.telegramGroupId || "");
   const [savingTelegramGroupId, setSavingTelegramGroupId] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [successorDropdownOpen, setSuccessorDropdownOpen] = useState(false);
+  const [successorSearch, setSuccessorSearch] = useState("");
+  const [successorMemberId, setSuccessorMemberId] = useState("");
 
   useEffect(() => {
     setTelegramGroupId(activeClassroom?.telegramGroupId || "");
   }, [activeClassroom?.telegramGroupId]);
+
+  useEffect(() => {
+    if (!deleteDialogOpen) {
+      setSuccessorDropdownOpen(false);
+      setSuccessorSearch("");
+      setSuccessorMemberId("");
+    }
+  }, [deleteDialogOpen]);
+
+  const { data: classroomMembers = [], isLoading: loadingClassroomMembers } = useQuery({
+    queryKey: ["owner-delete-members", activeClassroom?.id],
+    enabled: deleteDialogOpen && !!activeClassroom?.id,
+    queryFn: async () => {
+      if (!activeClassroom) return [] as ClassroomMemberWithUser[];
+      return apiFetch(`/classrooms/${activeClassroom.id}/members`) as Promise<ClassroomMemberWithUser[]>;
+    },
+  });
+
+  const adminCandidates = classroomMembers.filter((member) => member.role === "admin");
+  const filteredAdminCandidates = adminCandidates.filter((member) => {
+    const q = successorSearch.trim().toLowerCase();
+    if (!q) return true;
+    const name = member.user?.name?.toLowerCase() || "";
+    const username = member.user?.telegramUsername?.toLowerCase() || "";
+    return name.includes(q) || username.includes(q);
+  });
+  const selectedSuccessor = adminCandidates.find((member) => member.id === successorMemberId);
 
   const handleSaveTelegramGroupId = async () => {
     if (!activeClassroom) return;
@@ -770,11 +896,19 @@ function SettingsTab() {
   };
 
   const handleDeleteAccount = async () => {
+    if (!successorMemberId) {
+      toast({ title: "Successor Required", description: "Choose an admin successor before deleting your account.", variant: "destructive" });
+      return;
+    }
     try {
-      await apiFetch("/users/me", { method: "DELETE" });
-      toast({ title: "Account Deleted", description: "Your account and all associated data have been removed." });
+      await apiFetch("/users/me", {
+        method: "DELETE",
+        body: JSON.stringify({ successorMemberId }),
+      });
+      toast({ title: "Account Deleted", description: "Your account and some associated data have been removed." });
       clearActiveClassroom();
       logout();
+      setDeleteDialogOpen(false);
       navigate("/login");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -851,29 +985,90 @@ function SettingsTab() {
               Delete Account
             </CardTitle>
             <CardDescription className="text-[10px] text-destructive/70">
-              Permanently remove your account and all associated data. This action is irreversible.
+              Permanently remove your account and some associated data. This action is irreversible.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AlertDialog>
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" className="text-[10px] font-black uppercase tracking-widest gap-2">
                   <AlertTriangle className="h-3 w-3" />
-                  Wipe Everything & Delete
+                  Delete Account
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle className="uppercase tracking-wider">Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription className="text-sm">
-                    This will permanently delete your user profile and remove you from all classrooms.
-                    You will need to sign up and set your Telegram group ID again if you want to return.
+                    Select an admin successor first. They will be promoted to owner immediately before your account is deleted.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
+                <p className="text-[11px] text-muted-foreground">
+                  Your account and memberships are removed. Classroom data stays, and past authored content may appear as deleted user.
+                </p>
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Owner Successor (Admin)</p>
+                  <Popover open={successorDropdownOpen} onOpenChange={setSuccessorDropdownOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between text-xs">
+                        <span className={cn("truncate", !selectedSuccessor && "text-muted-foreground")}>
+                          {selectedSuccessor
+                            ? `${selectedSuccessor.user.name}${selectedSuccessor.user.telegramUsername ? ` (@${selectedSuccessor.user.telegramUsername.replace(/^@+/, "")})` : ""}`
+                            : "Select an admin"}
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[340px] p-0" align="start">
+                      <div className="p-2 border-b border-border">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                          <Input
+                            placeholder="Search admins..."
+                            value={successorSearch}
+                            onChange={(e) => setSuccessorSearch(e.target.value)}
+                            className="h-8 pl-7 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-56 overflow-y-auto p-1">
+                        {loadingClassroomMembers ? (
+                          <div className="px-2 py-3 text-xs text-muted-foreground">Loading admins...</div>
+                        ) : filteredAdminCandidates.length === 0 ? (
+                          <div className="px-2 py-3 text-xs text-muted-foreground">
+                            {adminCandidates.length === 0 ? "No admins available. Promote one first." : "No admins match your search."}
+                          </div>
+                        ) : (
+                          filteredAdminCandidates.map((member) => {
+                            const username = member.user.telegramUsername?.replace(/^@+/, "");
+                            const isSelected = member.id === successorMemberId;
+                            return (
+                              <button
+                                key={member.id}
+                                onClick={() => {
+                                  setSuccessorMemberId(member.id);
+                                  setSuccessorDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent",
+                                  isSelected && "bg-accent"
+                                )}
+                              >
+                                <span className="font-bold">{member.user.name}</span>
+                                {username ? <span className="text-muted-foreground ml-1">@{username}</span> : null}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel className="text-xs font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDeleteAccount}
+                    disabled={!successorMemberId || loadingClassroomMembers || adminCandidates.length === 0}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold uppercase tracking-widest"
                   >
                     Yes, Delete My Account
@@ -891,6 +1086,10 @@ function SettingsTab() {
 // ─── Main Page ───
 
 const OwnerGeneral = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "export" ? "export" : "general";
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-5xl">
       <div className="border-b border-border pb-4">
@@ -898,13 +1097,22 @@ const OwnerGeneral = () => {
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">General</h1>
       </div>
 
-      <Tabs defaultValue="settings" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(nextTab) => {
+          const next = new URLSearchParams(searchParams);
+          // Keep backward compatibility with older links that used tab=settings.
+          next.set("tab", nextTab === "settings" ? "general" : nextTab);
+          setSearchParams(next, { replace: true });
+        }}
+        className="space-y-6"
+      >
         <TabsList>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="export">Data Export</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="settings" className="space-y-6">
+        <TabsContent value="general" className="space-y-6">
           <SettingsTab />
         </TabsContent>
 

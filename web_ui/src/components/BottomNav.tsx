@@ -8,28 +8,24 @@ import {
   FolderOpen,
   Swords,
   Settings,
-  CalendarDays,
   GraduationCap,
   Users,
   ShieldAlert,
   Megaphone,
   BarChart3,
   ToggleLeft,
-  Download,
-  Shield,
-  Crown,
 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { useAuth } from "@/stores/authStore";
-import { isFeatureEnabled, useFeatureEnabled } from "@/services/features";
+import { useFeatureEnabled } from "@/services/features";
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -53,11 +49,10 @@ const adminItems = [
 ];
 
 const ownerItems = [
-  { title: "Semesters", url: "/admin/semesters", icon: CalendarDays },
   { title: "Courses", url: "/admin/courses", icon: GraduationCap },
-  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+  { title: "Analytics", url: "/owner/analytics", icon: BarChart3 },
   { title: "Features", url: "/owner/features", icon: ToggleLeft },
-  { title: "Data Export", url: "/owner/data-export", icon: Download },
+  { title: "Settings", url: "/owner/general", icon: Settings },
 ];
 
 function BottomNavLink({ item }: { item: any }) {
@@ -103,15 +98,44 @@ function MoreNavItem({ item, onSelect }: { item: any; onSelect: () => void }) {
   );
 }
 
+function MoreNavSection({
+  title,
+  items,
+  onSelect,
+}: {
+  title: string;
+  items: any[];
+  onSelect: () => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <div className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground bg-muted/40">
+        {title}
+      </div>
+      <div className="grid grid-cols-1 divide-y divide-border">
+        {items.map((item) => (
+          <MoreNavItem key={item.url} item={item} onSelect={onSelect} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function BottomNav() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const { isAdmin, isOwner } = useAuth();
 
+  const navigationItems = [...mainItems, ...moreItems];
+  const visibleAdminItems = isAdmin ? adminItems : [];
+  const visibleOwnerItems = isOwner ? ownerItems : [];
+
   const allMoreItems = [
     ...moreItems,
-    ...(isAdmin ? adminItems : []),
-    ...(isOwner ? ownerItems : []),
+    ...visibleAdminItems,
+    ...visibleOwnerItems,
   ];
   const isMoreActive = allMoreItems.some((i) => location.pathname === i.url);
 
@@ -134,21 +158,32 @@ export function BottomNav() {
               <span className="leading-none">More</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[70vh] p-0 border-t-2 border-primary">
-            <SheetHeader className="p-4 border-b border-border">
+          <SheetContent side="bottom" className="h-[70vh] p-0 border-t-2 border-primary flex flex-col">
+            <SheetHeader className="p-4 border-b border-border shrink-0">
               <SheetTitle className="text-xs font-black uppercase tracking-[0.2em] text-left">
                 Navigation Menu
               </SheetTitle>
+              <SheetDescription className="sr-only">
+                Browse navigation links for pages, admin tools, and owner tools.
+              </SheetDescription>
             </SheetHeader>
-            <div className="overflow-y-auto pb-8">
-              <div className="grid grid-cols-1 divide-y divide-border">
-                {allMoreItems.map((item) => (
-                  <MoreNavItem 
-                    key={item.url} 
-                    item={item} 
-                    onSelect={() => setOpen(false)} 
-                  />
-                ))}
+            <div className="flex-1 min-h-0 overflow-y-auto pb-8">
+              <div>
+                <MoreNavSection
+                  title="Navigation"
+                  items={navigationItems}
+                  onSelect={() => setOpen(false)}
+                />
+                <MoreNavSection
+                  title="Admin"
+                  items={visibleAdminItems}
+                  onSelect={() => setOpen(false)}
+                />
+                <MoreNavSection
+                  title="Owner"
+                  items={visibleOwnerItems}
+                  onSelect={() => setOpen(false)}
+                />
               </div>
             </div>
           </SheetContent>

@@ -509,28 +509,28 @@ function AssignmentDetailDialog({
 
   return (
     <Dialog open={!!assignment} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="uppercase tracking-wider text-sm">Assignment Details</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold">{assignment.title}</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-bold break-words">{assignment.title}</h3>
               {edited && (
                 <span className="px-1.5 py-0.5 border border-border text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                   Edited
                 </span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{courseName}</p>
+            <p className="text-sm text-muted-foreground mt-1 break-words">{courseName}</p>
             {edited && assignment.updatedAt && (
               <p className="text-[11px] text-muted-foreground/80 mt-1">
                 Edited {editedAtLabel}
               </p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Source</p>
               <div className={cn("inline-flex items-center gap-1.5 px-2 py-1 border text-xs font-medium", source.className)}>
@@ -548,7 +548,7 @@ function AssignmentDetailDialog({
           </div>
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Due Date</p>
-            <p className={cn("text-sm font-bold", isOverdue && "text-destructive")}>
+            <p className={cn("text-sm font-bold break-words", isOverdue && "text-destructive")}>
               {dueDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
               {isOverdue && <span className="ml-2 text-xs font-medium">({Math.abs(daysUntilDue)}d overdue)</span>}
               {!isOverdue && daysUntilDue >= 0 && (
@@ -560,13 +560,13 @@ function AssignmentDetailDialog({
           </div>
           <div className="border border-border p-3 space-y-3">
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Confidence Check</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {(["confident", "neutral", "struggling"] as ConfidenceVote[]).map((v) => (
                 <ConfidenceButton key={v} type={v} active={vote === v} onClick={() => onVote(assignment, v)} />
               ))}
             </div>
             <ConfidenceBar data={aggregated} />
-            <div className="flex justify-between text-[9px] uppercase tracking-wider text-muted-foreground">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
               <span>{totalVotes} votes</span>
               <span>{aggregated.confident}% confident</span>
               <span>{aggregated.neutral}% neutral</span>
@@ -574,11 +574,11 @@ function AssignmentDetailDialog({
             </div>
           </div>
           {isAdmin && (
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onEdit(assignment)}>
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <Button size="sm" variant="outline" className="h-8 text-xs w-full sm:w-auto" onClick={() => onEdit(assignment)}>
                 <Pencil className="h-3 w-3" /> Edit
               </Button>
-              <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive hover:text-destructive" onClick={() => onDelete(assignment)}>
+              <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive hover:text-destructive w-full sm:w-auto" onClick={() => onDelete(assignment)}>
                 <Trash2 className="h-3 w-3" /> Delete
               </Button>
             </div>

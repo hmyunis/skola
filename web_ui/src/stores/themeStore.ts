@@ -120,7 +120,7 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>((set, get) => ({
   batchTheme: batchThemes[0],
   userAccent: null,
-  colorMode: "light" as ColorMode,
+  colorMode: (loadStoredColorMode() || "dark") as ColorMode,
   fontFamily: "system",
   customThemes: [],
 
@@ -185,7 +185,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       const colorMode =
         storedColorMode ||
         userTheme?.colorMode ||
-        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        "dark";
       const fontFamily = userTheme?.fontFamily || "system";
       const batchTheme = normalizeTheme((classroomTheme || get().batchTheme || batchThemes[0]) as BatchTheme);
       const userAccent = userTheme?.accentColor ? userAccents.find(a => a.id === userTheme.accentColor) || null : null;

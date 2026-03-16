@@ -79,7 +79,10 @@ const Members = () => {
   const filtered = users.filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    return (
+      u.name.toLowerCase().includes(q) ||
+      (u.telegramUsername ? u.telegramUsername.toLowerCase().includes(q) : false)
+    );
   });
 
   const sorted = [...filtered].sort((a, b) => {

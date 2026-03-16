@@ -24,7 +24,7 @@ const FEATURES = [
   {
     icon: MessageSquare,
     title: "Anonymous Lounge",
-    desc: "Students speak freely with identity-protected discussions and polls.",
+    desc: "Students speak freely with identity-protected discussions and replies.",
   },
   {
     icon: Shield,
@@ -34,12 +34,12 @@ const FEATURES = [
   {
     icon: BarChart3,
     title: "Live Analytics",
-    desc: "Real-time insights on engagement, attendance, and academic progress.",
+    desc: "Track engagement across users, posts, resources, quizzes, and activity trends.",
   },
   {
     icon: Zap,
     title: "Telegram Integration",
-    desc: "Broadcast announcements and authenticate via Telegram bots.",
+    desc: "Sign in with Telegram and optionally broadcast announcements to classroom groups.",
   },
 ];
 
@@ -83,8 +83,8 @@ function StatBlock({ value, label }: { value: string; label: string }) {
       transition={{ type: "spring", damping: 20 }}
       className="text-center"
     >
-      <p className="text-4xl md:text-5xl font-black text-primary tabular-nums">{value}</p>
-      <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mt-1">{label}</p>
+      <p className="text-2xl sm:text-4xl md:text-5xl font-black text-primary tabular-nums">{value}</p>
+      <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground mt-1">{label}</p>
     </motion.div>
   );
 }
@@ -142,7 +142,7 @@ const Landing = () => {
       <motion.section
         ref={heroRef}
         style={{ opacity: heroOpacity, y: heroY }}
-        className="relative min-h-screen flex items-center justify-center pt-14"
+        className="relative min-h-[calc(100svh-3.5rem)] flex items-center justify-center pt-16 pb-10 sm:pt-20 sm:pb-12"
       >
         {/* Grid overlay */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
@@ -150,16 +150,16 @@ const Landing = () => {
           backgroundSize: "60px 60px",
         }} />
 
-        <div className="relative z-10 max-w-4xl mx-auto px-4 text-center space-y-8">
+        <div className="relative z-10 max-w-4xl mx-auto px-4 text-center space-y-6 sm:space-y-8">
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 border border-primary/30 bg-primary/5 px-4 py-1.5"
+            className="inline-flex max-w-full items-center justify-center gap-2 border border-primary/30 bg-primary/5 px-3 py-1.5 sm:px-4"
           >
-            <Eye className="h-3 w-3 text-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
+            <Eye className="h-3 w-3 text-primary shrink-0" />
+            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] text-primary">
               Multi-Tenant Classroom Platform
             </span>
           </motion.div>
@@ -169,16 +169,16 @@ const Landing = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, type: "spring", damping: 20 }}
-            className="space-y-4"
+            className="space-y-3 sm:space-y-4"
           >
-            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-[0.9]">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-[0.95] sm:leading-[0.9]">
               Your Class.
               <br />
               <span className="text-primary">Your Rules.</span>
             </h1>
-            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed px-2">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed px-1 sm:px-2">
               The command center for student communities. Manage courses, resources, 
-              discussions, and assessments — with military-grade isolation between every classroom.
+              discussions, and assessments with classroom-isolated data and role-based access.
             </p>
           </motion.div>
 
@@ -187,16 +187,16 @@ const Landing = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3 w-full max-w-sm sm:max-w-none mx-auto"
           >
-            <Link to="/get-started">
-              <Button size="lg" className="text-sm font-bold uppercase tracking-wider px-8 gap-2">
+            <Link to="/get-started" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto text-sm font-bold uppercase tracking-wider px-8 gap-2">
                 Create Your Class
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <a href="#features">
-              <Button variant="outline" size="lg" className="text-sm font-bold uppercase tracking-wider px-8 gap-2">
+            <a href="#features" className="w-full sm:w-auto">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm font-bold uppercase tracking-wider px-8 gap-2">
                 See Features
                 <ChevronDown className="h-4 w-4" />
               </Button>
@@ -208,13 +208,13 @@ const Landing = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="flex items-center justify-center gap-6 sm:gap-16 pt-8 border-t border-border/50"
+            className="grid grid-cols-3 gap-3 sm:flex sm:items-center sm:justify-center sm:gap-16 pt-6 sm:pt-8 border-t border-border/50"
           >
-            <StatBlock value="100%" label="Privacy" />
-            <div className="h-8 w-px bg-border" />
-            <StatBlock value="0" label="Data Leaks" />
-            <div className="h-8 w-px bg-border" />
-            <StatBlock value="∞" label="Classes" />
+            <StatBlock value="3" label="User Roles" />
+            <div className="hidden sm:block h-8 w-px bg-border" />
+            <StatBlock value="9+" label="Core Pages" />
+            <div className="hidden sm:block h-8 w-px bg-border" />
+            <StatBlock value="Scoped" label="Isolation" />
           </motion.div>
         </div>
 
@@ -244,7 +244,7 @@ const Landing = () => {
             <h2 className="text-3xl md:text-4xl font-black uppercase tracking-wider">
               Built for Students,
               <br />
-              <span className="text-muted-foreground">by Students</span>
+              <span className="text-muted-foreground">by a Student</span>
             </h2>
           </div>
 
@@ -272,7 +272,7 @@ const Landing = () => {
             {[
               { step: "01", title: "Create or Join", desc: "Sign up as an owner to create your classroom, or enter an invite code to join one as a student." },
               { step: "02", title: "Invite via Code", desc: "Owners generate invite codes with expiry & usage limits. Share the code — classmates sign up instantly." },
-              { step: "03", title: "Command", desc: "Manage courses, post resources, run polls, track analytics — all isolated per classroom." },
+              { step: "03", title: "Command", desc: "Manage courses, post resources, publish announcements, and track analytics in one place." },
             ].map((s, i) => {
               const ref = useRef(null);
               const isInView = useInView(ref, { once: true, margin: "-40px" });
@@ -320,8 +320,7 @@ const Landing = () => {
               <span className="text-primary">Command?</span>
             </h2>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Create your isolated classroom in under 60 seconds. 
-              Free for students, forever.
+              Create your classroom workspace and invite members with shareable codes.
             </p>
           </motion.div>
 

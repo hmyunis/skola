@@ -40,11 +40,19 @@ export async function triggerSurpriseAssessment(): Promise<Announcement> {
   });
 }
 
+export async function stopSurpriseAssessment(): Promise<{ success: boolean; stopped: number }> {
+  return apiFetch("/admin/surprise-assessment/stop", {
+    method: "POST",
+  });
+}
+
 export function getDismissedAnnouncementIds(): string[] {
   try {
     const s = localStorage.getItem(DISMISSED_KEY);
     if (s) return JSON.parse(s);
-  } catch {}
+  } catch {
+    return [];
+  }
   return [];
 }
 

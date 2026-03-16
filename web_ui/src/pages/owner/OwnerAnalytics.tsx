@@ -2,34 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchAnalytics } from "@/services/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  BarChart3,
   Users,
   MessageSquare,
   FolderOpen,
   Swords,
   TrendingUp,
   Activity,
-  ShieldAlert,
+  AlertTriangle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/stores/authStore";
 
-const AdminAnalytics = () => {
-  const { isOwner } = useAuth();
-  const { data, isLoading } = useQuery({
-    queryKey: ["adminAnalytics"],
+const OwnerAnalytics = () => {
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ["ownerAnalytics"],
     queryFn: fetchAnalytics,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
-
-  if (!isOwner) {
-    return (
-      <div className="p-8 text-center space-y-3">
-        <ShieldAlert className="h-10 w-10 mx-auto text-destructive" />
-        <h2 className="text-lg font-bold uppercase tracking-wider">Access Denied</h2>
-        <p className="text-sm text-muted-foreground">Only the Owner can view analytics.</p>
-      </div>
-    );
-  }
 
   if (isLoading || !data) {
     return (
@@ -63,14 +51,35 @@ const AdminAnalytics = () => {
     );
   }
 
+  if (isError) {
+    const message = error instanceof Error ? error.message : "Failed to load analytics data.";
+    return (
+      <div className="p-4 md:p-6 max-w-5xl">
+        <div className="border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <p className="text-xs font-bold uppercase tracking-wider">Unable to Load Analytics</p>
+          </div>
+          <p className="text-xs text-muted-foreground">{message}</p>
+          <button
+            onClick={() => refetch()}
+            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+            disabled={isFetching}
+          >
+            {isFetching ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl">
       <div className="border-b border-border pb-4">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Admin</p>
+        <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Owner</p>
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Analytics</h1>
       </div>
 
-      {/* Key Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card><CardContent className="p-3">
           <div className="flex items-center gap-1"><Users className="h-3 w-3 text-primary" /><p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total Users</p></div>
@@ -98,21 +107,20 @@ const AdminAnalytics = () => {
         </CardContent></Card>
       </div>
 
-      {/* Weekly Activity */}
       <div className="border border-border p-4 space-y-3">
         <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Weekly Activity</p>
         <div className="space-y-2">
           {data.weeklyActivity.map((day) => {
             const total = day.posts + day.resources + day.quizzes;
-            const maxTotal = Math.max(...data.weeklyActivity.map((d) => d.posts + d.resources + d.quizzes));
+            const maxTotal = Math.max(1, ...data.weeklyActivity.map((d) => d.posts + d.resources + d.quizzes));
             const pct = (total / maxTotal) * 100;
             return (
               <div key={day.day} className="flex items-center gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider w-8 text-muted-foreground">{day.day}</span>
                 <div className="flex-1 h-5 bg-muted overflow-hidden flex">
-                  <div className="h-full bg-primary/70 transition-all" style={{ width: `${(day.posts / total) * pct}%` }} />
-                  <div className="h-full bg-emerald-500/70 transition-all" style={{ width: `${(day.resources / total) * pct}%` }} />
-                  <div className="h-full bg-amber-500/70 transition-all" style={{ width: `${(day.quizzes / total) * pct}%` }} />
+                  <div className="h-full bg-primary/70 transition-all" style={{ width: `${total > 0 ? (day.posts / total) * pct : 0}%` }} />
+                  <div className="h-full bg-emerald-500/70 transition-all" style={{ width: `${total > 0 ? (day.resources / total) * pct : 0}%` }} />
+                  <div className="h-full bg-amber-500/70 transition-all" style={{ width: `${total > 0 ? (day.quizzes / total) * pct : 0}%` }} />
                 </div>
                 <span className="text-[10px] tabular-nums font-bold w-8 text-right">{total}</span>
               </div>
@@ -126,7 +134,6 @@ const AdminAnalytics = () => {
         </div>
       </div>
 
-      {/* Top Courses */}
       <div className="border border-border p-4 space-y-3">
         <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Top Courses by Engagement</p>
         <div className="space-y-2">
@@ -142,12 +149,11 @@ const AdminAnalytics = () => {
         </div>
       </div>
 
-      {/* User Growth */}
       <div className="border border-border p-4 space-y-3">
         <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">User Growth</p>
         <div className="flex items-end gap-2 h-32">
           {data.userGrowth.map((month) => {
-            const maxUsers = Math.max(...data.userGrowth.map((m) => m.users));
+            const maxUsers = Math.max(1, ...data.userGrowth.map((m) => m.users));
             const hPct = (month.users / maxUsers) * 100;
             return (
               <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
@@ -165,4 +171,5 @@ const AdminAnalytics = () => {
   );
 };
 
-export default AdminAnalytics;
+export default OwnerAnalytics;
+

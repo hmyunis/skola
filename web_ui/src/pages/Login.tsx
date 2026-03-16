@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -397,9 +397,14 @@ const Login = () => {
 
         {/* Sign up link */}
         <div className="text-center space-y-2">
-          <button onClick={() => setView("signup")} className="text-[10px] text-primary uppercase tracking-widest hover:underline">
+          <button onClick={() => navigate("/get-started")} className="text-[10px] text-primary uppercase tracking-widest hover:underline">
             New student? Sign Up with Invite Code
           </button>
+          <div>
+            <Link to="/" className="text-[10px] text-muted-foreground uppercase tracking-widest hover:underline">
+              Back to Home
+            </Link>
+          </div>
           <p className="text-[10px] text-muted-foreground/30">SKOLA v1.0 · {new Date().getFullYear()}</p>
         </div>
       </div>

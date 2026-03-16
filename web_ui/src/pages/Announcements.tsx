@@ -10,6 +10,7 @@ import { useClassroomStore } from "@/stores/classroomStore";
 import { Megaphone, Pin, AlertTriangle, X, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const priorityConfig = {
   low: { label: "Low", color: "bg-muted text-muted-foreground border-border" },
@@ -37,6 +38,12 @@ function getEditStatus(createdAt?: string, updatedAt?: string): "Edited" | "Not 
   const updated = new Date(updatedAt).getTime();
   if (Number.isNaN(created) || Number.isNaN(updated)) return "Not edited";
   return updated - created > 1000 ? "Edited" : "Not edited";
+}
+
+function safeDisplayName(value: unknown): string {
+  if (typeof value !== "string") return "Deleted user";
+  const trimmed = value.trim();
+  return trimmed || "Deleted user";
 }
 
 const Announcements = () => {
@@ -94,9 +101,26 @@ const Announcements = () => {
         </Button>
       </div>
 
-      {displayList.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="border border-border p-3 sm:p-4 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <div className="flex-1" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : displayList.length === 0 ? (
         <div className="text-center py-12 text-sm text-muted-foreground">
-          {isLoading ? "Loading announcements..." : showDismissed ? "No dismissed announcements" : "No announcements right now"}
+          {showDismissed ? "No dismissed announcements" : "No announcements right now"}
         </div>
       ) : (
         <div className="space-y-2">
@@ -133,7 +157,7 @@ const Announcements = () => {
                 <h3 className="text-sm font-bold">{a.title}</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  By {a.createdBy} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}
+                  By {safeDisplayName(a.createdBy)} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}
                 </p>
               </div>
             );

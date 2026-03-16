@@ -6,7 +6,7 @@ import { UserRole } from '../users/entities/user.entity';
 import { CurrentClassroom } from '../../core/decorators/current-classroom.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
-import { AdminService } from './admin.service';
+import { AdminService, OwnerExportDatasetId } from './admin.service';
 import { AnnouncementTargetAudience, PriorityLevel } from './entities/announcement.entity';
 
 @Controller('admin')
@@ -51,6 +51,15 @@ export class AdminController {
     @CurrentUser() user: User,
   ) {
     return this.adminService.triggerSurpriseAssessment(classroomId, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Post('surprise-assessment/stop')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async stopSurpriseAssessment(
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.adminService.stopSurpriseAssessment(classroomId);
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
@@ -119,6 +128,30 @@ export class AdminController {
   }
 
   // ================= OWNER SUITE ROUTES =================
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Get('analytics')
+  @RequireClassroomRole(UserRole.OWNER)
+  async getOwnerAnalytics(@CurrentClassroom() classroomId: string) {
+    return this.adminService.getOwnerAnalytics(classroomId);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Get('exports/datasets')
+  @RequireClassroomRole(UserRole.OWNER)
+  async getExportDatasets(@CurrentClassroom() classroomId: string) {
+    return this.adminService.getOwnerExportDatasets(classroomId);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Post('exports')
+  @RequireClassroomRole(UserRole.OWNER)
+  async exportOwnerData(
+    @CurrentClassroom() classroomId: string,
+    @Body() dto: { datasetIds: OwnerExportDatasetId[] },
+  ) {
+    return this.adminService.exportOwnerData(classroomId, dto?.datasetIds || []);
+  }
+
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('settings/features')
   @RequireClassroomRole(UserRole.OWNER) // ONLY the Owner can toggle global features

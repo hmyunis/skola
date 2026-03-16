@@ -1,9 +1,9 @@
-import type { FlaggedContent, UserReport } from "@/types/admin";
+import type { FlaggedContent } from "@/types/admin";
 import { fetchResourceReports, reviewResourceReport } from "@/services/resources";
 import { fetchLoungeReports, reviewLoungeReport } from "@/services/lounge";
 import { fetchArenaReports, reviewArenaReport } from "@/services/arena";
 
-export type { FlaggedContent, UserReport } from "@/types/admin";
+export type { FlaggedContent } from "@/types/admin";
 
 interface LoungeModerationReport {
   id: string;
@@ -14,28 +14,6 @@ interface LoungeModerationReport {
   reportedBy: string;
   reportedAt: string;
   status: FlaggedContent["status"];
-}
-
-const REPORTS_KEY = "skola-user-reports";
-
-export function loadUserReports(): UserReport[] {
-  try {
-    const s = localStorage.getItem(REPORTS_KEY);
-    if (s) return JSON.parse(s);
-  } catch {}
-  return [];
-}
-
-export function saveUserReport(report: UserReport) {
-  const existing = loadUserReports();
-  existing.unshift(report);
-  localStorage.setItem(REPORTS_KEY, JSON.stringify(existing));
-}
-
-export function updateUserReportStatus(reportId: string, status: UserReport["status"]) {
-  const existing = loadUserReports();
-  const updated = existing.map((r) => (r.id === reportId ? { ...r, status } : r));
-  localStorage.setItem(REPORTS_KEY, JSON.stringify(updated));
 }
 
 export async function fetchAllFlaggedContent(filters?: {
@@ -49,13 +27,11 @@ export async function fetchAllFlaggedContent(filters?: {
   const loungeTypeFilter = typeFilter === "post" || typeFilter === "reply" ? typeFilter : undefined;
   const shouldFetchLounge = !typeFilter || Boolean(loungeTypeFilter);
   const shouldFetchArena = !typeFilter || typeFilter === "quiz";
-  const shouldLoadLocal = !typeFilter;
 
-  const [resourceReports, loungeReports, arenaReports, localReports] = await Promise.all([
+  const [resourceReports, loungeReports, arenaReports] = await Promise.all([
     shouldFetchResource ? fetchResourceReports(statusFilter) : Promise.resolve([]),
     shouldFetchLounge ? fetchLoungeReports(statusFilter, loungeTypeFilter) : Promise.resolve([]),
     shouldFetchArena ? fetchArenaReports(statusFilter) : Promise.resolve([]),
-    shouldLoadLocal ? Promise.resolve(loadUserReports()) : Promise.resolve([]),
   ]);
 
   const resourceItems: FlaggedContent[] = resourceReports.map((report) => ({
@@ -91,22 +67,7 @@ export async function fetchAllFlaggedContent(filters?: {
     status: report.status,
   }));
 
-  const localItems: FlaggedContent[] = (localReports as UserReport[])
-    .filter((r) => !statusFilter || r.status === statusFilter)
-    .filter((r) => !typeFilter || r.type === typeFilter)
-    .filter((r) => r.type !== "resource" && r.type !== "post" && r.type !== "reply")
-    .map((r) => ({
-      id: r.id,
-      type: r.type,
-      content: r.content,
-      author: r.author,
-      reason: r.reason,
-      reportedBy: r.reportedBy,
-      reportedAt: r.reportedAt,
-      status: r.status,
-    }));
-
-  return [...resourceItems, ...loungeItems, ...arenaItems, ...localItems].sort(
+  return [...resourceItems, ...loungeItems, ...arenaItems].sort(
     (a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime(),
   );
 }

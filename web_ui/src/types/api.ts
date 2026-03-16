@@ -49,7 +49,14 @@ export interface QuickStats {
   upcomingExams: number;
 }
 
-export type DayOfWeek = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday";
+export type DayOfWeek =
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday"
+  | "Sunday";
 
 export interface WeeklySchedule {
   [key: string]: ClassSlot[];

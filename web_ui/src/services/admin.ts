@@ -15,9 +15,6 @@ export { fetchManagedUsers, saveUserStatus, saveUserRole } from './users';
 export type { ManagedUser } from './users';
 
 export {
-    loadUserReports,
-    saveUserReport,
-    updateUserReportStatus,
     fetchAllFlaggedContent,
     resolveResourceReport,
     dismissResourceReport,
@@ -26,7 +23,7 @@ export {
     resolveArenaReport,
     dismissArenaReport,
 } from './moderation';
-export type { FlaggedContent, UserReport } from './moderation';
+export type { FlaggedContent } from './moderation';
 
 export {
     fetchAnnouncements,
@@ -34,6 +31,7 @@ export {
     updateAnnouncement,
     deleteAnnouncement,
     triggerSurpriseAssessment,
+    stopSurpriseAssessment,
     getDismissedAnnouncementIds,
     dismissAnnouncement,
 } from './announcements';
@@ -50,3 +48,6 @@ export type { Assessment } from './assessments';
 
 export { createInviteLink, deactivateInviteLink, deleteInviteLink } from './invites';
 export type { InviteLink, InviteRegistration } from './invites';
+
+export { fetchOwnerExportDatasets, exportOwnerData, downloadOwnerExport } from './exports';
+export type { OwnerExportDatasetId, OwnerExportDatasetSummary, OwnerExportResponse } from './exports';

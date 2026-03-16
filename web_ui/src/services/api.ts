@@ -39,11 +39,13 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 }
 
 const WEEKDAY_BY_INDEX: Record<number, keyof WeeklySchedule> = {
+  0: "Sunday",
   1: "Monday",
   2: "Tuesday",
   3: "Wednesday",
   4: "Thursday",
   5: "Friday",
+  6: "Saturday",
 };
 
 interface ScheduleItemApi {
@@ -123,18 +125,6 @@ function mapScheduleItemToClassSlot(item: ScheduleItemApi, baseDate: Date): Clas
   };
 }
 
-/** Preconfigured course list */
-export const COURSES: Course[] = [
-  { code: "CS301", name: "Data Structures & Algorithms" },
-  { code: "CS302", name: "Database Management Systems" },
-  { code: "CS303", name: "Computer Networks" },
-  { code: "CS304", name: "Operating Systems" },
-  { code: "MA201", name: "Engineering Mathematics" },
-  { code: "EC201", name: "Digital Electronics" },
-  { code: "ME101", name: "Engineering Mechanics" },
-  { code: "HU101", name: "Professional Ethics" },
-];
-
 export async function fetchSemesterInfo(): Promise<SemesterInfo | null> {
   try {
     const active = await apiFetch("/academics/semesters/active");
@@ -180,7 +170,15 @@ export async function fetchClassroom(classroomId: string): Promise<any> {
 
 export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySchedule> {
   const schedule = await apiFetch("/academics/schedule");
-  const result: WeeklySchedule = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [] };
+  const result: WeeklySchedule = {
+    Monday: [],
+    Tuesday: [],
+    Wednesday: [],
+    Thursday: [],
+    Friday: [],
+    Saturday: [],
+    Sunday: [],
+  };
   
   (schedule as ScheduleItemApi[]).forEach((item) => {
     const day = WEEKDAY_BY_INDEX[item.dayOfWeek];

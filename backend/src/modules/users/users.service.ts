@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
+import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(ClassroomMember)
+    private classroomMembersRepository: Repository<ClassroomMember>,
   ) {}
 
   async findByTelegramId(telegramId: number): Promise<User | null> {
@@ -48,5 +51,56 @@ export class UsersService {
 
   async deleteAccount(id: string): Promise<void> {
     await this.usersRepository.delete(id);
+  }
+
+  async deleteOwnerAccountWithSuccessor(
+    ownerUserId: string,
+    classroomId: string,
+    successorMemberId: string,
+  ): Promise<void> {
+    const trimmedSuccessorMemberId = (successorMemberId || '').trim();
+    if (!trimmedSuccessorMemberId) {
+      throw new BadRequestException('Please choose an admin successor before deleting your account.');
+    }
+
+    await this.classroomMembersRepository.manager.transaction(async (manager) => {
+      const userRepo = manager.getRepository(User);
+      const memberRepo = manager.getRepository(ClassroomMember);
+
+      const ownerMembership = await memberRepo.findOne({
+        where: { classroom: { id: classroomId }, user: { id: ownerUserId } },
+        relations: ['user'],
+      });
+      if (!ownerMembership) {
+        throw new NotFoundException('Owner membership not found for this classroom.');
+      }
+      if (ownerMembership.role !== UserRole.OWNER) {
+        throw new ForbiddenException('Only the current owner can transfer ownership and delete this account.');
+      }
+
+      const successorMembership = await memberRepo.findOne({
+        where: { id: trimmedSuccessorMemberId, classroom: { id: classroomId } },
+        relations: ['user'],
+      });
+      if (!successorMembership) {
+        throw new NotFoundException('Selected successor was not found in this classroom.');
+      }
+      if (successorMembership.user.id === ownerUserId) {
+        throw new BadRequestException('Please choose a different admin as successor.');
+      }
+      if (successorMembership.role !== UserRole.ADMIN) {
+        throw new BadRequestException('Selected successor must currently be an admin.');
+      }
+
+      successorMembership.role = UserRole.OWNER;
+      await memberRepo.save(successorMembership);
+
+      if (successorMembership.user.role !== UserRole.OWNER) {
+        successorMembership.user.role = UserRole.OWNER;
+        await userRepo.save(successorMembership.user);
+      }
+
+      await userRepo.delete(ownerUserId);
+    });
   }
 }

@@ -8,7 +8,6 @@ import {
   resolveArenaReport,
   resolveLoungeReport,
   resolveResourceReport,
-  updateUserReportStatus,
   type FlaggedContent,
 } from "@/services/admin";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +55,12 @@ const statusConfig = {
   resolved: { label: "Resolved", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30", icon: CheckCircle2 },
   dismissed: { label: "Dismissed", color: "bg-muted text-muted-foreground border-border", icon: XCircle },
 };
+
+function safeDisplayName(value: unknown): string {
+  if (typeof value !== "string") return "Deleted user";
+  const trimmed = value.trim();
+  return trimmed || "Deleted user";
+}
 
 const AdminModeration = () => {
   const queryClient = useQueryClient();
@@ -106,8 +111,7 @@ const AdminModeration = () => {
         }
         return dismissArenaReport(action.item.id);
       }
-      updateUserReportStatus(action.item.id, action.status);
-      return { success: true };
+      throw new Error("Unsupported report type.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flaggedContent"] });
@@ -208,7 +212,7 @@ const AdminModeration = () => {
                 <p className="text-sm break-words">{item.content}</p>
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[10px] text-muted-foreground">
-                  <span className="break-words">By: {item.author} · Reported by: {item.reportedBy}</span>
+                  <span className="break-words">By: {safeDisplayName(item.author)} · Reported by: {safeDisplayName(item.reportedBy)}</span>
                   {item.status === "pending" && (
                     <div className="flex gap-1 w-full sm:w-auto">
                       {isRemovableContent && (

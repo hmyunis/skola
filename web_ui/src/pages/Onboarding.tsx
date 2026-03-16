@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
@@ -6,16 +6,18 @@ import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { apiFetch } from "@/services/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TelegramLoginWidget, type TelegramUser } from "@/components/TelegramLoginWidget";
 import {
-  Lock, Sun, Moon, ArrowRight, CheckCircle2, AlertCircle, ExternalLink, Info, Plus, Users, ArrowLeft
+  Lock, Sun, Moon, ArrowRight, CheckCircle2, Info, Plus, Users, ArrowLeft, Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Step = "choose" | "create" | "join";
+const TELEGRAM_BOT_NAME = import.meta.env.VITE_TELEGRAM_BOT_NAME;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -27,21 +29,38 @@ const Onboarding = () => {
   const [telegramGroupId, setTelegramGroupId] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) {
-      navigate("/login");
-    }
-  }, [user, navigate]);
 
   const validateGroupId = (id: string) => {
     return /^-?\d+$/.test(id);
   };
 
+  const handleTelegramAuth = async (telegramUser: TelegramUser) => {
+    setError(null);
+    setAuthLoading(true);
+    try {
+      const data = await apiFetch("/auth/telegram", {
+        method: "POST",
+        body: JSON.stringify(telegramUser),
+      });
+      login(data.user, data.accessToken);
+      syncThemeWithStores();
+      toast({ title: "Signed in", description: "Telegram account verified." });
+    } catch (err: any) {
+      toast({ title: "Authentication Failed", description: err.message || "Could not sign in with Telegram.", variant: "destructive" });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const handleCreateClass = async () => {
     setError(null);
+    if (!accessToken || !user) {
+      setError("Please sign in with Telegram first.");
+      return;
+    }
     if (!telegramGroupId.trim()) {
       setError("Please enter a Telegram group ID.");
       return;
@@ -76,6 +95,10 @@ const Onboarding = () => {
 
   const handleJoinClass = async () => {
     setError(null);
+    if (!accessToken || !user) {
+      setError("Please sign up with Telegram first.");
+      return;
+    }
     if (!inviteCode.trim()) {
       setError("Please enter an invite code.");
       return;
@@ -103,8 +126,6 @@ const Onboarding = () => {
       setLoading(false);
     }
   };
-
-  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
@@ -160,6 +181,11 @@ const Onboarding = () => {
                   <h1 className="text-2xl font-black uppercase tracking-wider">Get Started</h1>
                 </div>
                 <p className="text-xs text-muted-foreground">Are you starting a new class or joining one?</p>
+                {!user && (
+                  <p className="text-[10px] text-muted-foreground">
+                    New students sign up with Telegram during onboarding.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -193,9 +219,15 @@ const Onboarding = () => {
               </div>
 
               <div className="text-center">
-                <button onClick={() => { logout(); navigate("/login"); }} className="text-[10px] text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground">
-                  ← Sign out
-                </button>
+                {user ? (
+                  <button onClick={() => { logout(); navigate("/login"); }} className="text-[10px] text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground">
+                    ← Sign out
+                  </button>
+                ) : (
+                  <button onClick={() => navigate("/login")} className="text-[10px] text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground">
+                    ← Back to login
+                  </button>
+                )}
               </div>
             </motion.div>
           ) : step === "create" ? (
@@ -216,6 +248,23 @@ const Onboarding = () => {
 
               <Card>
                 <CardContent className="p-5 space-y-4">
+                  {!user && (
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardContent className="p-4 space-y-2">
+                        <p className="text-[10px] uppercase tracking-widest text-primary font-bold text-center">
+                          Sign in with Telegram first
+                        </p>
+                        {authLoading ? (
+                          <div className="flex justify-center py-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          </div>
+                        ) : (
+                          <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
                   <Alert className="bg-primary/5 border-primary/20 py-3">
                     <AlertDescription className="text-[11px] flex items-center gap-2">
                       <Info className="h-4 w-4 text-primary" />
@@ -239,7 +288,7 @@ const Onboarding = () => {
 
                   {error && <p className="text-[10px] text-destructive font-bold">{error}</p>}
 
-                  <Button onClick={handleCreateClass} className="w-full text-xs font-black uppercase tracking-widest" disabled={loading || !telegramGroupId}>
+                  <Button onClick={handleCreateClass} className="w-full text-xs font-black uppercase tracking-widest" disabled={loading || authLoading || !telegramGroupId || !user}>
                     {loading ? "Creating..." : "Create & Start"}
                   </Button>
                 </CardContent>
@@ -263,6 +312,23 @@ const Onboarding = () => {
 
               <Card>
                 <CardContent className="p-5 space-y-4">
+                  {!user && (
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardContent className="p-4 space-y-2">
+                        <p className="text-[10px] uppercase tracking-widest text-primary font-bold text-center">
+                          Sign up with Telegram
+                        </p>
+                        {authLoading ? (
+                          <div className="flex justify-center py-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          </div>
+                        ) : (
+                          <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
                   <div className="space-y-2">
                     <Label className="text-[10px] uppercase tracking-widest font-black">Invite Code</Label>
                     <Input
@@ -276,7 +342,7 @@ const Onboarding = () => {
 
                   {error && <p className="text-[10px] text-destructive font-bold">{error}</p>}
 
-                  <Button onClick={handleJoinClass} className="w-full text-xs font-black uppercase tracking-widest" disabled={loading || !inviteCode}>
+                  <Button onClick={handleJoinClass} className="w-full text-xs font-black uppercase tracking-widest" disabled={loading || authLoading || !inviteCode || !user}>
                     {loading ? "Joining..." : "Join Classroom"}
                   </Button>
                 </CardContent>

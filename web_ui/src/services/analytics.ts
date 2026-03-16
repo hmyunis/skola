@@ -1,42 +1,40 @@
 import type { AnalyticsData } from "@/types/admin";
+import { apiFetch } from "./api";
 
 // Re-export type for backward compatibility
 export type { AnalyticsData } from "@/types/admin";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 export async function fetchAnalytics(): Promise<AnalyticsData> {
-  await delay(400);
+  const data = await apiFetch("/admin/analytics");
+
   return {
-    totalUsers: 248,
-    activeToday: 89,
-    totalPosts: 1247,
-    totalResources: 342,
-    totalQuizzes: 56,
-    avgDailyActive: 73,
-    engagementRate: 67,
-    topCourses: [
-      { code: "CS301", name: "Data Structures", engagement: 92 },
-      { code: "CS304", name: "Operating Systems", engagement: 87 },
-      { code: "CS302", name: "DBMS", engagement: 81 },
-      { code: "CS303", name: "Networks", engagement: 74 },
-    ],
-    weeklyActivity: [
-      { day: "Mon", posts: 45, resources: 12, quizzes: 8 },
-      { day: "Tue", posts: 52, resources: 15, quizzes: 6 },
-      { day: "Wed", posts: 38, resources: 8, quizzes: 10 },
-      { day: "Thu", posts: 61, resources: 18, quizzes: 12 },
-      { day: "Fri", posts: 33, resources: 10, quizzes: 5 },
-      { day: "Sat", posts: 18, resources: 4, quizzes: 3 },
-      { day: "Sun", posts: 22, resources: 6, quizzes: 4 },
-    ],
-    userGrowth: [
-      { month: "Oct", users: 45 },
-      { month: "Nov", users: 82 },
-      { month: "Dec", users: 120 },
-      { month: "Jan", users: 168 },
-      { month: "Feb", users: 215 },
-      { month: "Mar", users: 248 },
-    ],
+    totalUsers: Number(data?.totalUsers || 0),
+    activeToday: Number(data?.activeToday || 0),
+    totalPosts: Number(data?.totalPosts || 0),
+    totalResources: Number(data?.totalResources || 0),
+    totalQuizzes: Number(data?.totalQuizzes || 0),
+    avgDailyActive: Number(data?.avgDailyActive || 0),
+    engagementRate: Number(data?.engagementRate || 0),
+    topCourses: Array.isArray(data?.topCourses)
+      ? data.topCourses.map((item: any) => ({
+          code: String(item?.code || "N/A"),
+          name: String(item?.name || "Unknown Course"),
+          engagement: Number(item?.engagement || 0),
+        }))
+      : [],
+    weeklyActivity: Array.isArray(data?.weeklyActivity)
+      ? data.weeklyActivity.map((item: any) => ({
+          day: String(item?.day || "N/A"),
+          posts: Number(item?.posts || 0),
+          resources: Number(item?.resources || 0),
+          quizzes: Number(item?.quizzes || 0),
+        }))
+      : [],
+    userGrowth: Array.isArray(data?.userGrowth)
+      ? data.userGrowth.map((item: any) => ({
+          month: String(item?.month || "N/A"),
+          users: Number(item?.users || 0),
+        }))
+      : [],
   };
 }

@@ -36,7 +36,10 @@ export interface CourseQueryParams {
 export async function fetchCourses(params?: CourseQueryParams): Promise<CourseListResponse> {
     const query = new URLSearchParams();
     if (params?.page) query.set('page', String(params.page));
-    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.limit) {
+        const safeLimit = Math.min(Math.max(params.limit, 1), 100);
+        query.set('limit', String(safeLimit));
+    }
     if (params?.search) query.set('search', params.search);
     if (params?.semesterId) query.set('semesterId', params.semesterId);
 

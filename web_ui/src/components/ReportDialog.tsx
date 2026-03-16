@@ -15,11 +15,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Flag } from "lucide-react";
-import { saveUserReport, type UserReport } from "@/services/admin";
+import type { FlaggedContent } from "@/services/admin";
 import { reportResource } from "@/services/resources";
 import { reportLoungeContent } from "@/services/lounge";
 import { reportArenaQuiz } from "@/services/arena";
-import { useAuth } from "@/stores/authStore";
 import { toast } from "@/hooks/use-toast";
 
 const REPORT_REASONS = [
@@ -35,7 +34,7 @@ const REPORT_REASONS = [
 interface ReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contentType: UserReport["type"];
+  contentType: FlaggedContent["type"];
   contentId: string;
   contentPreview: string;
   contentAuthor: string;
@@ -47,12 +46,9 @@ export function ReportDialog({
   contentType,
   contentId,
   contentPreview,
-  contentAuthor,
 }: ReportDialogProps) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
-
-  const { userName } = useAuth();
 
   const handleSubmit = async () => {
     if (!reason) return;
@@ -70,17 +66,7 @@ export function ReportDialog({
       } else if (contentType === "quiz") {
         await reportArenaQuiz(contentId, { reason: resolvedReason, details: details.trim() || undefined });
       } else {
-        saveUserReport({
-          id: `report-${Date.now()}`,
-          type: contentType,
-          contentId,
-          content: contentPreview.slice(0, 200),
-          author: contentAuthor,
-          reason: resolvedReason,
-          reportedBy: userName,
-          reportedAt: new Date().toISOString(),
-          status: "pending",
-        });
+        throw new Error("Unsupported content type for reporting.");
       }
       toast({ title: "Report Submitted", description: "An admin will review this content." });
       setReason("");

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchManagedUsers, saveUserStatus, saveUserRole, type ManagedUser } from "@/services/users";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,6 +90,7 @@ function formatDate(value?: string): string {
 }
 
 const AdminUsers = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isOwner } = useAuth();
   const { activeClassroom } = useClassroomStore();
   const queryClient = useQueryClient();
@@ -149,7 +151,10 @@ const AdminUsers = () => {
     if (filterStatus !== "all" && u.status !== filterStatus) return false;
     if (search) {
       const q = search.toLowerCase();
-      return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+      return (
+        u.name.toLowerCase().includes(q) ||
+        (u.telegramUsername ? u.telegramUsername.toLowerCase().includes(q) : false)
+      );
     }
     return true;
   });
@@ -160,6 +165,8 @@ const AdminUsers = () => {
     admins: users.filter((u) => u.role === "admin").length,
     banned: users.filter((u) => u.status === "banned").length,
   };
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "invites" ? "invites" : "users";
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-4xl">
@@ -168,7 +175,19 @@ const AdminUsers = () => {
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Users</h1>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-5">
+      <Tabs
+        value={activeTab}
+        onValueChange={(nextTab) => {
+          const next = new URLSearchParams(searchParams);
+          if (nextTab === "users") {
+            next.delete("tab");
+          } else {
+            next.set("tab", nextTab);
+          }
+          setSearchParams(next, { replace: true });
+        }}
+        className="space-y-5"
+      >
         <TabsList>
           <TabsTrigger value="users" className="gap-1.5 text-xs font-bold uppercase tracking-wider">
             <Users className="h-3.5 w-3.5" /> Users
@@ -261,7 +280,10 @@ const AdminUsers = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground truncate">{user.email} · Joined {formatDate(user.joinedAt)}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {user.telegramUsername ? `@${user.telegramUsername} · ` : ""}
+                          Joined {formatDate(user.joinedAt)}
+                        </p>
                       </div>
                     </div>
                     {user.role !== "owner" && (isOwner || user.role !== "admin") && (

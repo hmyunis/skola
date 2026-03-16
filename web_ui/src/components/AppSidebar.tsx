@@ -13,7 +13,7 @@ import {
   Megaphone,
   BarChart3,
   ToggleLeft,
-  
+
   Crown,
   Shield,
 } from "lucide-react";
@@ -22,7 +22,6 @@ import { useLocation } from "react-router-dom";
 import { useTheme } from "@/stores/themeStore";
 import { useAuth } from "@/stores/authStore";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isFeatureEnabled, useFeatureEnabled } from "@/services/features";
 import {
   Sidebar,
@@ -56,9 +55,9 @@ const adminItems = [
 
 const ownerItems = [
   { title: "Courses", url: "/admin/courses", icon: GraduationCap },
-  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+  { title: "Analytics", url: "/owner/analytics", icon: BarChart3 },
   { title: "Features", url: "/owner/features", icon: ToggleLeft },
-  { title: "General", url: "/owner/general", icon: Settings },
+  { title: "Settings", url: "/owner/general", icon: Settings },
 ];
 
 function SidebarLink({ 
@@ -93,14 +92,7 @@ function SidebarLink({
   return (
     <SidebarMenuItem key={item.url}>
       <SidebarMenuButton asChild tooltip={item.title}>
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{link}</TooltipTrigger>
-            <TooltipContent side="right"><span>{item.title}</span></TooltipContent>
-          </Tooltip>
-        ) : (
-          link
-        )}
+        {link}
       </SidebarMenuButton>
     </SidebarMenuItem>
   );

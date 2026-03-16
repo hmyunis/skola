@@ -42,6 +42,7 @@ import {
   Send,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useClassroomStore } from "@/stores/classroomStore";
@@ -72,6 +73,12 @@ function getEditStatus(createdAt?: string, updatedAt?: string): "Edited" | "Not 
   const updated = new Date(updatedAt).getTime();
   if (Number.isNaN(created) || Number.isNaN(updated)) return "Not edited";
   return updated - created > 1000 ? "Edited" : "Not edited";
+}
+
+function safeDisplayName(value: unknown): string {
+  if (typeof value !== "string") return "Deleted user";
+  const trimmed = value.trim();
+  return trimmed || "Deleted user";
 }
 
 function AnnouncementFormDialog({
@@ -212,20 +219,16 @@ function AnnouncementFormDialog({
 const AdminAnnouncements = () => {
   const activeClassroom = useClassroomStore((s) => s.activeClassroom);
   const queryClient = useQueryClient();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data = [], isLoading } = useQuery<Announcement[]>({
+  const { data, isLoading } = useQuery<Announcement[]>({
     queryKey: ["announcements", activeClassroom?.id],
     queryFn: fetchAnnouncements,
     enabled: !!activeClassroom?.id,
   });
-
-  useEffect(() => {
-    setAnnouncements(data);
-  }, [data]);
+  const announcements = data || [];
 
   const createMutation = useMutation({
     mutationFn: createAnnouncement,
@@ -304,8 +307,24 @@ const AdminAnnouncements = () => {
 
       <div className="space-y-2">
         {isLoading && (
-          <div className="text-center py-12 text-sm text-muted-foreground">
-            Loading announcements...
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border border-border p-3 sm:p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                  <div className="flex-1" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-5/6" />
+                <div className="flex justify-end gap-2 pt-1">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
         {sorted.map((a) => {
@@ -327,7 +346,7 @@ const AdminAnnouncements = () => {
               </div>
               <h3 className="text-sm font-bold">{a.title}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
-              <p className="text-[10px] text-muted-foreground">By {a.createdBy} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}</p>
+              <p className="text-[10px] text-muted-foreground">By {safeDisplayName(a.createdBy)} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}</p>
             </div>
           );
         })}

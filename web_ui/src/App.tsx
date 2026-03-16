@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeBackground } from "@/components/ThemeBackground";
 import { AppLayout } from "@/components/AppLayout";
 import { queryClient } from "@/lib/queryClient";
@@ -25,11 +25,11 @@ import AdminCourses from "./pages/admin/AdminCourses";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminModeration from "./pages/admin/AdminModeration";
 import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
-import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 // Owner pages
 import OwnerFeatures from "./pages/owner/OwnerFeatures";
 import OwnerGeneral from "./pages/owner/OwnerGeneral";
+import OwnerAnalytics from "./pages/owner/OwnerAnalytics";
 import JoinPage from "./pages/Join";
 import { RoleGuard } from "@/components/RoleGuard";
 import { FeatureGuard } from "@/components/FeatureGuard";
@@ -98,13 +98,16 @@ const App = () => {
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/moderation" element={<AdminModeration />} />
                 <Route path="/admin/announcements" element={<AdminAnnouncements />} />
-                <Route path="/admin/analytics" element={<AdminAnalytics />} />
               </Route>
 
               {/* Owner-only routes */}
               <Route element={<RoleGuard allowedRoles={["owner"]} />}>
+                <Route path="/owner/analytics" element={<OwnerAnalytics />} />
                 <Route path="/owner/features" element={<OwnerFeatures />} />
                 <Route path="/owner/general" element={<OwnerGeneral />} />
+                <Route path="/owner/data-export" element={<Navigate to="/owner/general?tab=export" replace />} />
+                {/* Backward-compatible route */}
+                <Route path="/admin/analytics" element={<OwnerAnalytics />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />

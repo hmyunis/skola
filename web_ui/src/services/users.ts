@@ -9,7 +9,6 @@ export async function fetchManagedUsers(classroomId: string): Promise<ManagedUse
   return members.map((m: any) => ({
     id: m.id,
     name: m.user.name,
-    email: m.user.email || `@${m.user.telegramUsername || m.user.id}`,
     role: m.role,
     status: m.user.isBanned ? "banned" : (m.user.suspendedUntil && new Date(m.user.suspendedUntil) > new Date() ? "suspended" : "active"),
     suspendedUntil: m.user.suspendedUntil,
