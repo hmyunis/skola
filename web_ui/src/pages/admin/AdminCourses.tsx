@@ -36,6 +36,15 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/stores/authStore';
 import { ShieldAlert } from 'lucide-react';
 
+type CourseFormValues = {
+    id?: string;
+    name: string;
+    code?: string;
+    credits?: number;
+    instructor?: string;
+    semesterId: string;
+};
+
 function CourseFormDialog({
     open,
     onOpenChange,
@@ -48,7 +57,7 @@ function CourseFormDialog({
     onOpenChange: (o: boolean) => void;
     initial?: Course | null;
     semesters: Semester[];
-    onSave: (c: Partial<Course> & { semesterId: string }) => void;
+    onSave: (c: CourseFormValues) => void;
     isPending: boolean;
 }) {
     const [code, setCode] = useState(initial?.code || '');
@@ -257,12 +266,13 @@ const AdminCourses = () => {
         },
     });
 
-    const handleSave = (c: Partial<Course> & { semesterId: string }) => {
-        if (c.id) {
-            updateMutation.mutate({ id: c.id, data: c });
+    const handleSave = (c: CourseFormValues) => {
+        const { id, ...payload } = c;
+        if (id) {
+            updateMutation.mutate({ id, data: payload });
         } else {
             createMutation.mutate({
-                name: c.name!,
+                name: c.name,
                 code: c.code,
                 credits: c.credits,
                 instructor: c.instructor,

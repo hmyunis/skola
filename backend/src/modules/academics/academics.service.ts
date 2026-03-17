@@ -191,6 +191,10 @@ export class AcademicsService {
     courseId: string,
     dto: UpdateCourseDto,
   ) {
+    if (dto.id && dto.id !== courseId) {
+      throw new BadRequestException('Body id does not match route id');
+    }
+
     const course = await this.getCourseById(classroomId, courseId);
 
     // If semesterId is being changed, verify it belongs to this classroom

@@ -32,6 +32,10 @@ export class CreateCourseDto {
 }
 
 export class UpdateCourseDto {
+  @IsUUID()
+  @IsOptional()
+  id?: string;
+
   @IsString()
   @IsOptional()
   name?: string;
