@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   dismissArenaReport,
   dismissResourceReport,
   dismissLoungeReport,
   fetchAllFlaggedContent,
+  fetchFlaggedContentStats,
   resolveArenaReport,
   resolveLoungeReport,
   resolveResourceReport,
   type FlaggedContent,
+  type FlaggedContentStats,
 } from "@/services/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,20 +78,16 @@ const AdminModeration = () => {
   } | null>(null);
 
   const { data: allItems = [], isLoading } = useQuery({
-    queryKey: ["flaggedContent", { status: filterStatus, type: filterType }],
+    queryKey: ["flaggedContentList", { status: filterStatus, type: filterType }],
     queryFn: () => fetchAllFlaggedContent({ status: filterStatus, type: filterType }),
+  });
+  const { data: statsData } = useQuery<FlaggedContentStats>({
+    queryKey: ["flaggedContentStats", { status: filterStatus, type: filterType }],
+    queryFn: () => fetchFlaggedContentStats({ status: filterStatus, type: filterType }),
   });
 
   const items = allItems;
-
-  const stats = useMemo(
-    () => ({
-      total: allItems.length,
-      pending: allItems.filter((r) => r.status === "pending").length,
-      resolved: allItems.filter((r) => r.status === "resolved").length,
-    }),
-    [allItems],
-  );
+  const stats = statsData || { total: 0, pending: 0, resolved: 0, dismissed: 0 };
 
   const actionMutation = useMutation({
     mutationFn: async (action: { item: FlaggedContent; status: "resolved" | "dismissed"; removeResource?: boolean }) => {
@@ -114,7 +112,8 @@ const AdminModeration = () => {
       throw new Error("Unsupported report type.");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["flaggedContent"] });
+      queryClient.invalidateQueries({ queryKey: ["flaggedContentList"] });
+      queryClient.invalidateQueries({ queryKey: ["flaggedContentStats"] });
       toast({ title: "Moderation action applied" });
       setConfirmAction(null);
     },

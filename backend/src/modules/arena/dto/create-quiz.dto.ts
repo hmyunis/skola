@@ -52,6 +52,12 @@ export class CreateQuizDto {
   @IsBoolean()
   isAnonymous?: boolean = false;
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  maxAttempts?: number = 2;
+
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(20)

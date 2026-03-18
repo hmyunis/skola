@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import {
     fetchLoungeFeed,
     fetchPostReplies,
@@ -13,6 +13,7 @@ import {
     REACTIONS,
     type LoungePost,
     type LoungeReply,
+    type LoungeFeedResponse,
     type PostTag,
     type AcademicReaction,
 } from '@/services/lounge';
@@ -887,10 +888,96 @@ const Lounge = () => {
         },
     });
 
+    const patchReactionInFeed = (
+        oldData: InfiniteData<LoungeFeedResponse> | undefined,
+        postId: string,
+        emoji: string,
+        nextReactions?: Record<string, number>,
+        nextUserReaction?: string | null,
+    ): InfiniteData<LoungeFeedResponse> | undefined => {
+        if (!oldData) return oldData;
+
+        return {
+            ...oldData,
+            pages: oldData.pages.map((page) => ({
+                ...page,
+                data: page.data.map((post) => {
+                    if (post.id !== postId) return post;
+
+                    if (nextReactions && nextUserReaction !== undefined) {
+                        return {
+                            ...post,
+                            reactions: nextReactions,
+                            userReaction: nextUserReaction,
+                        };
+                    }
+
+                    const currentReaction = post.userReaction;
+                    const reactions = { ...post.reactions };
+
+                    if (currentReaction) {
+                        reactions[currentReaction] = Math.max(
+                            (reactions[currentReaction] || 0) - 1,
+                            0,
+                        );
+                    }
+
+                    const toggledOff = currentReaction === emoji;
+                    if (!toggledOff) {
+                        reactions[emoji] = (reactions[emoji] || 0) + 1;
+                    }
+
+                    return {
+                        ...post,
+                        reactions,
+                        userReaction: toggledOff ? null : emoji,
+                    };
+                }),
+            })),
+        };
+    };
+
     const reactMutation = useMutation({
         mutationFn: ({ postId, emoji }: { postId: string; emoji: string }) =>
             reactToPost(postId, emoji),
-        onSuccess: () => {
+        onMutate: async ({ postId, emoji }) => {
+            await queryClient.cancelQueries({ queryKey: ['loungeFeed'] });
+            const snapshots = queryClient.getQueriesData<InfiniteData<LoungeFeedResponse>>({
+                queryKey: ['loungeFeed'],
+            });
+
+            queryClient.setQueriesData<InfiniteData<LoungeFeedResponse>>(
+                { queryKey: ['loungeFeed'] },
+                (oldData) => patchReactionInFeed(oldData, postId, emoji),
+            );
+
+            return { snapshots };
+        },
+        onSuccess: (result, variables) => {
+            queryClient.setQueriesData<InfiniteData<LoungeFeedResponse>>(
+                { queryKey: ['loungeFeed'] },
+                (oldData) =>
+                    patchReactionInFeed(
+                        oldData,
+                        variables.postId,
+                        variables.emoji,
+                        result.reactions,
+                        result.userReaction,
+                    ),
+            );
+        },
+        onError: (_error, _variables, context) => {
+            context?.snapshots?.forEach(([queryKey, data]) => {
+                queryClient.setQueryData(queryKey, data);
+            });
+
+            toast({
+                title: 'Error',
+                description: 'Failed to update reaction.',
+                variant: 'destructive',
+            });
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['loungeFeed'] });
         },
     });

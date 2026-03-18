@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchManagedUsers, saveUserStatus, saveUserRole, type ManagedUser } from "@/services/users";
+import { fetchManagedUsers, fetchManagedUsersStats, saveUserStatus, saveUserRole, type ManagedUser } from "@/services/users";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,6 +99,16 @@ const AdminUsers = () => {
     queryFn: () => activeClassroom ? fetchManagedUsers(activeClassroom.id) : Promise.resolve([]),
     enabled: !!activeClassroom,
   });
+  const { data: userStats } = useQuery({
+    queryKey: ["managedUsersStats", activeClassroom?.id],
+    queryFn: () => activeClassroom ? fetchManagedUsersStats(activeClassroom.id) : Promise.resolve({
+      totalMembers: 0,
+      activeMembers: 0,
+      adminMembers: 0,
+      bannedMembers: 0,
+    }),
+    enabled: !!activeClassroom,
+  });
 
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
@@ -122,6 +132,7 @@ const AdminUsers = () => {
     try {
       await saveUserStatus(activeClassroom.id, memberId, status, suspendedUntil);
       queryClient.invalidateQueries({ queryKey: ["managedUsers", activeClassroom.id] });
+      queryClient.invalidateQueries({ queryKey: ["managedUsersStats", activeClassroom.id] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -132,6 +143,7 @@ const AdminUsers = () => {
     try {
       await saveUserRole(activeClassroom.id, memberId, role);
       queryClient.invalidateQueries({ queryKey: ["managedUsers", activeClassroom.id] });
+      queryClient.invalidateQueries({ queryKey: ["managedUsersStats", activeClassroom.id] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -159,11 +171,11 @@ const AdminUsers = () => {
     return true;
   });
 
-  const stats = {
-    total: users.length,
-    active: users.filter((u) => u.status === "active").length,
-    admins: users.filter((u) => u.role === "admin").length,
-    banned: users.filter((u) => u.status === "banned").length,
+  const stats = userStats || {
+    totalMembers: 0,
+    activeMembers: 0,
+    adminMembers: 0,
+    bannedMembers: 0,
   };
   const tabParam = searchParams.get("tab");
   const activeTab = tabParam === "invites" ? "invites" : "users";
@@ -201,19 +213,19 @@ const AdminUsers = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card><CardContent className="p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Total</p>
-              <p className="text-2xl font-black tabular-nums mt-1">{stats.total}</p>
+              <p className="text-2xl font-black tabular-nums mt-1">{stats.totalMembers}</p>
             </CardContent></Card>
             <Card><CardContent className="p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Active</p>
-              <p className="text-2xl font-black tabular-nums mt-1 text-emerald-600">{stats.active}</p>
+              <p className="text-2xl font-black tabular-nums mt-1 text-emerald-600">{stats.activeMembers}</p>
             </CardContent></Card>
             <Card><CardContent className="p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Admins</p>
-              <p className="text-2xl font-black tabular-nums mt-1">{stats.admins}</p>
+              <p className="text-2xl font-black tabular-nums mt-1">{stats.adminMembers}</p>
             </CardContent></Card>
             <Card><CardContent className="p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Banned</p>
-              <p className="text-2xl font-black tabular-nums mt-1 text-destructive">{stats.banned}</p>
+              <p className="text-2xl font-black tabular-nums mt-1 text-destructive">{stats.bannedMembers}</p>
             </CardContent></Card>
           </div>
 

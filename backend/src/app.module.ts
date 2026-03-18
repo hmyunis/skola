@@ -37,9 +37,8 @@ import { SearchModule } from './modules/search/search.module';
         password: configService.get<string>('DB_PASS'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        // WARNING: Set synchronize to false in production on cPanel!
-        // Use migrations instead. We'll leave it true for initial dev.
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        // Migrations are the source of truth for schema changes.
+        synchronize: false,
         timezone: 'Z', // Important for scheduling
       }),
     }),

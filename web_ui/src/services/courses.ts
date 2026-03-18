@@ -24,6 +24,11 @@ export interface CourseListResponse {
     };
 }
 
+export interface CourseStatsResponse {
+    totalCourses: number;
+    totalCredits: number;
+}
+
 export interface CourseQueryParams {
     page?: number;
     limit?: number;
@@ -45,6 +50,15 @@ export async function fetchCourses(params?: CourseQueryParams): Promise<CourseLi
 
     const qs = query.toString();
     return apiFetch(`/academics/courses${qs ? `?${qs}` : ''}`);
+}
+
+export async function fetchCourseStats(params?: Pick<CourseQueryParams, 'search' | 'semesterId'>): Promise<CourseStatsResponse> {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.semesterId) query.set('semesterId', params.semesterId);
+
+    const qs = query.toString();
+    return apiFetch(`/academics/courses/stats${qs ? `?${qs}` : ''}`);
 }
 
 export async function fetchCourse(courseId: string): Promise<Course> {

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 export function PWAInstallPrompt() {
-  const { canInstall, install, dismiss } = usePWAInstall();
+  const { canInstall, isManualInstall, install, dismiss } = usePWAInstall();
   const [isInstalling, setIsInstalling] = useState(false);
 
   const handleInstall = async () => {
@@ -38,19 +38,23 @@ export function PWAInstallPrompt() {
               <div>
                 <p className="text-sm font-bold tracking-wide">Install SKOLA</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Add to your home screen for quick access, offline support, and a native app experience.
+                  {isManualInstall
+                    ? "Open your browser menu and choose Add to Home Screen (or Install App) to pin SKOLA."
+                    : "Add to your home screen for quick access, offline support, and a native app experience."}
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 sm:w-auto"
-                  onClick={handleInstall}
-                  disabled={isInstalling}
-                >
-                  <Download className="h-3 w-3" />
-                  {isInstalling ? "Opening..." : "Install app"}
-                </Button>
+                {!isManualInstall && (
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 sm:w-auto"
+                    onClick={handleInstall}
+                    disabled={isInstalling}
+                  >
+                    <Download className="h-3 w-3" />
+                    {isInstalling ? "Opening..." : "Install app"}
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"

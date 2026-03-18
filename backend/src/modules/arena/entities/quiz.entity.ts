@@ -44,6 +44,9 @@ export class Quiz {
   @Column({ default: false })
   isAnonymous: boolean;
 
+  @Column({ type: 'int', default: 2 })
+  maxAttempts: number;
+
   @Column({ default: true })
   isPublished: boolean;
 

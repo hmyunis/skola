@@ -1,75 +1,45 @@
 import type { FlaggedContent } from "@/types/admin";
-import { fetchResourceReports, reviewResourceReport } from "@/services/resources";
-import { fetchLoungeReports, reviewLoungeReport } from "@/services/lounge";
-import { fetchArenaReports, reviewArenaReport } from "@/services/arena";
+import { reviewResourceReport } from "@/services/resources";
+import { reviewLoungeReport } from "@/services/lounge";
+import { reviewArenaReport } from "@/services/arena";
+import { apiFetch } from "@/services/api";
 
 export type { FlaggedContent } from "@/types/admin";
 
-interface LoungeModerationReport {
-  id: string;
-  type: "post" | "reply";
-  content: string;
-  author: string;
-  reason: string;
-  reportedBy: string;
-  reportedAt: string;
-  status: FlaggedContent["status"];
+export interface FlaggedContentStats {
+  total: number;
+  pending: number;
+  resolved: number;
+  dismissed: number;
+}
+
+function toModerationQuery(filters?: {
+  status?: FlaggedContent["status"] | "all";
+  type?: FlaggedContent["type"] | "all";
+}) {
+  const params = new URLSearchParams();
+  if (filters?.status && filters.status !== "all") {
+    params.set("status", filters.status);
+  }
+  if (filters?.type && filters.type !== "all") {
+    params.set("type", filters.type);
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
 }
 
 export async function fetchAllFlaggedContent(filters?: {
   status?: FlaggedContent["status"] | "all";
   type?: FlaggedContent["type"] | "all";
 }): Promise<FlaggedContent[]> {
-  const statusFilter = filters?.status && filters.status !== "all" ? filters.status : undefined;
-  const typeFilter = filters?.type && filters.type !== "all" ? filters.type : undefined;
+  return apiFetch(`/admin/moderation/reports${toModerationQuery(filters)}`);
+}
 
-  const shouldFetchResource = !typeFilter || typeFilter === "resource";
-  const loungeTypeFilter = typeFilter === "post" || typeFilter === "reply" ? typeFilter : undefined;
-  const shouldFetchLounge = !typeFilter || Boolean(loungeTypeFilter);
-  const shouldFetchArena = !typeFilter || typeFilter === "quiz";
-
-  const [resourceReports, loungeReports, arenaReports] = await Promise.all([
-    shouldFetchResource ? fetchResourceReports(statusFilter) : Promise.resolve([]),
-    shouldFetchLounge ? fetchLoungeReports(statusFilter, loungeTypeFilter) : Promise.resolve([]),
-    shouldFetchArena ? fetchArenaReports(statusFilter) : Promise.resolve([]),
-  ]);
-
-  const resourceItems: FlaggedContent[] = resourceReports.map((report) => ({
-    id: report.id,
-    type: "resource",
-    content: report.content,
-    author: report.author,
-    reason: report.reason,
-    reportedBy: report.reportedBy,
-    reportedAt: report.reportedAt,
-    status: report.status,
-  }));
-
-  const loungeItems: FlaggedContent[] = (loungeReports as LoungeModerationReport[]).map((report) => ({
-    id: report.id,
-    type: report.type,
-    content: report.content,
-    author: report.author,
-    reason: report.reason,
-    reportedBy: report.reportedBy,
-    reportedAt: report.reportedAt,
-    status: report.status,
-  }));
-
-  const arenaItems: FlaggedContent[] = arenaReports.map((report) => ({
-    id: report.id,
-    type: "quiz",
-    content: report.content,
-    author: report.author,
-    reason: report.reason,
-    reportedBy: report.reportedBy,
-    reportedAt: report.reportedAt,
-    status: report.status,
-  }));
-
-  return [...resourceItems, ...loungeItems, ...arenaItems].sort(
-    (a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime(),
-  );
+export async function fetchFlaggedContentStats(filters?: {
+  status?: FlaggedContent["status"] | "all";
+  type?: FlaggedContent["type"] | "all";
+}): Promise<FlaggedContentStats> {
+  return apiFetch(`/admin/moderation/stats${toModerationQuery(filters)}`);
 }
 
 export async function resolveResourceReport(reportId: string, removeResource: boolean) {

@@ -13,6 +13,9 @@ import { Resource } from '../resources/entities/resource.entity';
 import { Quiz } from '../arena/entities/quiz.entity';
 import { QuizAttempt } from '../arena/entities/quiz-attempt.entity';
 import { Course } from '../academics/entities/course.entity';
+import { ResourceReport } from '../resources/entities/resource-report.entity';
+import { LoungeReport } from '../lounge/entities/lounge-report.entity';
+import { QuizReport } from '../arena/entities/quiz-report.entity';
 
 @Module({
   imports: [
@@ -24,9 +27,12 @@ import { Course } from '../academics/entities/course.entity';
       Classroom,
       LoungePost,
       Resource,
+      ResourceReport,
       Quiz,
       QuizAttempt,
+      QuizReport,
       Course,
+      LoungeReport,
     ]),
     ClassroomsModule,
   ],

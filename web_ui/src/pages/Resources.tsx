@@ -5,6 +5,7 @@ import {
   RESOURCE_TYPES,
   createLinkResource,
   deleteResource,
+  fetchResourceStats,
   fetchResources,
   updateResource,
   updateResourceFile,
@@ -249,6 +250,20 @@ const Resources = () => {
       lastPage.meta.page < lastPage.meta.lastPage ? lastPage.meta.page + 1 : undefined,
     initialPageParam: 1,
   });
+  const statsQuery = useQuery({
+    queryKey: ["resources", "stats", { courseFilter, typeFilter, search }],
+    queryFn: () =>
+      fetchResourceStats({
+        courseId: courseFilter === "all" ? undefined : courseFilter,
+        type: typeFilter === "all" ? undefined : (typeFilter as ResourceType),
+        search: search.trim() || undefined,
+      }),
+  });
+
+  const invalidateResourceQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+    queryClient.invalidateQueries({ queryKey: ["resources", "stats"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: async (payload: {
@@ -283,7 +298,7 @@ const Resources = () => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      invalidateResourceQueries();
       toast({ title: "Resource created" });
       setFormOpen(false);
     },
@@ -293,7 +308,7 @@ const Resources = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Resource> }) => updateResource(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      invalidateResourceQueries();
       toast({ title: "Resource updated" });
       setFormOpen(false);
       setEditing(null);
@@ -317,7 +332,7 @@ const Resources = () => {
       };
     }) => updateResourceFile(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      invalidateResourceQueries();
       toast({ title: "Resource updated" });
       setFormOpen(false);
       setEditing(null);
@@ -327,13 +342,13 @@ const Resources = () => {
 
   const voteMutation = useMutation({
     mutationFn: ({ id, vote }: { id: string; vote: "up" | "down" }) => voteResource(id, vote),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] }),
+    onSuccess: () => invalidateResourceQueries(),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteResource(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
+      invalidateResourceQueries();
       toast({ title: "Resource deleted" });
       setDeleting(null);
     },
@@ -341,7 +356,7 @@ const Resources = () => {
   });
 
   const resources = resourcesQuery.data?.pages.flatMap((page) => page.data) || [];
-  const stats = resourcesQuery.data?.pages[0]?.stats;
+  const stats = statsQuery.data;
   const totalCount = resourcesQuery.data?.pages[0]?.meta.total || 0;
 
   const lastElementRef = useCallback(

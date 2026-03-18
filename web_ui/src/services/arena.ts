@@ -69,6 +69,7 @@ export async function createArenaQuiz(data: {
   title: string;
   course: string;
   isAnonymous?: boolean;
+  maxAttempts?: number;
   questions: Array<{
     questionText: string;
     options: string[];
@@ -128,10 +129,11 @@ export async function fetchQuizQuestions(course: string): Promise<QuizQuestion[]
 
 export async function fetchRandomQuizByCourse(course: string): Promise<CustomQuiz> {
   const list = await fetchArenaQuizzes({ page: 1, limit: 50, course });
-  if (!list.data.length) {
-    throw new Error("No quizzes found for the selected course.");
+  const available = list.data.filter((quiz) => quiz.canAttempt);
+  if (!available.length) {
+    throw new Error("No quizzes with remaining attempts found for the selected course.");
   }
-  const randomQuiz = list.data[Math.floor(Math.random() * list.data.length)];
+  const randomQuiz = available[Math.floor(Math.random() * available.length)];
   return fetchArenaQuiz(randomQuiz.id);
 }
 

@@ -19,12 +19,13 @@ export interface ResourceListResponse {
     limit: number;
     lastPage: number;
   };
-  stats: {
-    totalResources: number;
-    totalUpvotes: number;
-    totalDownvotes: number;
-    totalTypes: number;
-  };
+}
+
+export interface ResourceStatsResponse {
+  totalResources: number;
+  totalUpvotes: number;
+  totalDownvotes: number;
+  totalTypes: number;
 }
 
 export async function fetchResources(params?: {
@@ -42,6 +43,19 @@ export async function fetchResources(params?: {
   if (params?.type) query.set("type", params.type);
   const qs = query.toString();
   return apiFetch(`/resources${qs ? `?${qs}` : ""}`);
+}
+
+export async function fetchResourceStats(params?: {
+  courseId?: string;
+  search?: string;
+  type?: ResourceType;
+}): Promise<ResourceStatsResponse> {
+  const query = new URLSearchParams();
+  if (params?.courseId) query.set("courseId", params.courseId);
+  if (params?.search) query.set("search", params.search);
+  if (params?.type) query.set("type", params.type);
+  const qs = query.toString();
+  return apiFetch(`/resources/stats${qs ? `?${qs}` : ""}`);
 }
 
 export async function uploadResourceFile(data: {

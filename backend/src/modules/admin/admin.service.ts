@@ -14,6 +14,14 @@ import { Resource } from '../resources/entities/resource.entity';
 import { Quiz } from '../arena/entities/quiz.entity';
 import { QuizAttempt } from '../arena/entities/quiz-attempt.entity';
 import { Course } from '../academics/entities/course.entity';
+import { ResourceReport, ResourceReportStatus } from '../resources/entities/resource-report.entity';
+import {
+  LoungeReport,
+  LoungeReportContentType,
+  LoungeReportStatus,
+} from '../lounge/entities/lounge-report.entity';
+import { QuizReport, QuizReportStatus } from '../arena/entities/quiz-report.entity';
+import { ModerationQueryDto } from './dto/moderation-query.dto';
 
 interface UpsertAnnouncementDto {
   title: string;
@@ -66,6 +74,20 @@ interface DailyCountRow {
   total: string;
 }
 
+type ModerationStatus = 'pending' | 'resolved' | 'dismissed';
+type ModerationType = 'resource' | 'post' | 'reply' | 'quiz';
+
+export interface ModerationItem {
+  id: string;
+  type: ModerationType;
+  content: string;
+  author: string;
+  reason: string;
+  reportedBy: string;
+  reportedAt: Date;
+  status: ModerationStatus;
+}
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
@@ -109,7 +131,10 @@ export class AdminService {
     @InjectRepository(ClassroomMember) private memberRepo: Repository<ClassroomMember>,
     @InjectRepository(LoungePost) private postRepo: Repository<LoungePost>,
     @InjectRepository(Resource) private resourceRepo: Repository<Resource>,
+    @InjectRepository(ResourceReport) private resourceReportRepo: Repository<ResourceReport>,
+    @InjectRepository(LoungeReport) private loungeReportRepo: Repository<LoungeReport>,
     @InjectRepository(Quiz) private quizRepo: Repository<Quiz>,
+    @InjectRepository(QuizReport) private quizReportRepo: Repository<QuizReport>,
     @InjectRepository(QuizAttempt) private attemptRepo: Repository<QuizAttempt>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     private readonly httpService: HttpService,
@@ -431,6 +456,170 @@ export class AdminService {
     }
 
     throw new BadRequestException('Invalid or inactive invite code');
+  }
+
+  async getModerationReports(classroomId: string, query: ModerationQueryDto): Promise<ModerationItem[]> {
+    const status = query.status;
+    const type = query.type;
+
+    const shouldFetchResource = !type || type === 'resource';
+    const shouldFetchLounge = !type || type === 'post' || type === 'reply';
+    const shouldFetchQuiz = !type || type === 'quiz';
+
+    const resourceWhere: Partial<ResourceReport> = { classroomId };
+    if (status) {
+      resourceWhere.status = status as ResourceReportStatus;
+    }
+
+    const loungeWhere: Partial<LoungeReport> = { classroomId };
+    if (status) {
+      loungeWhere.status = status as LoungeReportStatus;
+    }
+    if (type === 'post') {
+      loungeWhere.contentType = LoungeReportContentType.POST;
+    } else if (type === 'reply') {
+      loungeWhere.contentType = LoungeReportContentType.REPLY;
+    }
+
+    const quizWhere: Partial<QuizReport> = { classroomId };
+    if (status) {
+      quizWhere.status = status as QuizReportStatus;
+    }
+
+    const [resourceReports, loungeReports, quizReports] = await Promise.all([
+      shouldFetchResource
+        ? this.resourceReportRepo.find({
+            where: resourceWhere,
+            relations: ['resource', 'resource.uploader', 'reporter'],
+            order: { createdAt: 'DESC' },
+          })
+        : Promise.resolve([]),
+      shouldFetchLounge
+        ? this.loungeReportRepo.find({
+            where: loungeWhere,
+            relations: ['post', 'post.author', 'reporter'],
+            order: { createdAt: 'DESC' },
+          })
+        : Promise.resolve([]),
+      shouldFetchQuiz
+        ? this.quizReportRepo.find({
+            where: quizWhere,
+            relations: ['quiz', 'quiz.author', 'reporter'],
+            order: { createdAt: 'DESC' },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const resourceItems: ModerationItem[] = resourceReports.map((report) => ({
+      id: report.id,
+      type: 'resource',
+      content: report.resource?.title || 'Deleted resource',
+      author: report.resource?.uploader?.name || 'Unknown',
+      reason: report.reason,
+      reportedBy: report.reporter?.name || 'Unknown',
+      reportedAt: report.createdAt,
+      status: report.status as ModerationStatus,
+    }));
+
+    const loungeItems: ModerationItem[] = loungeReports.map((report) => ({
+      id: report.id,
+      type:
+        report.contentType === LoungeReportContentType.REPLY ? 'reply' : 'post',
+      content: report.post?.content || 'Deleted content',
+      author: report.post?.author?.name || 'Unknown',
+      reason: report.reason,
+      reportedBy: report.reporter?.name || 'Unknown',
+      reportedAt: report.createdAt,
+      status: report.status as ModerationStatus,
+    }));
+
+    const quizItems: ModerationItem[] = quizReports.map((report) => ({
+      id: report.id,
+      type: 'quiz',
+      content: report.quiz?.title || 'Deleted quiz',
+      author: report.quiz?.author?.name || 'Unknown',
+      reason: report.reason,
+      reportedBy: report.reporter?.name || 'Unknown',
+      reportedAt: report.createdAt,
+      status: report.status as ModerationStatus,
+    }));
+
+    return [...resourceItems, ...loungeItems, ...quizItems].sort(
+      (a, b) => b.reportedAt.getTime() - a.reportedAt.getTime(),
+    );
+  }
+
+  async getModerationStats(classroomId: string, query: ModerationQueryDto) {
+    const statusFilter = query.status;
+    const typeFilter = query.type;
+
+    if (statusFilter) {
+      const total = await this.countModerationByStatus(classroomId, statusFilter, typeFilter);
+      return {
+        total,
+        pending: statusFilter === 'pending' ? total : 0,
+        resolved: statusFilter === 'resolved' ? total : 0,
+        dismissed: statusFilter === 'dismissed' ? total : 0,
+      };
+    }
+
+    const [pending, resolved, dismissed] = await Promise.all([
+      this.countModerationByStatus(classroomId, 'pending', typeFilter),
+      this.countModerationByStatus(classroomId, 'resolved', typeFilter),
+      this.countModerationByStatus(classroomId, 'dismissed', typeFilter),
+    ]);
+
+    return {
+      total: pending + resolved + dismissed,
+      pending,
+      resolved,
+      dismissed,
+    };
+  }
+
+  private async countModerationByStatus(
+    classroomId: string,
+    status: ModerationStatus,
+    type?: ModerationType,
+  ): Promise<number> {
+    if (type === 'resource') {
+      return this.resourceReportRepo.count({
+        where: { classroomId, status: status as ResourceReportStatus },
+      });
+    }
+
+    if (type === 'quiz') {
+      return this.quizReportRepo.count({
+        where: { classroomId, status: status as QuizReportStatus },
+      });
+    }
+
+    if (type === 'post' || type === 'reply') {
+      return this.loungeReportRepo.count({
+        where: {
+          classroomId,
+          status: status as LoungeReportStatus,
+          contentType:
+            type === 'reply'
+              ? LoungeReportContentType.REPLY
+              : LoungeReportContentType.POST,
+        },
+      });
+    }
+
+    const [resourceTotal, loungeTotal, quizTotal] = await Promise.all([
+      this.resourceReportRepo.count({
+        where: { classroomId, status: status as ResourceReportStatus },
+      }),
+      this.loungeReportRepo.count({
+        where: { classroomId, status: status as LoungeReportStatus },
+      }),
+      this.quizReportRepo.count({
+        where: { classroomId, status: status as QuizReportStatus },
+      }),
+    ]);
+
+    return resourceTotal + loungeTotal + quizTotal;
   }
 
   async getOwnerAnalytics(classroomId: string): Promise<OwnerAnalyticsResponse> {
@@ -783,6 +972,7 @@ export class AdminService {
         authorName: quiz.author?.name || null,
         isAnonymous: quiz.isAnonymous,
         isPublished: quiz.isPublished,
+        maxAttempts: quiz.maxAttempts,
         createdAt: quiz.createdAt,
         questions: (quiz.questions || [])
           .sort((a, b) => a.orderIndex - b.orderIndex)

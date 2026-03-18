@@ -47,16 +47,28 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
   const [xpEarned, setXpEarned] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [resultWon, setResultWon] = useState(false);
+  const [maxAttempts, setMaxAttempts] = useState(2);
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
 
   const currentQ = questions[currentIdx];
   const currentDuration = currentQ?.durationSeconds || 15;
 
   useEffect(() => {
     if (!customQuiz?.questions?.length) return;
+    if (!customQuiz.canAttempt) {
+      toast({
+        title: "Attempt Limit Reached",
+        description: `You have used all ${customQuiz.maxAttempts} attempts for this quiz.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setQuestions(customQuiz.questions);
     setActiveQuizId(customQuiz.id);
     setCourse(customQuiz.course);
     setCourseName("");
+    setMaxAttempts(customQuiz.maxAttempts);
+    setAttemptsRemaining(customQuiz.attemptsRemaining);
     setCurrentIdx(0);
     setSelected(null);
     setAnswered(false);
@@ -87,6 +99,8 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
       }
       setQuestions(quiz.questions);
       setActiveQuizId(quiz.id);
+      setMaxAttempts(quiz.maxAttempts);
+      setAttemptsRemaining(quiz.attemptsRemaining);
       setCurrentIdx(0);
       setSelected(null);
       setAnswered(false);
@@ -156,6 +170,8 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
       setXpEarned(result.xpEarned);
       setScore(result.score);
       setResultWon(result.won);
+      setMaxAttempts(result.maxAttempts);
+      setAttemptsRemaining(result.attemptsRemaining);
       onUpdateStats(result.stats);
       setState("result");
     } catch (error: unknown) {
@@ -276,11 +292,19 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
               <RotateCcw className="h-3 w-3" />
               New Battle
             </Button>
-            <Button className="w-full sm:w-auto" onClick={startQuiz}>
+            <Button className="w-full sm:w-auto" onClick={startQuiz} disabled={attemptsRemaining !== null && attemptsRemaining <= 0}>
               <Swords className="h-3 w-3" />
               Rematch
             </Button>
           </div>
+          {attemptsRemaining !== null && (
+            <p className={cn(
+              "text-[10px] uppercase tracking-wider",
+              attemptsRemaining > 0 ? "text-muted-foreground" : "text-destructive"
+            )}>
+              Attempts remaining: {attemptsRemaining}/{maxAttempts}
+            </p>
+          )}
         </CardContent>
       </Card>
     );

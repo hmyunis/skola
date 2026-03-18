@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchManagedUsers, type ManagedUser } from "@/services/users";
+import { fetchManagedUsers, fetchManagedUsersStats, type ManagedUser } from "@/services/users";
 import { useRemoveMember } from "@/hooks/use-members";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,12 +69,18 @@ const Members = () => {
     queryFn: () => fetchManagedUsers(activeClassroom!.id),
     enabled: !!activeClassroom,
   });
+  const { data: memberStats } = useQuery({
+    queryKey: ["managedUsersStats", activeClassroom?.id],
+    queryFn: () => fetchManagedUsersStats(activeClassroom!.id),
+    enabled: !!activeClassroom,
+  });
   const removeMemberMutation = useRemoveMember();
 
   const [search, setSearch] = useState("");
   const [removingUser, setRemovingUser] = useState<ManagedUser | null>(null);
 
-  const online = users.filter((u) => u.status === "active").length;
+  const totalMembers = memberStats?.totalMembers ?? 0;
+  const onlineMembers = memberStats?.activeMembers ?? 0;
 
   const filtered = users.filter((u) => {
     if (!search) return true;
@@ -107,7 +113,7 @@ const Members = () => {
         <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Community</p>
         <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Members</h1>
         <p className="text-xs text-muted-foreground mt-1">
-          {users.length} members · {online} active
+          {totalMembers} members · {onlineMembers} active
         </p>
       </div>
 

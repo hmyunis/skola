@@ -18,6 +18,10 @@ export interface CustomQuiz {
   anonymous_id: string;
   createdByUser: boolean;
   questionCount: number;
+  maxAttempts: number;
+  attemptsUsed: number;
+  attemptsRemaining: number;
+  canAttempt: boolean;
   questions?: QuizQuestion[];
 }
 
@@ -70,6 +74,9 @@ export interface QuizAttemptResult {
   correctAnswers: number;
   won: boolean;
   xpEarned: number;
+  maxAttempts: number;
+  attemptsUsed: number;
+  attemptsRemaining: number;
   stats: ArenaPlayerStats;
 }
 

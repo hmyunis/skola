@@ -4,6 +4,13 @@ import type { ManagedUser } from "@/types/admin";
 // Re-export type for backward compatibility
 export type { ManagedUser } from "@/types/admin";
 
+export interface ManagedUserStats {
+  totalMembers: number;
+  activeMembers: number;
+  adminMembers: number;
+  bannedMembers: number;
+}
+
 export async function fetchManagedUsers(classroomId: string): Promise<ManagedUser[]> {
   const members = await apiFetch(`/classrooms/${classroomId}/members`);
   return members.map((m: any) => ({
@@ -16,6 +23,10 @@ export async function fetchManagedUsers(classroomId: string): Promise<ManagedUse
     lastActive: m.user.updatedAt,
     telegramUsername: m.user.telegramUsername,
   }));
+}
+
+export async function fetchManagedUsersStats(classroomId: string): Promise<ManagedUserStats> {
+  return apiFetch(`/classrooms/${classroomId}/members/stats`);
 }
 
 export async function saveUserStatus(classroomId: string, memberId: string, status: string, suspendedUntil?: string) {

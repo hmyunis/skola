@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import {
     fetchCourses,
+    fetchCourseStats,
     createCourse,
     updateCourse,
     deleteCourse,
@@ -222,14 +223,26 @@ const AdminCourses = () => {
 
     // Flatten pages into single array
     const courses = data?.pages.flatMap((page) => page.data) ?? [];
-    const totalCount = data?.pages[0]?.meta.total ?? 0;
-    const totalCredits = courses.reduce((sum, c) => sum + (c.credits || 0), 0);
+    const courseStatsQuery = useQuery({
+        queryKey: ['courseStats', { search, semesterId: semesterFilter }],
+        queryFn: () => fetchCourseStats({
+            search: search || undefined,
+            semesterId: semesterFilter !== 'all' ? semesterFilter : undefined,
+        }),
+    });
+    const totalCount = courseStatsQuery.data?.totalCourses ?? 0;
+    const totalCredits = courseStatsQuery.data?.totalCredits ?? 0;
+
+    const invalidateCourseQueries = () => {
+        queryClient.invalidateQueries({ queryKey: ['courses'] });
+        queryClient.invalidateQueries({ queryKey: ['courseStats'] });
+    };
 
     // Create mutation
     const createMutation = useMutation({
         mutationFn: createCourse,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['courses'] });
+            invalidateCourseQueries();
             toast({ title: 'Created', description: 'Course has been added.' });
             setFormOpen(false);
         },
@@ -243,7 +256,7 @@ const AdminCourses = () => {
         mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateCourse>[1] }) =>
             updateCourse(id, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['courses'] });
+            invalidateCourseQueries();
             toast({ title: 'Updated', description: 'Course has been updated.' });
             setFormOpen(false);
             setEditing(null);
@@ -257,7 +270,7 @@ const AdminCourses = () => {
     const deleteMutation = useMutation({
         mutationFn: deleteCourse,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['courses'] });
+            invalidateCourseQueries();
             toast({ title: 'Deleted', description: 'Course removed.' });
             setDeletingId(null);
         },

@@ -40,6 +40,11 @@ export interface CourseListResult {
   };
 }
 
+export interface CourseStatsResult {
+  totalCourses: number;
+  totalCredits: number;
+}
+
 export interface DashboardQuickStats {
   remainingClasses: number;
   pendingAssignments: number;
@@ -146,7 +151,7 @@ export class AcademicsService {
     const qb = this.courseRepo
       .createQueryBuilder('course')
       .leftJoinAndSelect('course.semester', 'semester')
-      .where('(course.classroomId = :classroomId OR semester.classroomId = :classroomId)', { classroomId });
+      .where('course.classroomId = :classroomId', { classroomId });
 
     if (semesterId) {
       qb.andWhere('course.semesterId = :semesterId', { semesterId });
@@ -172,6 +177,39 @@ export class AcademicsService {
         limit,
         lastPage: Math.ceil(total / limit),
       },
+    };
+  }
+
+  async getCourseStats(
+    classroomId: string,
+    query: CourseQueryDto,
+  ): Promise<CourseStatsResult> {
+    const { search, semesterId } = query;
+
+    const qb = this.courseRepo
+      .createQueryBuilder('course')
+      .leftJoin('course.semester', 'semester')
+      .where('course.classroomId = :classroomId', { classroomId });
+
+    if (semesterId) {
+      qb.andWhere('course.semesterId = :semesterId', { semesterId });
+    }
+
+    if (search) {
+      qb.andWhere(
+        '(course.name LIKE :search OR course.code LIKE :search OR course.instructor LIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const raw = await qb
+      .select('COUNT(course.id)', 'totalCourses')
+      .addSelect('COALESCE(SUM(course.credits), 0)', 'totalCredits')
+      .getRawOne<{ totalCourses: string; totalCredits: string }>();
+
+    return {
+      totalCourses: Number(raw?.totalCourses || 0),
+      totalCredits: Number(raw?.totalCredits || 0),
     };
   }
 

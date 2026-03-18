@@ -11,6 +11,7 @@ export function useRemoveMember() {
       removeMember(data.classroomId, data.memberId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["managedUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["managedUsersStats"] });
       toast({ title: "Success", description: "Member has been removed." });
     },
     onError: (error: any) => {

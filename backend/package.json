@@ -12,7 +12,14 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix"
+    "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix",
+    "migration:generate": "node scripts/typeorm.js migration:generate",
+    "migration:create": "node scripts/typeorm.js migration:create",
+    "migration:run": "node scripts/typeorm.js migration:run",
+    "migration:revert": "node scripts/typeorm.js migration:revert",
+    "migration:show": "node scripts/typeorm.js migration:show",
+    "generate": "npm run migration:generate --",
+    "migrate": "npm run migration:run"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",

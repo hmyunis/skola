@@ -16,6 +16,7 @@ export type { ManagedUser } from './users';
 
 export {
     fetchAllFlaggedContent,
+    fetchFlaggedContentStats,
     resolveResourceReport,
     dismissResourceReport,
     resolveLoungeReport,
@@ -23,7 +24,7 @@ export {
     resolveArenaReport,
     dismissArenaReport,
 } from './moderation';
-export type { FlaggedContent } from './moderation';
+export type { FlaggedContent, FlaggedContentStats } from './moderation';
 
 export {
     fetchAnnouncements,

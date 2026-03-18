@@ -202,6 +202,13 @@ export function CustomQuizzesList({ onPlay }: CustomQuizzesListProps) {
                       <span className="text-[10px] text-muted-foreground">·</span>
                       <span className="text-[10px] text-muted-foreground tabular-nums">{quiz.questionCount} Q</span>
                       <span className="text-[10px] text-muted-foreground">·</span>
+                      <span className={cn(
+                        "text-[10px] tabular-nums",
+                        quiz.canAttempt ? "text-muted-foreground" : "text-destructive"
+                      )}>
+                        {quiz.attemptsRemaining}/{quiz.maxAttempts} attempts left
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">·</span>
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground min-w-0">
                         {quiz.anonymous_id.startsWith("Anon#") ? (
                           <User className="h-2.5 w-2.5" />
@@ -220,9 +227,10 @@ export function CustomQuizzesList({ onPlay }: CustomQuizzesListProps) {
                       variant="outline"
                       className="h-8 text-xs flex-1 sm:flex-none"
                       onClick={() => playMutation.mutate(quiz.id)}
-                      disabled={playMutation.isPending}
+                      disabled={playMutation.isPending || !quiz.canAttempt}
                     >
-                      {playMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />} Play
+                      {playMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                      {quiz.canAttempt ? "Play" : "No Attempts Left"}
                     </Button>
                     {!quiz.createdByUser && (
                       <Tooltip>

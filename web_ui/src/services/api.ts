@@ -7,6 +7,32 @@ export type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, C
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
+async function parseResponseBody(response: Response): Promise<any> {
+  if (response.status === 204 || response.status === 205) {
+    return null;
+  }
+
+  const raw = await response.text();
+  if (!raw) {
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = useAuthStore.getState().accessToken;
   const activeClassroom = useClassroomStore.getState().activeClassroom;
@@ -25,17 +51,24 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    cache: options.cache ?? "no-store",
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "An error occurred" }));
-    const apiError = new Error(error.message || "An error occurred") as any;
+    const errorData = await parseResponseBody(response);
+    const message =
+      typeof errorData === "object" && errorData !== null && "message" in errorData
+        ? String((errorData as { message?: unknown }).message || "An error occurred")
+        : typeof errorData === "string" && errorData.trim()
+          ? errorData
+          : "An error occurred";
+    const apiError = new Error(message) as any;
     apiError.status = response.status;
-    apiError.data = error;
+    apiError.data = errorData;
     throw apiError;
   }
 
-  return response.json();
+  return parseResponseBody(response);
 }
 
 const WEEKDAY_BY_INDEX: Record<number, keyof WeeklySchedule> = {

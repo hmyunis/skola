@@ -7,6 +7,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 const DISMISSED_KEY = "skola-pwa-install-dismissed";
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MANUAL_PROMPT_DELAY_MS = 3000;
 
 function readDismissedUntil(): number {
   try {
@@ -23,6 +24,7 @@ export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [canInstall, setCanInstall] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isManualInstall, setIsManualInstall] = useState(false);
   const [dismissedUntil, setDismissedUntil] = useState<number>(() => readDismissedUntil());
 
   useEffect(() => {
@@ -36,17 +38,31 @@ export function usePWAInstall() {
       return;
     }
 
+    const isMobileBrowser = /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent);
+    let installPromptCaptured = false;
+    const maybeEnableManualInstall = () => {
+      if (installPromptCaptured || !isMobileBrowser) return;
+      if (Date.now() >= readDismissedUntil()) {
+        setIsManualInstall(true);
+        setCanInstall(true);
+      }
+    };
+
     const handler = (e: Event) => {
       e.preventDefault();
+      installPromptCaptured = true;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setIsManualInstall(false);
       setCanInstall(Date.now() >= readDismissedUntil());
     };
 
     window.addEventListener("beforeinstallprompt", handler);
+    const manualInstallTimer = window.setTimeout(maybeEnableManualInstall, MANUAL_PROMPT_DELAY_MS);
 
     const installedHandler = () => {
       setIsInstalled(true);
       setCanInstall(false);
+      setIsManualInstall(false);
       setDeferredPrompt(null);
       setDismissedUntil(0);
       try {
@@ -56,13 +72,22 @@ export function usePWAInstall() {
     window.addEventListener("appinstalled", installedHandler);
 
     return () => {
+      window.clearTimeout(manualInstallTimer);
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
     };
   }, []);
 
   useEffect(() => {
-    if (!deferredPrompt || isInstalled) return;
+    if (isInstalled) {
+      setCanInstall(false);
+      return;
+    }
+
+    if (!deferredPrompt && !isManualInstall) {
+      setCanInstall(false);
+      return;
+    }
 
     const now = Date.now();
     if (now >= dismissedUntil) {
@@ -76,7 +101,7 @@ export function usePWAInstall() {
     }, dismissedUntil - now);
 
     return () => window.clearTimeout(timeout);
-  }, [deferredPrompt, dismissedUntil, isInstalled]);
+  }, [deferredPrompt, dismissedUntil, isInstalled, isManualInstall]);
 
   const install = async () => {
     if (!deferredPrompt) return false;
@@ -103,6 +128,7 @@ export function usePWAInstall() {
 
   const dismiss = () => {
     setCanInstall(false);
+    setIsManualInstall(false);
     const dismissedAt = Date.now();
     setDismissedUntil(dismissedAt + DISMISS_DURATION_MS);
     try {
@@ -110,5 +136,5 @@ export function usePWAInstall() {
     } catch {}
   };
 
-  return { canInstall, isInstalled, install, dismiss };
+  return { canInstall, isInstalled, isManualInstall, install, dismiss };
 }

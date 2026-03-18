@@ -173,6 +173,14 @@ export class AcademicsController {
     return this.academicsService.getCourses(classroomId, query);
   }
 
+  @Get('courses/stats')
+  async getCourseStats(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: CourseQueryDto,
+  ) {
+    return this.academicsService.getCourseStats(classroomId, query);
+  }
+
   @Get('courses/:id')
   async getCourse(
     @CurrentClassroom() classroomId: string,

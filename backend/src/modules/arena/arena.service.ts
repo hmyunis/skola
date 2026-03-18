@@ -69,17 +69,31 @@ export class ArenaService {
     qb.skip((page - 1) * limit).take(limit);
 
     const [quizzes, total] = await qb.getManyAndCount();
+    const attemptsUsedMap = await this.getAttemptCountMap(
+      quizzes.map((quiz) => quiz.id),
+      userId,
+    );
 
     return {
-      data: quizzes.map((quiz) => ({
-        id: quiz.id,
-        title: quiz.title,
-        course: quiz.courseCode,
-        createdAt: quiz.createdAt,
-        anonymous_id: this.getAuthorDisplayName(quiz),
-        createdByUser: quiz.authorId === userId,
-        questionCount: Number((quiz as any).questionCount || 0),
-      })),
+      data: quizzes.map((quiz) => {
+        const maxAttempts = this.resolveMaxAttempts(quiz.maxAttempts);
+        const attemptsUsed = attemptsUsedMap.get(quiz.id) || 0;
+        const attemptsRemaining = Math.max(maxAttempts - attemptsUsed, 0);
+
+        return {
+          id: quiz.id,
+          title: quiz.title,
+          course: quiz.courseCode,
+          createdAt: quiz.createdAt,
+          anonymous_id: this.getAuthorDisplayName(quiz),
+          createdByUser: quiz.authorId === userId,
+          questionCount: Number((quiz as any).questionCount || 0),
+          maxAttempts,
+          attemptsUsed,
+          attemptsRemaining,
+          canAttempt: attemptsRemaining > 0,
+        };
+      }),
       meta: {
         total,
         page,
@@ -102,6 +116,12 @@ export class ArenaService {
 
     if (!quiz) throw new NotFoundException('Quiz not found');
 
+    const attemptsUsed = await this.attemptRepo.count({
+      where: { quizId: quiz.id, userId },
+    });
+    const maxAttempts = this.resolveMaxAttempts(quiz.maxAttempts);
+    const attemptsRemaining = Math.max(maxAttempts - attemptsUsed, 0);
+
     return {
       id: quiz.id,
       title: quiz.title,
@@ -109,6 +129,11 @@ export class ArenaService {
       createdAt: quiz.createdAt,
       anonymous_id: this.getAuthorDisplayName(quiz),
       createdByUser: quiz.authorId === userId,
+      questionCount: quiz.questions.length,
+      maxAttempts,
+      attemptsUsed,
+      attemptsRemaining,
+      canAttempt: attemptsRemaining > 0,
       questions: quiz.questions.map((question) => this.toQuestionResponse(question, quiz.courseCode)),
     };
   }
@@ -116,6 +141,7 @@ export class ArenaService {
   async createQuiz(classroomId: string, authorId: string, data: CreateQuizDto) {
     const title = data.title?.trim();
     const courseCode = data.course?.trim().toUpperCase();
+    const maxAttempts = this.resolveMaxAttempts(data.maxAttempts);
 
     if (!title) throw new BadRequestException('Quiz title is required');
     if (!courseCode) throw new BadRequestException('Course is required');
@@ -167,6 +193,7 @@ export class ArenaService {
       courseCode,
       courseId: course?.id || null,
       isAnonymous: data.isAnonymous ?? false,
+      maxAttempts,
       timeLimitMinutes: 0,
       isPublished: true,
       questions,
@@ -211,6 +238,14 @@ export class ArenaService {
 
     if (!quiz) throw new NotFoundException('Quiz not found');
 
+    const maxAttempts = this.resolveMaxAttempts(quiz.maxAttempts);
+    const attemptsUsed = await this.attemptRepo.count({ where: { quizId, userId } });
+    if (attemptsUsed >= maxAttempts) {
+      throw new BadRequestException(
+        `Attempt limit reached (${maxAttempts} max attempts for this quiz).`,
+      );
+    }
+
     const answers = data.answers || [];
     if (answers.length !== quiz.questions.length) {
       throw new BadRequestException('You must answer all questions');
@@ -240,6 +275,8 @@ export class ArenaService {
     });
     const savedAttempt = await this.attemptRepo.save(attempt);
     const stats = await this.getUserStats(classroomId, userId);
+    const nextAttemptsUsed = attemptsUsed + 1;
+    const attemptsRemaining = Math.max(maxAttempts - nextAttemptsUsed, 0);
 
     return {
       id: savedAttempt.id,
@@ -248,6 +285,9 @@ export class ArenaService {
       correctAnswers,
       won,
       xpEarned: score,
+      maxAttempts,
+      attemptsUsed: nextAttemptsUsed,
+      attemptsRemaining,
       stats,
     };
   }
@@ -512,6 +552,33 @@ export class ArenaService {
       },
     });
     return member?.role || null;
+  }
+
+  private resolveMaxAttempts(maxAttempts?: number | null): number {
+    const parsed = Number(maxAttempts);
+    if (!Number.isFinite(parsed)) return 2;
+    const normalized = Math.floor(parsed);
+    return normalized >= 1 ? normalized : 2;
+  }
+
+  private async getAttemptCountMap(quizIds: string[], userId: string): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (!quizIds.length) return map;
+
+    const rows = await this.attemptRepo
+      .createQueryBuilder('attempt')
+      .select('attempt.quizId', 'quizId')
+      .addSelect('COUNT(attempt.id)', 'total')
+      .where('attempt.userId = :userId', { userId })
+      .andWhere('attempt.quizId IN (:...quizIds)', { quizIds })
+      .groupBy('attempt.quizId')
+      .getRawMany<{ quizId: string; total: string }>();
+
+    for (const row of rows) {
+      map.set(row.quizId, Number(row.total || 0));
+    }
+
+    return map;
   }
 
   private async getCurrentStreakMap(classroomId: string, userIds: string[]) {

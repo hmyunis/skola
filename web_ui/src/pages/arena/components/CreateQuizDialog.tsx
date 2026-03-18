@@ -59,6 +59,7 @@ export function CreateQuizDialog({
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("");
   const [courseName, setCourseName] = useState("");
+  const [maxAttempts, setMaxAttempts] = useState(2);
   const anonEnabled = useFeatureEnabled("ft-anon-posting");
   const [isAnonymous, setIsAnonymous] = useState(anonEnabled);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
@@ -90,6 +91,7 @@ export function CreateQuizDialog({
     setTitle("");
     setCourse("");
     setCourseName("");
+    setMaxAttempts(2);
     setIsAnonymous(anonEnabled);
     setQuestions([emptyDraftQuestion()]);
     setCurrentQ(0);
@@ -125,6 +127,7 @@ export function CreateQuizDialog({
   const isValid = () => {
     if (!title.trim()) return false;
     if (!course.trim()) return false;
+    if (!Number.isFinite(maxAttempts) || maxAttempts < 1) return false;
     return questions.every(
       (question) =>
         question.question.trim() &&
@@ -143,6 +146,7 @@ export function CreateQuizDialog({
       title: title.trim(),
       course,
       isAnonymous,
+      maxAttempts: Math.floor(maxAttempts),
       questions: questions.map((question) => ({
         questionText: question.question.trim(),
         options: question.options.map((option) => option.trim()),
@@ -204,6 +208,19 @@ export function CreateQuizDialog({
                 className="w-full h-9 text-xs"
                 selectedLabel={getArenaCourseLabel(course, courseName)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Max Attempts Per User</label>
+              <Input
+                type="number"
+                min={1}
+                value={maxAttempts}
+                onChange={(event) => setMaxAttempts(Number(event.target.value) || 1)}
+                className="h-9 text-sm"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Default is 2 (first attempt + one retry).
+              </p>
             </div>
             {anonEnabled && (
               <div className="space-y-1.5">

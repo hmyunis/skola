@@ -322,6 +322,41 @@ export class ClassroomsService {
     });
   }
 
+  async getClassroomMemberStats(classroomId: string) {
+    const now = new Date();
+    const raw = await this.membersRepository
+      .createQueryBuilder('member')
+      .innerJoin('member.user', 'user')
+      .where('member.classroomId = :classroomId', { classroomId })
+      .select('COUNT(member.id)', 'totalMembers')
+      .addSelect(
+        'SUM(CASE WHEN user.isBanned = false AND (user.suspendedUntil IS NULL OR user.suspendedUntil <= :now) THEN 1 ELSE 0 END)',
+        'activeMembers',
+      )
+      .addSelect(
+        'SUM(CASE WHEN member.role = :adminRole THEN 1 ELSE 0 END)',
+        'adminMembers',
+      )
+      .addSelect(
+        'SUM(CASE WHEN user.isBanned = true THEN 1 ELSE 0 END)',
+        'bannedMembers',
+      )
+      .setParameters({ now, adminRole: UserRole.ADMIN })
+      .getRawOne<{
+        totalMembers: string;
+        activeMembers: string;
+        adminMembers: string;
+        bannedMembers: string;
+      }>();
+
+    return {
+      totalMembers: Number(raw?.totalMembers || 0),
+      activeMembers: Number(raw?.activeMembers || 0),
+      adminMembers: Number(raw?.adminMembers || 0),
+      bannedMembers: Number(raw?.bannedMembers || 0),
+    };
+  }
+
   async updateMemberStatus(memberId: string, dto: { status: 'active' | 'suspended' | 'banned'; suspendedUntil?: Date }): Promise<ClassroomMember> {
     const member = await this.membersRepository.findOne({
       where: { id: memberId },

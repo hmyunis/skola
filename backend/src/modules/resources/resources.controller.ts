@@ -46,6 +46,14 @@ export class ResourcesController {
     return this.resourcesService.findAllForClassroom(classroomId, user.id, query);
   }
 
+  @Get('stats')
+  async getResourceStats(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: ResourceQueryDto,
+  ) {
+    return this.resourcesService.getStatsForClassroom(classroomId, query);
+  }
+
   @Post()
   async createResource(
     @CurrentClassroom() classroomId: string,

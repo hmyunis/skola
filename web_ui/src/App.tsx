@@ -36,6 +36,7 @@ import { FeatureGuard } from "@/components/FeatureGuard";
 
 import { useEffect } from "react";
 import { useThemeStore } from "@/stores/themeStore";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 const App = () => {
   useEffect(() => {
@@ -112,6 +113,7 @@ const App = () => {
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <PWAInstallPrompt />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

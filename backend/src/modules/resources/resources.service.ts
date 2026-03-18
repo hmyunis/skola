@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, SelectQueryBuilder } from 'typeorm';
 import { Resource } from './entities/resource.entity';
 import { ResourceVote, VoteType } from './entities/resource-vote.entity';
 import { ResourceReport, ResourceReportStatus } from './entities/resource-report.entity';
@@ -39,16 +39,10 @@ export class ResourcesService {
     };
   }
 
-  async findAllForClassroom(classroomId: string, userId: string, queryDto: ResourceQueryDto) {
-    const page = queryDto.page || 1;
-    const limit = queryDto.limit || 20;
-
-    const query = this.resourceRepo
-      .createQueryBuilder('resource')
-      .leftJoinAndSelect('resource.uploader', 'uploader')
-      .leftJoinAndSelect('resource.course', 'course')
-      .where('resource.classroomId = :classroomId', { classroomId });
-
+  private applyResourceFilters(
+    query: SelectQueryBuilder<Resource>,
+    queryDto: ResourceQueryDto,
+  ) {
     if (queryDto.courseId) {
       query.andWhere('resource.courseId = :courseId', { courseId: queryDto.courseId });
     }
@@ -64,15 +58,21 @@ export class ResourcesService {
         { search },
       );
     }
+  }
+
+  async findAllForClassroom(classroomId: string, userId: string, queryDto: ResourceQueryDto) {
+    const page = queryDto.page || 1;
+    const limit = queryDto.limit || 20;
+
+    const query = this.resourceRepo
+      .createQueryBuilder('resource')
+      .leftJoinAndSelect('resource.uploader', 'uploader')
+      .leftJoinAndSelect('resource.course', 'course')
+      .where('resource.classroomId = :classroomId', { classroomId });
+
+    this.applyResourceFilters(query, queryDto);
 
     const total = await query.clone().getCount();
-    const statsRaw = await query
-      .clone()
-      .select('COUNT(resource.id)', 'totalResources')
-      .addSelect('COALESCE(SUM(resource.upvotes), 0)', 'totalUpvotes')
-      .addSelect('COALESCE(SUM(resource.downvotes), 0)', 'totalDownvotes')
-      .addSelect('COUNT(DISTINCT resource.type)', 'totalTypes')
-      .getRawOne();
 
     query
       .orderBy('resource.upvotes', 'DESC')
@@ -101,12 +101,29 @@ export class ResourcesService {
         limit,
         lastPage: Math.ceil(total / limit) || 1,
       },
-      stats: {
-        totalResources: Number(statsRaw?.totalResources || 0),
-        totalUpvotes: Number(statsRaw?.totalUpvotes || 0),
-        totalDownvotes: Number(statsRaw?.totalDownvotes || 0),
-        totalTypes: Number(statsRaw?.totalTypes || 0),
-      },
+    };
+  }
+
+  async getStatsForClassroom(classroomId: string, queryDto: ResourceQueryDto) {
+    const query = this.resourceRepo
+      .createQueryBuilder('resource')
+      .leftJoin('resource.course', 'course')
+      .where('resource.classroomId = :classroomId', { classroomId });
+
+    this.applyResourceFilters(query, queryDto);
+
+    const statsRaw = await query
+      .select('COUNT(resource.id)', 'totalResources')
+      .addSelect('COALESCE(SUM(resource.upvotes), 0)', 'totalUpvotes')
+      .addSelect('COALESCE(SUM(resource.downvotes), 0)', 'totalDownvotes')
+      .addSelect('COUNT(DISTINCT resource.type)', 'totalTypes')
+      .getRawOne();
+
+    return {
+      totalResources: Number(statsRaw?.totalResources || 0),
+      totalUpvotes: Number(statsRaw?.totalUpvotes || 0),
+      totalDownvotes: Number(statsRaw?.totalDownvotes || 0),
+      totalTypes: Number(statsRaw?.totalTypes || 0),
     };
   }
 

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get, Param, Put, Delete } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Param, Put, Delete, Query } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
@@ -8,6 +8,7 @@ import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { AdminService, OwnerExportDatasetId } from './admin.service';
 import { AnnouncementTargetAudience, PriorityLevel } from './entities/announcement.entity';
+import { ModerationQueryDto } from './dto/moderation-query.dto';
 
 @Controller('admin')
 export class AdminController {
@@ -133,6 +134,26 @@ export class AdminController {
   @RequireClassroomRole(UserRole.OWNER)
   async getOwnerAnalytics(@CurrentClassroom() classroomId: string) {
     return this.adminService.getOwnerAnalytics(classroomId);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Get('moderation/reports')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async getModerationReports(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: ModerationQueryDto,
+  ) {
+    return this.adminService.getModerationReports(classroomId, query);
+  }
+
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  @Get('moderation/stats')
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async getModerationStats(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: ModerationQueryDto,
+  ) {
+    return this.adminService.getModerationStats(classroomId, query);
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)

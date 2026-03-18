@@ -80,6 +80,11 @@ export class ClassroomsController {
     return this.classroomsService.getClassroomMembers(id);
   }
 
+  @Get(':id/members/stats')
+  async getClassroomMemberStats(@Param('id') id: string) {
+    return this.classroomsService.getClassroomMemberStats(id);
+  }
+
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('members/:memberId/status')
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
