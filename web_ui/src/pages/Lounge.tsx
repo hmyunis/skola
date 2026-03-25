@@ -1,4 +1,13 @@
-import { useState, useMemo, useEffect, useRef, useCallback, type ChangeEventHandler, type ReactNode } from 'react';
+import {
+    useState,
+    useMemo,
+    useEffect,
+    useRef,
+    useCallback,
+    type ChangeEventHandler,
+    type ClipboardEventHandler,
+    type ReactNode,
+} from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import {
     fetchLoungeFeed,
@@ -1173,17 +1182,13 @@ function ComposeBox({
         if (imageInputRef.current) imageInputRef.current.value = '';
     };
 
-    const handleImageSelection: ChangeEventHandler<HTMLInputElement> = (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
+    const readImageFile = (file: File, fallbackName: string) => {
         if (!file.type.startsWith('image/')) {
             toast({
                 title: 'Invalid File',
                 description: 'Please choose an image file.',
                 variant: 'destructive',
             });
-            event.target.value = '';
             return;
         }
 
@@ -1194,7 +1199,6 @@ function ComposeBox({
                 description: 'Max image size is 8MB.',
                 variant: 'destructive',
             });
-            event.target.value = '';
             return;
         }
 
@@ -1211,7 +1215,7 @@ function ComposeBox({
             }
 
             setImageDataUrl(result);
-            setImageName(file.name);
+            setImageName(file.name?.trim() || fallbackName);
             setExpanded(true);
         };
         reader.onerror = () => {
@@ -1222,6 +1226,40 @@ function ComposeBox({
             });
         };
         reader.readAsDataURL(file);
+    };
+
+    const getImageExtension = (mimeType: string) => {
+        if (mimeType === 'image/jpeg') return 'jpg';
+        if (mimeType === 'image/png') return 'png';
+        if (mimeType === 'image/webp') return 'webp';
+        if (mimeType === 'image/gif') return 'gif';
+        return 'png';
+    };
+
+    const handleImageSelection: ChangeEventHandler<HTMLInputElement> = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        readImageFile(file, `uploaded-image.${getImageExtension(file.type)}`);
+        event.target.value = '';
+    };
+
+    const handlePasteImage: ClipboardEventHandler<HTMLTextAreaElement> = (event) => {
+        const clipboardItems = Array.from(event.clipboardData?.items ?? []);
+        const imageItem = clipboardItems.find((item) => item.type.startsWith('image/'));
+        if (!imageItem) return;
+
+        const file = imageItem.getAsFile();
+        if (!file) {
+            toast({
+                title: 'Image Error',
+                description: 'Could not read image from clipboard.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        event.preventDefault();
+        readImageFile(file, `pasted-image.${getImageExtension(file.type)}`);
     };
 
     const removeSelectedImage = () => {
@@ -1271,6 +1309,7 @@ function ComposeBox({
                             updateMentionContext(nextValue, e.target.selectionStart);
                         }}
                         onFocus={() => setExpanded(true)}
+                        onPaste={handlePasteImage}
                         onClick={(e) => {
                             updateMentionContext(e.currentTarget.value, e.currentTarget.selectionStart);
                         }}
@@ -1412,64 +1451,72 @@ function ComposeBox({
                 )}
 
                 {expanded && (
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Select value={tag} onValueChange={(v) => setTag(v as PostTag)}>
-                            <SelectTrigger className="w-[130px] h-8 text-xs">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {POST_TAGS.map((t) => (
-                                    <SelectItem key={t.value} value={t.value}>
-                                        {t.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="space-y-2">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                            <Select value={tag} onValueChange={(v) => setTag(v as PostTag)}>
+                                <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {POST_TAGS.map((t) => (
+                                        <SelectItem key={t.value} value={t.value}>
+                                            {t.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                        <CourseSelectDropdown
-                            value={course}
-                            onChange={setCourse}
-                            placeholder="Course (optional)"
-                            className="w-[130px]"
-                            semesterId={activeSemester?.id}
-                        />
+                            <CourseSelectDropdown
+                                value={course}
+                                onChange={setCourse}
+                                placeholder="Course (optional)"
+                                className="w-full sm:w-[130px]"
+                                semesterId={activeSemester?.id}
+                            />
 
-                        <div className="flex-1" />
+                            <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs flex-1 sm:flex-none"
+                                    onClick={() => imageInputRef.current?.click()}
+                                >
+                                    <ImagePlus className="h-3 w-3" />
+                                    {imageDataUrl ? 'Replace Image' : 'Attach Image'}
+                                </Button>
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                    or paste (Ctrl+V)
+                                </span>
+                            </div>
+                        </div>
 
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs"
-                            onClick={() => imageInputRef.current?.click()}
-                        >
-                            <ImagePlus className="h-3 w-3" />
-                            {imageDataUrl ? 'Replace Image' : 'Attach Image'}
-                        </Button>
+                        <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end">
+                            <span
+                                className={cn(
+                                    'text-[10px] tabular-nums ml-auto sm:ml-0',
+                                    charCount > maxChars * 0.9
+                                        ? 'text-destructive'
+                                        : 'text-muted-foreground',
+                                )}
+                            >
+                                {charCount}/{maxChars}
+                            </span>
 
-                        <span
-                            className={cn(
-                                'text-[10px] tabular-nums',
-                                charCount > maxChars * 0.9
-                                    ? 'text-destructive'
-                                    : 'text-muted-foreground',
-                            )}
-                        >
-                            {charCount}/{maxChars}
-                        </span>
-
-                        <Button
-                            size="sm"
-                            onClick={handleSubmit}
-                            disabled={(!content.trim() && !imageDataUrl) || isPending}
-                        >
-                            {isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                                <Send className="h-3 w-3" />
-                            )}
-                            Post
-                        </Button>
+                            <Button
+                                size="sm"
+                                className="flex-1 sm:flex-none"
+                                onClick={handleSubmit}
+                                disabled={(!content.trim() && !imageDataUrl) || isPending}
+                            >
+                                {isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                    <Send className="h-3 w-3" />
+                                )}
+                                Post
+                            </Button>
+                        </div>
                     </div>
                 )}
             </CardContent>
