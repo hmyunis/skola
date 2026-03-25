@@ -22,7 +22,7 @@ export class Quiz {
   @JoinColumn({ name: 'courseId' })
   course: Course;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: true })
   courseId: string | null;
 
   @Column()

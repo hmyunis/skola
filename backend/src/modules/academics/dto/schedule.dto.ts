@@ -28,8 +28,8 @@ export class CreateScheduleItemDto {
   @IsMilitaryTime()
   endTime: string;
 
-  @IsIn(['lecture', 'lab', 'exam'])
-  type: 'lecture' | 'lab' | 'exam';
+  @IsIn(['lecture', 'lab', 'exam', 'other'])
+  type: 'lecture' | 'lab' | 'exam' | 'other';
 
   @IsOptional()
   @IsString()
@@ -66,8 +66,8 @@ export class UpdateScheduleItemDto {
   endTime?: string;
 
   @IsOptional()
-  @IsIn(['lecture', 'lab', 'exam'])
-  type?: 'lecture' | 'lab' | 'exam';
+  @IsIn(['lecture', 'lab', 'exam', 'other'])
+  type?: 'lecture' | 'lab' | 'exam' | 'other';
 
   @IsOptional()
   @IsString()

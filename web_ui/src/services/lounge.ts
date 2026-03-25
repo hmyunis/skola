@@ -5,10 +5,20 @@ import type {
   LoungePost,
   LoungeReply,
   LoungeFeedResponse,
+  MentionableUser,
+  MentionableUserSearchResponse,
 } from "@/types/lounge";
 
 // Re-export types for convenience
-export type { PostTag, AcademicReaction, LoungePost, LoungeReply, LoungeFeedResponse } from "@/types/lounge";
+export type {
+  PostTag,
+  AcademicReaction,
+  LoungePost,
+  LoungeReply,
+  LoungeFeedResponse,
+  MentionableUser,
+  MentionableUserSearchResponse,
+} from "@/types/lounge";
 
 export const POST_TAGS: { value: PostTag; label: string; color: string }[] = [
   { value: "question", label: "Question", color: "bg-primary/10 text-primary border-primary/30" },
@@ -51,10 +61,12 @@ export async function fetchLoungeFeed(params?: {
 }
 
 export async function createPost(data: {
-  content: string;
+  content?: string;
   tags?: string[];
   course?: string;
   isAnonymous?: boolean;
+  imageDataUrl?: string;
+  imageName?: string;
 }): Promise<LoungePost> {
   return apiFetch("/lounge", {
     method: "POST",
@@ -102,6 +114,19 @@ export async function addReply(
 
 export async function deleteReply(replyId: string): Promise<{ deleted: boolean }> {
   return apiFetch(`/lounge/replies/${replyId}`, { method: "DELETE" });
+}
+
+export async function searchMentionableUsers(params?: {
+  q?: string;
+  page?: number;
+  limit?: number;
+}): Promise<MentionableUserSearchResponse> {
+  const query = new URLSearchParams();
+  if (params?.q) query.set("q", params.q);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+  const qs = query.toString();
+  return apiFetch(`/lounge/mentions/users${qs ? `?${qs}` : ""}`);
 }
 
 export async function reportLoungeContent(data: {

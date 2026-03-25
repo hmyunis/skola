@@ -14,14 +14,14 @@ export interface Semester {
 export interface Assessment {
   id: string;
   title: string;
-  type: "exam" | "quiz" | "assignment" | "project";
+  type: "exam" | "quiz" | "assignment" | "project" | "other";
   courseCode: string;
   dueDate: string;
   description: string;
   maxScore: number;
   weight: number;
   status?: "pending" | "submitted" | "graded";
-  source?: "classroom" | "direct" | "notice";
+  source?: "classroom" | "direct" | "notice" | "other";
   semesterId: string;
   createdAt: string;
   updatedAt?: string;

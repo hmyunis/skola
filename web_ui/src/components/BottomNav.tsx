@@ -39,7 +39,7 @@ const moreItems = [
   { title: "Resources", url: "/resources", icon: FolderOpen, featureId: "ft-resources" },
   { title: "Announcements", url: "/announcements", icon: Megaphone, featureId: "ft-announcements" },
   { title: "Members", url: "/members", icon: Users, featureId: "ft-members" },
-  { title: "Appearance", url: "/settings", icon: Settings, featureId: "ft-appearance" },
+  { title: "Settings", url: "/settings", icon: Settings, featureId: "ft-appearance" },
 ];
 
 const adminItems = [

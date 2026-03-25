@@ -14,7 +14,7 @@ export const DEFAULT_FEATURES: FeatureToggle[] = [
   { id: "ft-arena", name: "Arena", description: "Gamified quiz battles, XP levels and class leaderboards", enabled: true, category: "gamification" },
   { id: "ft-members", name: "Members", description: "Directory of all classroom students and administration", enabled: true, category: "social" },
   { id: "ft-announcements", name: "Announcements", description: "Official broadcasts and important class-wide updates", enabled: true, category: "core" },
-  { id: "ft-appearance", name: "Appearance", description: "Custom UI themes, colors and dashboard layout settings", enabled: true, category: "core" },
+  { id: "ft-appearance", name: "Settings", description: "User appearance, notification preferences, and personal configuration", enabled: true, category: "core" },
   { id: "ft-anon-posting", name: "Anonymous Posting", description: "Enable the ability for users to post anonymously in Lounge", enabled: true, category: "social" },
   { id: "ft-custom-quizzes", name: "Community Quizzes", description: "Allow students to create and share custom quizzes in Arena", enabled: true, category: "gamification" },
   { id: "ft-panic", name: "Surprise Assessment", description: "The panic button easter egg for experimental testing", enabled: true, category: "experimental" },

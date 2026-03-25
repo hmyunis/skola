@@ -5,6 +5,7 @@ export enum ScheduleType {
   LECTURE = 'lecture',
   LAB = 'lab',
   EXAM = 'exam',
+  OTHER = 'other',
 }
 
 @Entity('schedule_items')

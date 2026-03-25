@@ -35,9 +35,16 @@ function normalizePattern(pattern: unknown): string {
 }
 
 function normalizeTheme(theme: BatchTheme): BatchTheme {
+  const rawIntensity =
+    typeof theme?.patternIntensity === "number"
+      ? theme.patternIntensity
+      : 0.25;
+  const patternIntensity = Math.max(0, Math.min(1, rawIntensity));
+
   return {
     ...theme,
     pattern: normalizePattern(theme.pattern),
+    patternIntensity,
   };
 }
 

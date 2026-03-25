@@ -9,6 +9,7 @@ export interface BatchTheme {
   sidebarFg: string;
   sidebarAccent: string;
   pattern: string;
+  patternIntensity?: number; // 0..1
   isCustom?: boolean;
 }
 
@@ -73,13 +74,13 @@ export function generateSurfaceColors(hue: number, rawSat: number, isDark: boole
 
 // Reusable pattern templates
 export const patternTemplates = [
-  { id: "zigzag", name: "Zigzag", build: (c: string) => svgUri(`<svg width="60" height="30" xmlns="http://www.w3.org/2000/svg"><path d="M0 15h10l3-10 6 20 6-20 6 20 6-20 3 10h10" fill="none" stroke="${c}" stroke-width="0.8" opacity="0.12"/></svg>`) },
-  { id: "cross", name: "Cross", build: (c: string) => svgUri(`<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><path d="M16 8h8v8h8v8h-8v8h-8v-8H8v-8h8z" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.1"/></svg>`) },
-  { id: "brick", name: "Brick", build: (c: string) => svgUri(`<svg width="50" height="25" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="49" height="12" fill="none" stroke="${c}" stroke-width="0.4" opacity="0.1"/><line x1="25" y1="12.5" x2="25" y2="0" stroke="${c}" stroke-width="0.4" opacity="0.1"/><rect x="0.5" y="12.5" width="49" height="12" fill="none" stroke="${c}" stroke-width="0.4" opacity="0.1"/></svg>`) },
-  { id: "gear", name: "Gear", build: (c: string) => svgUri(`<svg width="50" height="50" xmlns="http://www.w3.org/2000/svg"><circle cx="25" cy="25" r="18" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.12"/><circle cx="25" cy="25" r="6" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.12"/></svg>`) },
-  { id: "dots", name: "Dots", build: (c: string) => svgUri(`<svg width="30" height="30" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="1.8" fill="${c}" opacity="0.12"/><circle cx="22" cy="22" r="1.8" fill="${c}" opacity="0.12"/><circle cx="22" cy="7" r="1" fill="${c}" opacity="0.06"/></svg>`) },
-  { id: "diamond", name: "Diamond", build: (c: string) => svgUri(`<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><path d="M20 5l15 15-15 15L5 20z" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.1"/></svg>`) },
-  { id: "grid", name: "Grid", build: (c: string) => svgUri(`<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" fill="none" stroke="${c}" stroke-width="0.4" opacity="0.1"/><line x1="20" y1="0" x2="20" y2="40" stroke="${c}" stroke-width="0.25" opacity="0.07"/><line x1="0" y1="20" x2="40" y2="20" stroke="${c}" stroke-width="0.25" opacity="0.07"/></svg>`) },
+  { id: "zigzag", name: "Zigzag", build: (c: string) => svgUri(`<svg width="60" height="30" xmlns="http://www.w3.org/2000/svg"><path d="M0 15h10l3-10 6 20 6-20 6 20 6-20 3 10h10" fill="none" stroke="${c}" stroke-width="0.8" opacity="0.34"/></svg>`) },
+  { id: "cross", name: "Cross", build: (c: string) => svgUri(`<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><path d="M16 8h8v8h8v8h-8v8h-8v-8H8v-8h8z" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.3"/></svg>`) },
+  { id: "brick", name: "Brick", build: (c: string) => svgUri(`<svg width="50" height="25" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="49" height="12" fill="none" stroke="${c}" stroke-width="0.4" opacity="0.3"/><line x1="25" y1="12.5" x2="25" y2="0" stroke="${c}" stroke-width="0.4" opacity="0.3"/><rect x="0.5" y="12.5" width="49" height="12" fill="none" stroke="${c}" stroke-width="0.4" opacity="0.3"/></svg>`) },
+  { id: "gear", name: "Gear", build: (c: string) => svgUri(`<svg width="50" height="50" xmlns="http://www.w3.org/2000/svg"><circle cx="25" cy="25" r="18" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.34"/><circle cx="25" cy="25" r="6" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.34"/></svg>`) },
+  { id: "dots", name: "Dots", build: (c: string) => svgUri(`<svg width="30" height="30" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="1.8" fill="${c}" opacity="0.34"/><circle cx="22" cy="22" r="1.8" fill="${c}" opacity="0.34"/><circle cx="22" cy="7" r="1" fill="${c}" opacity="0.22"/></svg>`) },
+  { id: "diamond", name: "Diamond", build: (c: string) => svgUri(`<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><path d="M20 5l15 15-15 15L5 20z" fill="none" stroke="${c}" stroke-width="0.5" opacity="0.3"/></svg>`) },
+  { id: "grid", name: "Grid", build: (c: string) => svgUri(`<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" fill="none" stroke="${c}" stroke-width="0.4" opacity="0.3"/><line x1="20" y1="0" x2="20" y2="40" stroke="${c}" stroke-width="0.25" opacity="0.22"/><line x1="0" y1="20" x2="40" y2="20" stroke="${c}" stroke-width="0.25" opacity="0.22"/></svg>`) },
 ];
 
 export const primaryPresets = [

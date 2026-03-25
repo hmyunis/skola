@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
@@ -9,9 +10,27 @@ import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useSyncClassroom } from "@/hooks/use-classroom";
-import { Sun, Moon, LogOut, GraduationCap, CalendarDays, Ban, Clock, Send } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  LogOut,
+  GraduationCap,
+  CalendarDays,
+  Send,
+  Bell,
+  Check,
+  X,
+} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { Semester } from "@/types/admin";
+import {
+  dismissInAppNotification,
+  fetchInAppNotifications,
+  markInAppNotificationRead,
+  type InAppNotificationItem,
+} from "@/services/notifications";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +43,17 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const roleLabels = { owner: "Owner", admin: "Admin", student: "Student" };
+
+function formatNotificationTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 function UserMenu({ activeSemester }: { activeSemester: Semester | null }) {
   const navigate = useNavigate();
@@ -152,9 +182,47 @@ export function AppLayout() {
   const { batchTheme, colorMode, toggleColorMode } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const activeSemester = useSemesterStore((s) => s.activeSemester);
   const activeClassroom = useClassroomStore((s) => s.activeClassroom);
   useSyncClassroom(); // This will keep classroom data (features, etc.) in sync
+  const { data: inAppNotificationData } = useQuery({
+    queryKey: ["inAppNotificationsUnread"],
+    queryFn: () => fetchInAppNotifications(5),
+    enabled: !!user,
+    refetchInterval: 30_000,
+  });
+  const markNotificationReadMutation = useMutation({
+    mutationFn: markInAppNotificationRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread"] });
+      queryClient.invalidateQueries({ queryKey: ["inAppNotifications"] });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not mark notification as read.";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    },
+  });
+  const dismissNotificationMutation = useMutation({
+    mutationFn: dismissInAppNotification,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread"] });
+      queryClient.invalidateQueries({ queryKey: ["inAppNotifications"] });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not dismiss notification.";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    },
+  });
+  const notificationItems = inAppNotificationData?.items || [];
+  const unreadCount = inAppNotificationData?.unreadCount || 0;
 
   // Authentication protection
   useEffect(() => {
@@ -216,6 +284,98 @@ export function AppLayout() {
               )}
               <CommandPalette />
               <div className="flex-1" />
+
+              <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className="relative h-8 w-8 flex items-center justify-center hover:bg-white/10 transition-colors"
+                    aria-label="Open notifications"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-[9px] leading-4 text-destructive-foreground font-bold">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-[min(92vw,24rem)] p-0 border border-border bg-card text-card-foreground"
+                >
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
+                    <p className="text-[11px] font-bold uppercase tracking-wider">
+                      Notifications ({unreadCount} unread)
+                    </p>
+                    <button
+                      onClick={() => {
+                        setNotificationOpen(false);
+                        navigate("/settings?tab=notifications");
+                      }}
+                      className="text-[10px] font-semibold uppercase tracking-wider text-primary hover:opacity-80"
+                    >
+                      View all
+                    </button>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto">
+                    {!notificationItems.length && (
+                      <p className="px-3 py-4 text-xs text-muted-foreground">
+                        No notifications yet.
+                      </p>
+                    )}
+
+                    {notificationItems.map((item: InAppNotificationItem) => (
+                      <div
+                        key={item.id}
+                        className="px-3 py-2 border-b border-border/70 last:border-b-0"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold leading-snug">{item.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                              {item.body}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {formatNotificationTime(item.createdAt)}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1 pt-0.5">
+                            {!item.isRead && (
+                              <button
+                                onClick={() => markNotificationReadMutation.mutate(item.id)}
+                                disabled={
+                                  markNotificationReadMutation.isPending ||
+                                  dismissNotificationMutation.isPending
+                                }
+                                className="h-6 w-6 inline-flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Mark as read"
+                                aria-label="Mark notification as read"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => dismissNotificationMutation.mutate(item.id)}
+                              disabled={
+                                markNotificationReadMutation.isPending ||
+                                dismissNotificationMutation.isPending
+                              }
+                              className="h-6 w-6 inline-flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Dismiss"
+                              aria-label="Dismiss notification"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               <Tooltip>
                 <TooltipTrigger asChild>

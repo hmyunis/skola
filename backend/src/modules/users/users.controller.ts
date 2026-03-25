@@ -6,6 +6,7 @@ import { User, UserRole } from './entities/user.entity';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
 import { CurrentClassroom } from '../../core/decorators/current-classroom.decorator';
+import { UpdateImageUploadSettingsDto } from './dto/update-image-upload-settings.dto';
 
 @Controller('users')
 export class UsersController {
@@ -21,6 +22,21 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   updateThemeSettings(@CurrentUser() user: User, @Body() themeSettings: any) {
     return this.usersService.updateThemeSettings(user.id, themeSettings);
+  }
+
+  @Get('me/image-upload-settings')
+  @UseGuards(JwtAuthGuard)
+  getImageUploadSettings(@CurrentUser() user: User) {
+    return this.usersService.getImageUploadSettings(user.id);
+  }
+
+  @Put('me/image-upload-settings')
+  @UseGuards(JwtAuthGuard)
+  updateImageUploadSettings(
+    @CurrentUser() user: User,
+    @Body() dto: UpdateImageUploadSettingsDto,
+  ) {
+    return this.usersService.updateImageUploadSettings(user.id, dto);
   }
 
   @Delete('me')

@@ -18,6 +18,7 @@ export enum AssessmentType {
   QUIZ = 'quiz',
   ASSIGNMENT = 'assignment',
   PROJECT = 'project',
+  OTHER = 'other',
 }
 
 export enum AssessmentStatus {
@@ -30,6 +31,7 @@ export enum AssessmentSource {
   CLASSROOM = 'classroom',
   DIRECT = 'direct',
   NOTICE = 'notice',
+  OTHER = 'other',
 }
 
 @Entity('assessments')

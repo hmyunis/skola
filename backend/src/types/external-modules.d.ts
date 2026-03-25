@@ -48,3 +48,21 @@ declare module 'multer' {
 
   export function diskStorage(options: DiskStorageOptions): StorageEngine;
 }
+
+declare module 'web-push' {
+  export function setVapidDetails(
+    subject: string,
+    publicKey: string,
+    privateKey: string,
+  ): void;
+
+  export function sendNotification(
+    subscription: {
+      endpoint: string;
+      expirationTime: number | null;
+      keys: { p256dh: string; auth: string };
+    },
+    payload?: string,
+    options?: { TTL?: number },
+  ): Promise<void>;
+}

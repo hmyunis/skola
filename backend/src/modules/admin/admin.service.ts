@@ -22,6 +22,7 @@ import {
 } from '../lounge/entities/lounge-report.entity';
 import { QuizReport, QuizReportStatus } from '../arena/entities/quiz-report.entity';
 import { ModerationQueryDto } from './dto/moderation-query.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 interface UpsertAnnouncementDto {
   title: string;
@@ -139,6 +140,7 @@ export class AdminService {
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private toAudienceFilter(role: UserRole): AnnouncementTargetAudience[] {
@@ -221,6 +223,19 @@ export class AdminService {
       await this.sendAnnouncementToTelegram(classroomId, withAuthor);
     }
 
+    try {
+      await this.notificationsService.dispatchAnnouncementNotifications({
+        classroomId,
+        announcement: withAuthor,
+        actorUserId: authorId,
+      });
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to dispatch notification channels for announcement ${withAuthor.id}`,
+        error?.message || String(error),
+      );
+    }
+
     return this.toAnnouncementResponse(withAuthor);
   }
 
@@ -258,6 +273,19 @@ export class AdminService {
 
     if (!withAuthor) {
       throw new NotFoundException('Announcement not found');
+    }
+
+    try {
+      await this.notificationsService.dispatchAnnouncementNotifications({
+        classroomId,
+        announcement: withAuthor,
+        actorUserId: authorId,
+      });
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to dispatch surprise assessment notifications for announcement ${withAuthor.id}`,
+        error?.message || String(error),
+      );
     }
 
     return this.toAnnouncementResponse(withAuthor);

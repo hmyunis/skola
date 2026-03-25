@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, type ChangeEventHandler, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import {
     fetchLoungeFeed,
@@ -9,11 +9,13 @@ import {
     reactToPost,
     addReply,
     deleteReply as apiDeleteReply,
+    searchMentionableUsers,
     POST_TAGS,
     REACTIONS,
     type LoungePost,
     type LoungeReply,
     type LoungeFeedResponse,
+    type MentionableUser,
     type PostTag,
     type AcademicReaction,
 } from '@/services/lounge';
@@ -61,6 +63,9 @@ import {
     Shield,
     Flag,
     Loader2,
+    ImagePlus,
+    ImageOff,
+    X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -69,9 +74,22 @@ import { Switch } from '@/components/ui/switch';
 import { ReportDialog } from '@/components/ReportDialog';
 
 // ─── Time ago helper ───
+const EAST_AFRICA_TIME_ZONE = 'Africa/Addis_Ababa';
+
+function parseServerTimestamp(timestamp: string): Date {
+    const value = String(timestamp || '').trim();
+    if (!value) return new Date(Number.NaN);
+
+    // Treat timezone-less ISO-like strings as UTC to avoid client locale drift.
+    const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+    const normalized = hasTimezone ? value : `${value}Z`;
+    return new Date(normalized);
+}
+
 function timeAgo(timestamp: string): string {
     const now = new Date();
-    const then = new Date(timestamp);
+    const then = parseServerTimestamp(timestamp);
+    if (Number.isNaN(then.getTime())) return '';
     const diffMs = now.getTime() - then.getTime();
     const mins = Math.floor(diffMs / 60000);
     if (mins < 1) return 'just now';
@@ -83,7 +101,8 @@ function timeAgo(timestamp: string): string {
 }
 
 function formatExactTime(timestamp: string): string {
-    const d = new Date(timestamp);
+    const d = parseServerTimestamp(timestamp);
+    if (Number.isNaN(d.getTime())) return '';
     return d.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -91,7 +110,53 @@ function formatExactTime(timestamp: string): string {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
+        timeZone: EAST_AFRICA_TIME_ZONE,
     });
+}
+
+function isContentEdited(createdAt: string, editedAt?: string | null): boolean {
+    if (!editedAt) return false;
+    const createdMs = parseServerTimestamp(createdAt).getTime();
+    const editedMs = parseServerTimestamp(editedAt).getTime();
+    if (Number.isNaN(createdMs) || Number.isNaN(editedMs)) return false;
+    return editedMs > createdMs + 1000;
+}
+
+function renderMentionHighlightedText(text: string): ReactNode[] {
+    if (!text) return [''];
+
+    const nodes: ReactNode[] = [];
+    const regex = /@([a-zA-Z0-9._-]{2,80}|everyone)\b/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+        const matchIndex = match.index;
+        const mentionText = match[0];
+        const prevChar = matchIndex > 0 ? text[matchIndex - 1] : '';
+
+        // Avoid false positives inside words like emails.
+        if (prevChar && /[a-zA-Z0-9._-]/.test(prevChar)) {
+            continue;
+        }
+
+        if (matchIndex > lastIndex) {
+            nodes.push(text.slice(lastIndex, matchIndex));
+        }
+
+        nodes.push(
+            <span key={`mention-${matchIndex}`} className="text-primary font-semibold">
+                {mentionText}
+            </span>,
+        );
+        lastIndex = matchIndex + mentionText.length;
+    }
+
+    if (lastIndex < text.length) {
+        nodes.push(text.slice(lastIndex));
+    }
+
+    return nodes.length ? nodes : [text];
 }
 
 // ─── Reaction Button ───
@@ -153,6 +218,7 @@ function ReplyItem({
     const displayName = reply.isAnonymous
         ? reply.author.anonymousId || 'Anonymous'
         : reply.author.name;
+    const edited = isContentEdited(reply.createdAt, reply.editedAt);
 
     return (
         <div className="flex gap-2 py-2 group">
@@ -176,6 +242,12 @@ function ReplyItem({
                             <span>{formatExactTime(reply.createdAt)}</span>
                         </TooltipContent>
                     </Tooltip>
+                    {edited && (
+                        <>
+                            <span className="opacity-50">·</span>
+                            <span className="text-[10px] font-medium text-primary/80">edited</span>
+                        </>
+                    )}
                     <div className="flex-1" />
                     {(isOwner || isAdmin) && (
                         <Tooltip>
@@ -205,7 +277,7 @@ function ReplyItem({
                         </Tooltip>
                     )}
                 </div>
-                <p className="text-xs leading-relaxed">{reply.content}</p>
+                <p className="text-xs leading-relaxed">{renderMentionHighlightedText(reply.content)}</p>
             </div>
         </div>
     );
@@ -216,13 +288,125 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
     const { isAdmin, user } = useAuth();
     const queryClient = useQueryClient();
     const [expanded, setExpanded] = useState(false);
+    const replyInputRef = useRef<HTMLInputElement | null>(null);
     const [replyText, setReplyText] = useState('');
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [mentionRange, setMentionRange] = useState<{ start: number; end: number } | null>(null);
+    const [activeMentionIndex, setActiveMentionIndex] = useState(0);
     const anonEnabled = useFeatureEnabled('ft-anon-posting');
+    const isMentionMenuOpen = mentionQuery !== null && mentionRange !== null;
 
     useEffect(() => {
         if (!anonEnabled) setIsAnonymous(false);
     }, [anonEnabled]);
+
+    const {
+        data: mentionPages,
+        fetchNextPage: fetchNextMentionPage,
+        hasNextPage: hasNextMentionPage,
+        isFetchingNextPage: isFetchingNextMentionPage,
+        isLoading: isMentionLoading,
+    } = useInfiniteQuery({
+        queryKey: ['loungeReplyMentionUsers', mentionQuery || ''],
+        queryFn: ({ pageParam = 1 }) =>
+            searchMentionableUsers({
+                q: mentionQuery || undefined,
+                page: pageParam,
+                limit: 20,
+            }),
+        enabled: isMentionMenuOpen,
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => {
+            if (lastPage.meta.page < lastPage.meta.lastPage) {
+                return lastPage.meta.page + 1;
+            }
+            return undefined;
+        },
+    });
+
+    const fetchedMentionUsers = useMemo(
+        () => mentionPages?.pages.flatMap((page) => page.data) ?? [],
+        [mentionPages],
+    );
+
+    const mentionOptions = useMemo<
+        Array<
+            MentionableUser & {
+                isEveryone?: boolean;
+            }
+        >
+    >(() => {
+        if (!isMentionMenuOpen) return [];
+
+        const query = (mentionQuery || '').toLowerCase();
+        const includeEveryone = !query || 'everyone'.includes(query);
+        const dedupedUsers: MentionableUser[] = [];
+        const seen = new Set<string>();
+        for (const mentionable of fetchedMentionUsers) {
+            if (!mentionable?.id || seen.has(mentionable.id)) continue;
+            seen.add(mentionable.id);
+            dedupedUsers.push(mentionable);
+        }
+
+        if (!includeEveryone) return dedupedUsers;
+
+        return [
+            {
+                id: 'everyone',
+                name: 'Everyone',
+                username: 'everyone',
+                mentionKey: 'everyone',
+                isEveryone: true,
+            },
+            ...dedupedUsers,
+        ];
+    }, [fetchedMentionUsers, isMentionMenuOpen, mentionQuery]);
+
+    useEffect(() => {
+        setActiveMentionIndex(0);
+    }, [mentionQuery, mentionOptions.length]);
+
+    const closeMentionMenu = () => {
+        setMentionQuery(null);
+        setMentionRange(null);
+        setActiveMentionIndex(0);
+    };
+
+    const updateMentionContext = (nextText: string, caret: number | null | undefined) => {
+        if (caret === null || caret === undefined) {
+            closeMentionMenu();
+            return;
+        }
+        const ctx = getActiveMentionContext(nextText, caret);
+        if (!ctx) {
+            closeMentionMenu();
+            return;
+        }
+        setMentionRange({ start: ctx.start, end: ctx.end });
+        setMentionQuery(ctx.query);
+    };
+
+    const applyMention = (
+        option: MentionableUser & {
+            isEveryone?: boolean;
+        },
+    ) => {
+        if (!mentionRange) return;
+        const insertion = `@${option.mentionKey} `;
+        const nextText =
+            replyText.slice(0, mentionRange.start) + insertion + replyText.slice(mentionRange.end);
+        const nextCaret = Math.min(mentionRange.start + insertion.length, nextText.length);
+
+        setReplyText(nextText);
+        closeMentionMenu();
+
+        requestAnimationFrame(() => {
+            if (!replyInputRef.current) return;
+            replyInputRef.current.focus();
+            replyInputRef.current.setSelectionRange(nextCaret, nextCaret);
+        });
+    };
 
     const { data: replies, isLoading } = useQuery({
         queryKey: ['loungeReplies', postId],
@@ -237,6 +421,7 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
             queryClient.invalidateQueries({ queryKey: ['loungeFeed'] });
             queryClient.invalidateQueries({ queryKey: ['loungeStats'] });
             setReplyText('');
+            closeMentionMenu();
             toast({ title: 'Replied!', description: 'Your reply has been posted.' });
         },
         onError: () => {
@@ -317,18 +502,139 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
                     {/* Reply input */}
                     <div className="space-y-2 pt-1">
                         <div className="flex items-center gap-2">
-                            <Input
-                                placeholder="Write a reply..."
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleSubmit();
-                                    }
-                                }}
-                                className="h-7 text-xs flex-1"
-                            />
+                            <div className="relative flex-1">
+                                <Input
+                                    ref={replyInputRef}
+                                    placeholder="Write a reply..."
+                                    value={replyText}
+                                    onChange={(e) => {
+                                        const nextValue = e.target.value;
+                                        setReplyText(nextValue);
+                                        updateMentionContext(nextValue, e.target.selectionStart);
+                                    }}
+                                    onClick={(e) => {
+                                        updateMentionContext(
+                                            e.currentTarget.value,
+                                            e.currentTarget.selectionStart,
+                                        );
+                                    }}
+                                    onKeyUp={(e) => {
+                                        updateMentionContext(
+                                            e.currentTarget.value,
+                                            e.currentTarget.selectionStart,
+                                        );
+                                    }}
+                                    onBlur={() => {
+                                        setTimeout(() => {
+                                            closeMentionMenu();
+                                        }, 120);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (isMentionMenuOpen && mentionOptions.length > 0) {
+                                            if (e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                setActiveMentionIndex((prev) =>
+                                                    Math.min(prev + 1, mentionOptions.length - 1),
+                                                );
+                                                return;
+                                            }
+
+                                            if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                setActiveMentionIndex((prev) =>
+                                                    Math.max(prev - 1, 0),
+                                                );
+                                                return;
+                                            }
+
+                                            if (e.key === 'Enter' || e.key === 'Tab') {
+                                                e.preventDefault();
+                                                const selected = mentionOptions[activeMentionIndex];
+                                                if (selected) {
+                                                    applyMention(selected);
+                                                }
+                                                return;
+                                            }
+
+                                            if (e.key === 'Escape') {
+                                                e.preventDefault();
+                                                closeMentionMenu();
+                                                return;
+                                            }
+                                        }
+
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSubmit();
+                                        }
+                                    }}
+                                    className="h-7 text-xs flex-1"
+                                />
+                                {isMentionMenuOpen && (
+                                    <div
+                                        className="absolute left-0 right-0 top-full mt-1 z-20 border border-border bg-popover shadow-md max-h-48 overflow-y-auto"
+                                        onScroll={(event) => {
+                                            const el = event.currentTarget;
+                                            const isNearBottom =
+                                                el.scrollTop + el.clientHeight >=
+                                                el.scrollHeight - 40;
+                                            if (
+                                                isNearBottom &&
+                                                hasNextMentionPage &&
+                                                !isFetchingNextMentionPage
+                                            ) {
+                                                void fetchNextMentionPage();
+                                            }
+                                        }}
+                                    >
+                                        {mentionOptions.length === 0 && (
+                                            <div className="px-3 py-2 text-xs text-muted-foreground">
+                                                {isMentionLoading
+                                                    ? 'Loading users...'
+                                                    : 'No users match this mention.'}
+                                            </div>
+                                        )}
+
+                                        {mentionOptions.map((option, index) => {
+                                            const mentionLabel = `@${option.mentionKey}`;
+                                            const subtitle = option.isEveryone
+                                                ? 'Notify everyone in this classroom'
+                                                : option.username
+                                                    ? option.name
+                                                    : `${option.name} - no username`;
+                                            const isActive = index === activeMentionIndex;
+
+                                            return (
+                                                <button
+                                                    key={`${option.id}-${option.mentionKey}`}
+                                                    type="button"
+                                                    onMouseDown={(event) => {
+                                                        event.preventDefault();
+                                                        applyMention(option);
+                                                    }}
+                                                    className={cn(
+                                                        'w-full text-left px-3 py-2 border-b border-border/60 last:border-b-0 hover:bg-accent transition-colors',
+                                                        isActive && 'bg-accent',
+                                                    )}
+                                                >
+                                                    <p className="text-xs font-semibold truncate">
+                                                        {mentionLabel}
+                                                    </p>
+                                                    <p className="text-[10px] text-muted-foreground truncate">
+                                                        {subtitle}
+                                                    </p>
+                                                </button>
+                                            );
+                                        })}
+
+                                        {isFetchingNextMentionPage && mentionOptions.length > 0 && (
+                                            <div className="px-3 py-2 text-[10px] text-muted-foreground">
+                                                Loading more...
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             {anonEnabled && (
                                 <div className="flex items-center gap-1">
                                     <Tooltip>
@@ -483,6 +789,7 @@ function PostCard({
     onDelete: () => void;
 }) {
     const [reportOpen, setReportOpen] = useState(false);
+    const [isImageBroken, setIsImageBroken] = useState(false);
     const primaryTag = post.tags?.[0] as PostTag | undefined;
     const tagConfig = primaryTag ? POST_TAGS.find((t) => t.value === primaryTag) : null;
     const courseName = post.course;
@@ -490,14 +797,19 @@ function PostCard({
     const displayName = post.isAnonymous
         ? post.author.anonymousId || 'Anonymous'
         : post.author.name;
+    const edited = isContentEdited(post.createdAt, post.editedAt);
 
     const sortedReactions = REACTIONS.map((r) => ({
         ...r,
         count: post.reactions[r.emoji] || 0,
     })).sort((a, b) => b.count - a.count);
 
+    useEffect(() => {
+        setIsImageBroken(false);
+    }, [post.id, post.imageUrl]);
+
     return (
-        <div className="border border-border p-4 space-y-3 hover:bg-accent/20 transition-colors group/post">
+        <div className="border border-border bg-card p-4 space-y-3 hover:bg-card transition-colors group/post">
             {/* Header */}
             <div className="flex flex-wrap items-center gap-2">
                 {tagConfig && (
@@ -594,11 +906,46 @@ function PostCard({
                             <span>{formatExactTime(post.createdAt)}</span>
                         </TooltipContent>
                     </Tooltip>
+                    {edited && (
+                        <>
+                            <span className="opacity-50">·</span>
+                            <span className="text-[10px] font-medium text-primary/80">edited</span>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Content */}
-            <p className="text-sm leading-relaxed">{post.content}</p>
+            {post.content && (
+                <p className="text-sm leading-relaxed">
+                    {renderMentionHighlightedText(post.content)}
+                </p>
+            )}
+            {post.imageUrl && !isImageBroken && (
+                <div className="overflow-hidden border border-border bg-muted/20">
+                    <img
+                        src={post.imageUrl}
+                        alt="Lounge attachment"
+                        loading="lazy"
+                        className="w-full max-h-[420px] object-cover"
+                        onError={() => setIsImageBroken(true)}
+                    />
+                </div>
+            )}
+            {post.imageUrl && isImageBroken && (
+                <div className="border border-dashed border-border p-3 text-xs text-muted-foreground flex items-center gap-2">
+                    <ImageOff className="h-3.5 w-3.5 shrink-0" />
+                    <span>Image unavailable or broken link.</span>
+                    <a
+                        href={post.imageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-4 hover:text-foreground"
+                    >
+                        Open link
+                    </a>
+                </div>
+            )}
             {courseName && (
                 <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
                     re: {courseName}
@@ -627,7 +974,7 @@ function PostCard({
                 onOpenChange={setReportOpen}
                 contentType="post"
                 contentId={post.id}
-                contentPreview={post.content}
+                contentPreview={post.content || '[Image attachment]'}
                 contentAuthor={displayName}
             />
         </div>
@@ -635,38 +982,255 @@ function PostCard({
 }
 
 // ─── Compose Box ───
+function getActiveMentionContext(text: string, caret: number) {
+    if (!text || caret < 0) return null;
+
+    const safeCaret = Math.min(caret, text.length);
+    const atIndex = text.lastIndexOf('@', safeCaret - 1);
+    if (atIndex < 0) return null;
+
+    const prevChar = atIndex > 0 ? text[atIndex - 1] : '';
+    if (prevChar && /[a-zA-Z0-9._-]/.test(prevChar)) {
+        return null;
+    }
+
+    const rawToken = text.slice(atIndex + 1, safeCaret);
+    if (rawToken.length > 80) return null;
+    if (/[\s]/.test(rawToken)) return null;
+    if (/[^a-zA-Z0-9._-]/.test(rawToken)) return null;
+
+    return {
+        start: atIndex,
+        end: safeCaret,
+        query: rawToken.toLowerCase(),
+    };
+}
+
 function ComposeBox({
     onPost,
     isPending,
 }: {
-    onPost: (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => void;
+    onPost: (
+        content: string | undefined,
+        tag: PostTag,
+        course?: string,
+        isAnonymous?: boolean,
+        imageDataUrl?: string,
+        imageName?: string,
+    ) => void;
     isPending: boolean;
 }) {
     const { userName } = useAuth();
     const { activeSemester } = useSemesterStore();
+    const imageInputRef = useRef<HTMLInputElement | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [content, setContent] = useState('');
     const [tag, setTag] = useState<PostTag>('discussion');
     const [course, setCourse] = useState<string>('none');
     const [expanded, setExpanded] = useState(false);
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+    const [imageName, setImageName] = useState<string>('');
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [mentionRange, setMentionRange] = useState<{ start: number; end: number } | null>(null);
+    const [activeMentionIndex, setActiveMentionIndex] = useState(0);
     const anonEnabled = useFeatureEnabled('ft-anon-posting');
 
     useEffect(() => {
         if (!anonEnabled) setIsAnonymous(false);
     }, [anonEnabled]);
 
+    const maxChars = 500;
+    const isMentionMenuOpen = mentionQuery !== null && mentionRange !== null;
+
+    const {
+        data: mentionPages,
+        fetchNextPage: fetchNextMentionPage,
+        hasNextPage: hasNextMentionPage,
+        isFetchingNextPage: isFetchingNextMentionPage,
+        isLoading: isMentionLoading,
+    } = useInfiniteQuery({
+        queryKey: ['loungeMentionUsers', mentionQuery || ''],
+        queryFn: ({ pageParam = 1 }) =>
+            searchMentionableUsers({
+                q: mentionQuery || undefined,
+                page: pageParam,
+                limit: 20,
+            }),
+        enabled: isMentionMenuOpen,
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => {
+            if (lastPage.meta.page < lastPage.meta.lastPage) {
+                return lastPage.meta.page + 1;
+            }
+            return undefined;
+        },
+    });
+
+    const fetchedMentionUsers = useMemo(
+        () => mentionPages?.pages.flatMap((page) => page.data) ?? [],
+        [mentionPages],
+    );
+
+    const mentionOptions = useMemo<
+        Array<
+            MentionableUser & {
+                isEveryone?: boolean;
+            }
+        >
+    >(() => {
+        if (!isMentionMenuOpen) return [];
+
+        const query = (mentionQuery || '').toLowerCase();
+        const includeEveryone = !query || 'everyone'.includes(query);
+        const dedupedUsers: MentionableUser[] = [];
+        const seen = new Set<string>();
+        for (const user of fetchedMentionUsers) {
+            if (!user?.id || seen.has(user.id)) continue;
+            seen.add(user.id);
+            dedupedUsers.push(user);
+        }
+
+        if (!includeEveryone) return dedupedUsers;
+
+        return [
+            {
+                id: 'everyone',
+                name: 'Everyone',
+                username: 'everyone',
+                mentionKey: 'everyone',
+                isEveryone: true,
+            },
+            ...dedupedUsers,
+        ];
+    }, [fetchedMentionUsers, isMentionMenuOpen, mentionQuery]);
+
+    useEffect(() => {
+        setActiveMentionIndex(0);
+    }, [mentionQuery, mentionOptions.length]);
+
+    const closeMentionMenu = () => {
+        setMentionQuery(null);
+        setMentionRange(null);
+        setActiveMentionIndex(0);
+    };
+
+    const updateMentionContext = (nextText: string, caret: number | null | undefined) => {
+        if (caret === null || caret === undefined) {
+            closeMentionMenu();
+            return;
+        }
+        const ctx = getActiveMentionContext(nextText, caret);
+        if (!ctx) {
+            closeMentionMenu();
+            return;
+        }
+        setMentionRange({ start: ctx.start, end: ctx.end });
+        setMentionQuery(ctx.query);
+    };
+
+    const applyMention = (
+        option: MentionableUser & {
+            isEveryone?: boolean;
+        },
+    ) => {
+        if (!mentionRange) return;
+        const insertion = `@${option.mentionKey} `;
+        const nextText =
+            content.slice(0, mentionRange.start) + insertion + content.slice(mentionRange.end);
+        const bounded = nextText.slice(0, maxChars);
+        const nextCaret = Math.min(mentionRange.start + insertion.length, bounded.length);
+
+        setContent(bounded);
+        closeMentionMenu();
+        setExpanded(true);
+
+        requestAnimationFrame(() => {
+            if (!textareaRef.current) return;
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(nextCaret, nextCaret);
+        });
+    };
+
     const handleSubmit = () => {
-        if (!content.trim()) return;
-        onPost(content.trim(), tag, course === 'none' ? undefined : course, isAnonymous);
+        if (!content.trim() && !imageDataUrl) return;
+        onPost(
+            content.trim() || undefined,
+            tag,
+            course === 'none' ? undefined : course,
+            isAnonymous,
+            imageDataUrl || undefined,
+            imageName || undefined,
+        );
         setContent('');
         setTag('discussion');
         setCourse('none');
         setExpanded(false);
         setIsAnonymous(false);
+        setImageDataUrl(null);
+        setImageName('');
+        closeMentionMenu();
+        if (imageInputRef.current) imageInputRef.current.value = '';
+    };
+
+    const handleImageSelection: ChangeEventHandler<HTMLInputElement> = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            toast({
+                title: 'Invalid File',
+                description: 'Please choose an image file.',
+                variant: 'destructive',
+            });
+            event.target.value = '';
+            return;
+        }
+
+        const maxSizeBytes = 8 * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+            toast({
+                title: 'Image Too Large',
+                description: 'Max image size is 8MB.',
+                variant: 'destructive',
+            });
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            if (!result.startsWith('data:image/')) {
+                toast({
+                    title: 'Invalid Image',
+                    description: 'Could not read image data.',
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            setImageDataUrl(result);
+            setImageName(file.name);
+            setExpanded(true);
+        };
+        reader.onerror = () => {
+            toast({
+                title: 'Image Error',
+                description: 'Failed to read image file.',
+                variant: 'destructive',
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const removeSelectedImage = () => {
+        setImageDataUrl(null);
+        setImageName('');
+        if (imageInputRef.current) imageInputRef.current.value = '';
     };
 
     const charCount = content.length;
-    const maxChars = 500;
 
     return (
         <Card>
@@ -695,17 +1259,157 @@ function ComposeBox({
                     )}
                 </div>
 
-                <Textarea
-                    placeholder="What's on your mind? Rant, ask, share..."
-                    value={content}
-                    onChange={(e) => {
-                        setContent(e.target.value.slice(0, maxChars));
-                        if (!expanded) setExpanded(true);
-                    }}
-                    onFocus={() => setExpanded(true)}
-                    className="min-h-[60px] text-sm resize-none"
-                    rows={expanded ? 3 : 2}
+                <div className="relative">
+                    <Textarea
+                        ref={textareaRef}
+                        placeholder="What's on your mind? Rant, ask, share..."
+                        value={content}
+                        onChange={(e) => {
+                            const nextValue = e.target.value.slice(0, maxChars);
+                            setContent(nextValue);
+                            if (!expanded) setExpanded(true);
+                            updateMentionContext(nextValue, e.target.selectionStart);
+                        }}
+                        onFocus={() => setExpanded(true)}
+                        onClick={(e) => {
+                            updateMentionContext(e.currentTarget.value, e.currentTarget.selectionStart);
+                        }}
+                        onKeyUp={(e) => {
+                            updateMentionContext(e.currentTarget.value, e.currentTarget.selectionStart);
+                        }}
+                        onBlur={() => {
+                            setTimeout(() => {
+                                closeMentionMenu();
+                            }, 120);
+                        }}
+                        onKeyDown={(e) => {
+                            if (!isMentionMenuOpen || mentionOptions.length === 0) return;
+
+                            if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                setActiveMentionIndex((prev) =>
+                                    Math.min(prev + 1, mentionOptions.length - 1),
+                                );
+                                return;
+                            }
+
+                            if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                setActiveMentionIndex((prev) => Math.max(prev - 1, 0));
+                                return;
+                            }
+
+                            if (e.key === 'Enter' || e.key === 'Tab') {
+                                e.preventDefault();
+                                const selected = mentionOptions[activeMentionIndex];
+                                if (selected) {
+                                    applyMention(selected);
+                                }
+                                return;
+                            }
+
+                            if (e.key === 'Escape') {
+                                e.preventDefault();
+                                closeMentionMenu();
+                            }
+                        }}
+                        className="min-h-[60px] text-sm resize-none"
+                        rows={expanded ? 3 : 2}
+                    />
+
+                    {isMentionMenuOpen && (
+                        <div
+                            className="absolute left-0 right-0 top-full mt-1 z-20 border border-border bg-popover shadow-md max-h-56 overflow-y-auto"
+                            onScroll={(event) => {
+                                const el = event.currentTarget;
+                                const isNearBottom =
+                                    el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+                                if (
+                                    isNearBottom &&
+                                    hasNextMentionPage &&
+                                    !isFetchingNextMentionPage
+                                ) {
+                                    void fetchNextMentionPage();
+                                }
+                            }}
+                        >
+                            {mentionOptions.length === 0 && (
+                                <div className="px-3 py-2 text-xs text-muted-foreground">
+                                    {isMentionLoading
+                                        ? 'Loading users...'
+                                        : 'No users match this mention.'}
+                                </div>
+                            )}
+
+                            {mentionOptions.map((option, index) => {
+                                const mentionLabel = `@${option.mentionKey}`;
+                                const subtitle = option.isEveryone
+                                    ? 'Notify everyone in this classroom'
+                                    : option.username
+                                        ? option.name
+                                        : `${option.name} - no username`;
+                                const isActive = index === activeMentionIndex;
+
+                                return (
+                                    <button
+                                        key={`${option.id}-${option.mentionKey}`}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            applyMention(option);
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 border-b border-border/60 last:border-b-0 hover:bg-accent transition-colors',
+                                            isActive && 'bg-accent',
+                                        )}
+                                    >
+                                        <p className="text-xs font-semibold truncate">{mentionLabel}</p>
+                                        <p className="text-[10px] text-muted-foreground truncate">
+                                            {subtitle}
+                                        </p>
+                                    </button>
+                                );
+                            })}
+
+                            {isFetchingNextMentionPage && mentionOptions.length > 0 && (
+                                <div className="px-3 py-2 text-[10px] text-muted-foreground">
+                                    Loading more...
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelection}
                 />
+
+                {imageDataUrl && (
+                    <div className="space-y-2">
+                        <div className="overflow-hidden border border-border bg-muted/20">
+                            <img
+                                src={imageDataUrl}
+                                alt="Attachment preview"
+                                className="w-full max-h-[280px] object-cover"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <span className="truncate">{imageName || 'Selected image'}</span>
+                            <button
+                                type="button"
+                                onClick={removeSelectedImage}
+                                className="inline-flex items-center gap-1 hover:text-destructive"
+                            >
+                                <X className="h-3 w-3" />
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {expanded && (
                     <div className="flex flex-wrap items-center gap-2">
@@ -732,6 +1436,17 @@ function ComposeBox({
 
                         <div className="flex-1" />
 
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            onClick={() => imageInputRef.current?.click()}
+                        >
+                            <ImagePlus className="h-3 w-3" />
+                            {imageDataUrl ? 'Replace Image' : 'Attach Image'}
+                        </Button>
+
                         <span
                             className={cn(
                                 'text-[10px] tabular-nums',
@@ -746,7 +1461,7 @@ function ComposeBox({
                         <Button
                             size="sm"
                             onClick={handleSubmit}
-                            disabled={!content.trim() || isPending}
+                            disabled={(!content.trim() && !imageDataUrl) || isPending}
                         >
                             {isPending ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -843,10 +1558,13 @@ const Lounge = () => {
             queryClient.invalidateQueries({ queryKey: ['loungeFeed'] });
             toast({ title: 'Posted!', description: 'Your post is live.' });
         },
-        onError: () => {
+        onError: (error: unknown) => {
+            const message = error instanceof Error && error.message
+                ? error.message
+                : 'Failed to create post.';
             toast({
                 title: 'Error',
-                description: 'Failed to create post.',
+                description: message,
                 variant: 'destructive',
             });
         },
@@ -990,12 +1708,21 @@ const Lounge = () => {
         reactMutation.mutate({ postId, emoji: reaction });
     };
 
-    const handlePost = (content: string, tag: PostTag, course?: string, isAnonymous?: boolean) => {
+    const handlePost = (
+        content: string | undefined,
+        tag: PostTag,
+        course?: string,
+        isAnonymous?: boolean,
+        imageDataUrl?: string,
+        imageName?: string,
+    ) => {
         createPostMutation.mutate({
             content,
             tags: [tag],
             course,
             isAnonymous,
+            imageDataUrl,
+            imageName,
         });
     };
 
@@ -1130,7 +1857,7 @@ const Lounge = () => {
             {isLoading ? (
                 <div className="space-y-3">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="border border-border p-4 space-y-3">
+                        <div key={i} className="border border-border bg-card p-4 space-y-3">
                             <div className="flex items-center gap-2">
                                 <div className="h-4 w-14 bg-muted animate-pulse" />
                                 <div className="h-4 w-10 bg-muted animate-pulse" />

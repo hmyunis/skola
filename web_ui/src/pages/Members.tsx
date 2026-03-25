@@ -141,7 +141,7 @@ const Members = () => {
               const role = roleConfig[user.role];
               const RoleIcon = role.icon;
               return (
-                <div key={user.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-accent/30 transition-colors group">
+                <div key={user.id} className="border border-border bg-card flex items-center gap-3 px-3 py-2.5 hover:bg-card transition-colors group">
                   <div className="relative">
                     <div className={cn("h-9 w-9 border flex items-center justify-center shrink-0", role.color)}>
                       <RoleIcon className="h-4 w-4" />

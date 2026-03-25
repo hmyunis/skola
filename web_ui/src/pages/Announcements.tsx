@@ -104,7 +104,7 @@ const Announcements = () => {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="border border-border p-3 sm:p-4 space-y-2">
+            <div key={index} className="border border-border bg-card p-3 sm:p-4 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <Skeleton className="h-4 w-16" />
                 <Skeleton className="h-4 w-20" />
@@ -132,7 +132,7 @@ const Announcements = () => {
                 key={a.id}
                 className={cn(
                   "border p-3 sm:p-4 space-y-2 transition-colors",
-                  isDismissed ? "opacity-60 border-border" : a.pinned ? "border-primary/30 bg-primary/5" : "border-border hover:bg-accent/20"
+                  isDismissed ? "opacity-60 border-border bg-card" : a.pinned ? "border-primary/30 bg-primary/5" : "border-border bg-card hover:bg-card"
                 )}
               >
                 <div className="flex items-center gap-2 flex-wrap">

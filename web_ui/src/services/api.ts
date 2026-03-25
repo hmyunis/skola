@@ -87,7 +87,7 @@ interface ScheduleItemApi {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
-  type: "lecture" | "lab" | "exam";
+  type: "lecture" | "lab" | "exam" | "other";
   location?: string | null;
   isOnline?: boolean;
   isDraft?: boolean;
@@ -105,7 +105,7 @@ interface AssessmentApi {
   dueDate: string;
   createdAt?: string;
   updatedAt?: string;
-  source?: "classroom" | "direct" | "notice";
+  source?: "classroom" | "direct" | "notice" | "other";
   status?: "pending" | "submitted" | "graded";
   confidenceDistribution?: {
     confident: number;
@@ -126,7 +126,7 @@ export interface AssignmentFilters {
   search?: string;
   courseCode?: string;
   status?: "pending" | "submitted" | "graded";
-  source?: "classroom" | "direct" | "notice";
+  source?: "classroom" | "direct" | "notice" | "other";
 }
 
 export interface AssessmentStats {
@@ -232,7 +232,7 @@ export async function createScheduleItem(data: {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
-  type: "lecture" | "lab" | "exam";
+  type: "lecture" | "lab" | "exam" | "other";
   location?: string;
   isOnline?: boolean;
   isDraft?: boolean;
@@ -250,7 +250,7 @@ export async function updateScheduleItem(
     dayOfWeek: number;
     startTime: string;
     endTime: string;
-    type: "lecture" | "lab" | "exam";
+    type: "lecture" | "lab" | "exam" | "other";
     location?: string;
     isOnline?: boolean;
     isDraft?: boolean;

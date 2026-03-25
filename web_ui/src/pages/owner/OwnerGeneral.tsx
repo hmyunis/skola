@@ -233,15 +233,35 @@ function BatchThemeSelector() {
   const activeClassroom = useClassroomStore((s) => s.activeClassroom);
   const updateClassroomTheme = useUpdateClassroomTheme();
   const [showCreator, setShowCreator] = useState(false);
+  const [patternIntensityPercent, setPatternIntensityPercent] = useState(
+    Math.round((typeof batchTheme.patternIntensity === "number" ? batchTheme.patternIntensity : 0.25) * 100),
+  );
   const allThemes = [...batchThemes, ...customThemes];
+
+  useEffect(() => {
+    const nextPercent = Math.round(
+      (typeof batchTheme.patternIntensity === "number" ? batchTheme.patternIntensity : 0.25) * 100,
+    );
+    setPatternIntensityPercent(nextPercent);
+  }, [batchTheme.id, batchTheme.patternIntensity]);
+
+  const ensureThemeIntensity = (theme: BatchTheme): BatchTheme => ({
+    ...theme,
+    patternIntensity:
+      typeof theme.patternIntensity === "number"
+        ? Math.max(0, Math.min(1, theme.patternIntensity))
+        : 0.25,
+  });
 
   const persistThemeState = (activeTheme: BatchTheme, nextCustomThemes: BatchTheme[]) => {
     if (!activeClassroom) return;
+    const normalizedActiveTheme = ensureThemeIntensity(activeTheme);
+    const normalizedCustomThemes = nextCustomThemes.map((theme) => ensureThemeIntensity(theme));
     updateClassroomTheme.mutate({
       classroomId: activeClassroom.id,
       theme: {
-        activeTheme,
-        customThemes: nextCustomThemes,
+        activeTheme: normalizedActiveTheme,
+        customThemes: normalizedCustomThemes,
       },
     });
   };
@@ -249,6 +269,26 @@ function BatchThemeSelector() {
   const handleSelectTheme = (theme: BatchTheme) => {
     setBatchTheme(theme);
     persistThemeState(theme, customThemes);
+  };
+
+  const updatePatternIntensityPreview = (percent: number) => {
+    const normalizedPercent = Math.max(0, Math.min(100, Math.round(percent)));
+    setPatternIntensityPercent(normalizedPercent);
+    const nextTheme: BatchTheme = {
+      ...batchTheme,
+      patternIntensity: normalizedPercent / 100,
+    };
+    setBatchTheme(nextTheme);
+  };
+
+  const persistPatternIntensity = (percent: number) => {
+    const normalizedPercent = Math.max(0, Math.min(100, Math.round(percent)));
+    const nextTheme: BatchTheme = {
+      ...batchTheme,
+      patternIntensity: normalizedPercent / 100,
+    };
+    setBatchTheme(nextTheme);
+    persistThemeState(nextTheme, customThemes);
   };
 
   const handleCreateTheme = (theme: BatchTheme) => {
@@ -309,6 +349,31 @@ function BatchThemeSelector() {
               )}
             </div>
           ))}
+        </div>
+
+        <div className="border border-border p-3 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Pattern Intensity
+            </p>
+            <span className="text-xs font-bold tabular-nums">{patternIntensityPercent}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={patternIntensityPercent}
+            onChange={(event) => updatePatternIntensityPreview(Number(event.target.value))}
+            onMouseUp={() => persistPatternIntensity(patternIntensityPercent)}
+            onTouchEnd={() => persistPatternIntensity(patternIntensityPercent)}
+            onKeyUp={() => persistPatternIntensity(patternIntensityPercent)}
+            className="w-full accent-primary"
+            aria-label="Pattern intensity"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Controls how visible the classroom background pattern appears for all members.
+          </p>
         </div>
       </CardContent>
     </Card>

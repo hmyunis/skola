@@ -173,7 +173,7 @@ const AdminModeration = () => {
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="border border-border p-4 space-y-2">
+            <div key={i} className="border border-border bg-card p-4 space-y-2">
               <div className="h-4 w-24 bg-muted animate-pulse" />
               <div className="h-3 w-3/4 bg-muted animate-pulse" />
             </div>
@@ -193,7 +193,7 @@ const AdminModeration = () => {
             const isRemovableContent = item.type === "resource" || item.type === "quiz" || item.type === "post" || item.type === "reply";
 
             return (
-              <div key={item.id} className="border border-border p-3 sm:p-4 space-y-2 hover:bg-accent/20 transition-colors">
+              <div key={item.id} className="border border-border bg-card p-3 sm:p-4 space-y-2 hover:bg-card transition-colors">
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   <span className="px-1.5 py-0.5 border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1">
                     <TypeIcon className="h-2.5 w-2.5" /> {item.type}

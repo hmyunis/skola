@@ -13,6 +13,7 @@ import { InviteCode } from '../admin/entities/invite-code.entity';
 @Injectable()
 export class ClassroomsService {
   private readonly logger = new Logger(ClassroomsService.name);
+  private static readonly DEFAULT_PATTERN_INTENSITY = 0.25;
 
   constructor(
     @InjectRepository(Classroom)
@@ -173,12 +174,32 @@ export class ClassroomsService {
   async updateTheme(id: string, theme: any): Promise<Classroom> {
     const classroom = await this.getClassroomById(id);
     if (theme && typeof theme === 'object' && (theme.activeTheme || Array.isArray(theme.customThemes))) {
-      classroom.theme = theme.activeTheme || classroom.theme;
-      classroom.customThemes = Array.isArray(theme.customThemes) ? theme.customThemes : classroom.customThemes;
+      classroom.theme = theme.activeTheme
+        ? this.normalizeThemePatternIntensity(theme.activeTheme)
+        : classroom.theme;
+      classroom.customThemes = Array.isArray(theme.customThemes)
+        ? theme.customThemes.map((item: any) => this.normalizeThemePatternIntensity(item))
+        : classroom.customThemes;
     } else {
-      classroom.theme = theme;
+      classroom.theme = this.normalizeThemePatternIntensity(theme);
     }
     return this.classroomsRepository.save(classroom);
+  }
+
+  private normalizeThemePatternIntensity(theme: any): any {
+    if (!theme || typeof theme !== 'object' || Array.isArray(theme)) {
+      return theme;
+    }
+
+    const raw = Number((theme as any).patternIntensity);
+    const normalized = Number.isFinite(raw)
+      ? Math.max(0, Math.min(1, raw))
+      : ClassroomsService.DEFAULT_PATTERN_INTENSITY;
+
+    return {
+      ...theme,
+      patternIntensity: normalized,
+    };
   }
 
   async updateFeatures(id: string, features: any): Promise<Classroom> {

@@ -259,7 +259,7 @@ const AdminUsers = () => {
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="border border-border p-3 flex items-center gap-3">
+                <div key={i} className="border border-border bg-card p-3 flex items-center gap-3">
                   <div className="h-8 w-8 bg-muted animate-pulse shrink-0" />
                   <div className="flex-1 space-y-1.5">
                     <div className="h-3 w-24 bg-muted animate-pulse" />
@@ -275,7 +275,7 @@ const AdminUsers = () => {
                 const status = statusConfig[user.status];
                 const RoleIcon = role.icon;
                 return (
-                  <div key={user.id} className="border border-border p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-accent/20 transition-colors">
+                  <div key={user.id} className="border border-border bg-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-card transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={cn("p-2 border shrink-0", role.color)}>
                         <RoleIcon className="h-4 w-4" />

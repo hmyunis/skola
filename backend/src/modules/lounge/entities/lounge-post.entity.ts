@@ -24,14 +24,17 @@ export class LoungePost {
   @Column({ type: 'text' })
   content: string;
 
+  @Column({ type: 'varchar', length: 2048, nullable: true })
+  imageUrl: string | null;
+
   @Column({ default: false })
   isAnonymous: boolean;
 
   @Column({ type: 'simple-array', nullable: true })
   tags: string[]; // e.g., "question", "rant", "meme"
 
-  @Column({ nullable: true })
-  course: string; // e.g., "CS301" — optional course reference
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  course: string | null; // e.g., "CS301" — optional course reference
 
   // Self-referencing relationship for threaded replies
   @ManyToOne(() => LoungePost, post => post.replies, { onDelete: 'CASCADE', nullable: true })
@@ -51,4 +54,7 @@ export class LoungePost {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  editedAt: Date | null;
 }

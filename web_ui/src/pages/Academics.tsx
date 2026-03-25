@@ -48,8 +48,12 @@ import {
 import { DatePicker } from "@/components/DatePicker";
 import {
   BookOpen,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Filter,
+  List,
   Search,
   ThumbsUp,
   ThumbsDown,
@@ -77,6 +81,7 @@ const sourceConfig: Record<string, { label: string; className: string; icon: typ
   classroom: { label: "Classroom", className: "bg-primary/10 text-primary border-primary/30", icon: GraduationCap },
   direct: { label: "Direct Call", className: "bg-amber-500/10 text-amber-600 border-amber-500/30", icon: ExternalLink },
   notice: { label: "Notice Board", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30", icon: FileText },
+  other: { label: "Other", className: "bg-muted text-muted-foreground border-border", icon: FileText },
 };
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof Clock }> = {
@@ -90,12 +95,14 @@ const assessmentTypeConfig: Record<string, { label: string; icon: typeof BookOpe
   quiz: { label: "Quiz", icon: Beaker, className: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
   assignment: { label: "Assignment", icon: FileText, className: "bg-primary/10 text-primary border-primary/30" },
   project: { label: "Project", icon: FolderKanban, className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+  other: { label: "Other", icon: BookOpen, className: "bg-muted text-muted-foreground border-border" },
 };
 type AssessmentSource = NonNullable<AdminAssessment["source"]>;
 const sourceOptions: Array<{ value: AssessmentSource; label: string }> = [
   { value: "classroom", label: sourceConfig.classroom.label },
   { value: "direct", label: sourceConfig.direct.label },
   { value: "notice", label: sourceConfig.notice.label },
+  { value: "other", label: sourceConfig.other.label },
 ];
 
 // ─── Confidence types ───
@@ -149,6 +156,105 @@ function formatEditedAtLocal(updatedAt?: string) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+
+function parseAssessmentDate(value: string) {
+  const trimmed = value.trim();
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (dateOnlyMatch) {
+    return new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+  }
+  return new Date(trimmed);
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getDaysUntilDue(dueDate: string, baseDate = new Date()) {
+  const due = startOfLocalDay(parseAssessmentDate(dueDate));
+  if (Number.isNaN(due.getTime())) return 0;
+  const base = startOfLocalDay(baseDate);
+  return Math.round((due.getTime() - base.getTime()) / DAY_IN_MS);
+}
+
+function getDeadlineBadge(daysUntilDue: number, status: Assignment["status"]) {
+  if (status !== "pending") {
+    return {
+      label: status === "submitted" ? "Submitted" : "Completed",
+      className: "bg-primary/10 text-primary border-primary/30",
+      dotClassName: "bg-primary",
+    };
+  }
+
+  if (daysUntilDue < 0) {
+    return {
+      label: `${Math.abs(daysUntilDue)}d overdue`,
+      className: "bg-destructive/10 text-destructive border-destructive/30",
+      dotClassName: "bg-destructive",
+    };
+  }
+  if (daysUntilDue === 0) {
+    return {
+      label: "Due today",
+      className: "bg-destructive/10 text-destructive border-destructive/30",
+      dotClassName: "bg-destructive",
+    };
+  }
+  if (daysUntilDue <= 3) {
+    return {
+      label: `Due in ${daysUntilDue}d`,
+      className: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+      dotClassName: "bg-amber-500",
+    };
+  }
+  return {
+    label: `Due in ${daysUntilDue}d`,
+    className: "bg-primary/10 text-primary border-primary/30",
+    dotClassName: "bg-primary",
+  };
+}
+
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+type AcademicsViewMode = "calendar" | "list";
+
+function compareAssignmentsByUrgency(a: Assignment, b: Assignment, baseDate: Date) {
+  const statusPriority: Record<Assignment["status"], number> = {
+    pending: 0,
+    submitted: 1,
+    graded: 2,
+  };
+
+  const aDays = getDaysUntilDue(a.dueDate, baseDate);
+  const bDays = getDaysUntilDue(b.dueDate, baseDate);
+  const dayDiff = aDays - bDays;
+  if (dayDiff !== 0) return dayDiff;
+
+  const statusDiff = statusPriority[a.status] - statusPriority[b.status];
+  if (statusDiff !== 0) return statusDiff;
+
+  return a.title.localeCompare(b.title);
 }
 
 function ConfidenceButton({ type, active, onClick }: { type: ConfidenceVote; active: boolean; onClick: () => void }) {
@@ -245,6 +351,7 @@ function AssessmentFormDialog({
                   <SelectItem value="quiz">Quiz</SelectItem>
                   <SelectItem value="assignment">Assignment</SelectItem>
                   <SelectItem value="project">Project</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -346,13 +453,12 @@ function AssessmentCard({
   const typeInfo = assessmentTypeConfig[assessment.type];
   const TypeIcon = typeInfo.icon;
   const edited = isEdited(assessment);
-  const dueDate = new Date(assessment.dueDate);
-  const now = new Date();
-  const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const dueDate = parseAssessmentDate(assessment.dueDate);
+  const daysUntilDue = getDaysUntilDue(assessment.dueDate);
   const isOverdue = daysUntilDue < 0;
 
   return (
-    <div className="border border-border p-3 sm:p-4 hover:bg-accent/30 transition-colors">
+    <div className="border border-border bg-card p-3 sm:p-4 hover:bg-card transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-start gap-3">
         <div className="flex-1 min-w-0 space-y-1.5">
           <div className="flex items-start gap-2">
@@ -419,9 +525,8 @@ function AssignmentRow({
   const source = sourceConfig[assignment.source];
   const status = statusConfig[assignment.status];
   const SourceIcon = source.icon;
-  const dueDate = new Date(assignment.dueDate);
-  const now = new Date();
-  const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const dueDate = parseAssessmentDate(assignment.dueDate);
+  const daysUntilDue = getDaysUntilDue(assignment.dueDate);
   const isOverdue = daysUntilDue < 0 && assignment.status === "pending";
   const isDueSoon = daysUntilDue <= 2 && daysUntilDue >= 0 && assignment.status === "pending";
   const aggregated = getDistributionPercentages(assignment);
@@ -429,7 +534,7 @@ function AssignmentRow({
   const edited = isEdited(assignment);
 
   return (
-    <div className="border border-border p-3 sm:p-4 hover:bg-accent/30 transition-colors cursor-pointer" onClick={onClick}>
+    <div className="border border-border bg-card p-3 sm:p-4 hover:bg-card transition-colors cursor-pointer" onClick={onClick}>
       <div className="flex flex-col sm:flex-row sm:items-start gap-3">
         <div className="flex-1 min-w-0 space-y-1.5">
           <div className="flex items-start gap-2">
@@ -498,9 +603,8 @@ function AssignmentDetailDialog({
   const SourceIcon = source.icon;
   const StatusIcon = status.icon;
   const courseName = getCourseName(assignment.course);
-  const dueDate = new Date(assignment.dueDate);
-  const now = new Date();
-  const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const dueDate = parseAssessmentDate(assignment.dueDate);
+  const daysUntilDue = getDaysUntilDue(assignment.dueDate);
   const isOverdue = daysUntilDue < 0 && assignment.status === "pending";
   const aggregated = getDistributionPercentages(assignment);
   const totalVotes = assignment.confidenceDistribution?.total || 0;
@@ -589,6 +693,315 @@ function AssignmentDetailDialog({
   );
 }
 
+function AssessmentCalendarView({
+  assignments,
+  selectedDateKey,
+  onSelectDateKey,
+  visibleMonth,
+  onVisibleMonthChange,
+  getCourseName,
+  onAssignmentClick,
+}: {
+  assignments: Assignment[];
+  selectedDateKey: string;
+  onSelectDateKey: (dateKey: string) => void;
+  visibleMonth: Date;
+  onVisibleMonthChange: (date: Date) => void;
+  getCourseName: (courseCode: string) => string;
+  onAssignmentClick: (assignment: Assignment) => void;
+}) {
+  const today = startOfLocalDay(new Date());
+  const todayKey = toDateKey(today);
+  const selectedDate = parseDateKey(selectedDateKey) || today;
+  const monthStart = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+  const monthLabel = monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const leadingDays = (monthStart.getDay() + 6) % 7;
+  const calendarStart = addDays(monthStart, -leadingDays);
+  const calendarDays = Array.from({ length: 42 }, (_, index) => addDays(calendarStart, index));
+  const baseDateForSort = parseDateKey(todayKey) || today;
+
+  const assignmentsByDate = useMemo(() => {
+    const grouped = new Map<string, Assignment[]>();
+    assignments.forEach((assignment) => {
+      const due = parseAssessmentDate(assignment.dueDate);
+      if (Number.isNaN(due.getTime())) return;
+      const dateKey = toDateKey(due);
+      const current = grouped.get(dateKey) || [];
+      current.push(assignment);
+      grouped.set(dateKey, current);
+    });
+
+    grouped.forEach((items) => {
+      items.sort((a, b) => compareAssignmentsByUrgency(a, b, baseDateForSort));
+    });
+
+    return grouped;
+  }, [assignments, baseDateForSort]);
+
+  const selectedDayAssignments = assignmentsByDate.get(selectedDateKey) || [];
+  const sortedByUrgency = useMemo(
+    () => [...assignments].sort((a, b) => compareAssignmentsByUrgency(a, b, baseDateForSort)),
+    [assignments, baseDateForSort],
+  );
+
+  const upcomingAssignments = sortedByUrgency.slice(0, 6);
+  const pendingAssignments = assignments.filter((assignment) => assignment.status === "pending");
+  const overdueCount = pendingAssignments.filter((assignment) => getDaysUntilDue(assignment.dueDate, today) < 0).length;
+  const dueTodayCount = pendingAssignments.filter((assignment) => getDaysUntilDue(assignment.dueDate, today) === 0).length;
+  const thisWeekCount = pendingAssignments.filter((assignment) => {
+    const days = getDaysUntilDue(assignment.dueDate, today);
+    return days >= 0 && days <= 7;
+  }).length;
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="border border-border bg-card p-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Pending</p>
+          <p className="mt-1 text-xl font-black tabular-nums">{pendingAssignments.length}</p>
+        </div>
+        <div className="border border-border bg-card p-3">
+          <p className="text-[10px] uppercase tracking-wider text-destructive">Overdue</p>
+          <p className="mt-1 text-xl font-black tabular-nums text-destructive">{overdueCount}</p>
+        </div>
+        <div className="border border-border bg-card p-3">
+          <p className="text-[10px] uppercase tracking-wider text-amber-600">Due Today</p>
+          <p className="mt-1 text-xl font-black tabular-nums text-amber-600">{dueTodayCount}</p>
+        </div>
+        <div className="border border-border bg-card p-3">
+          <p className="text-[10px] uppercase tracking-wider text-primary">Next 7 Days</p>
+          <p className="mt-1 text-xl font-black tabular-nums text-primary">{thisWeekCount}</p>
+        </div>
+      </div>
+
+      <div className="border border-border bg-card overflow-hidden">
+        <div className="p-3 sm:p-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Calendar</p>
+            <p className="text-lg sm:text-xl font-black uppercase tracking-wider">{monthLabel}</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-2.5"
+              onClick={() => onVisibleMonthChange(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs px-2.5"
+              onClick={() => {
+                onVisibleMonthChange(new Date(today.getFullYear(), today.getMonth(), 1));
+                onSelectDateKey(todayKey);
+              }}
+            >
+              Today
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-2.5"
+              onClick={() => onVisibleMonthChange(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-7 border-b border-border bg-muted/20">
+          {WEEKDAY_LABELS.map((label) => (
+            <p
+              key={label}
+              className="py-2 text-center text-[10px] sm:text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground"
+            >
+              {label}
+            </p>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 auto-rows-[84px] sm:auto-rows-[108px] md:auto-rows-[124px]">
+          {calendarDays.map((date) => {
+            const dateKey = toDateKey(date);
+            const dayAssignments = assignmentsByDate.get(dateKey) || [];
+            const urgentCount = dayAssignments.filter(
+              (assignment) => assignment.status === "pending" && getDaysUntilDue(assignment.dueDate, today) <= 3,
+            ).length;
+            const isOutsideMonth = date.getMonth() !== monthStart.getMonth();
+            const isToday = dateKey === todayKey;
+            const isSelected = dateKey === selectedDateKey;
+
+            return (
+              <button
+                key={dateKey}
+                onClick={() => onSelectDateKey(dateKey)}
+                className={cn(
+                  "relative border-r border-b border-border p-1.5 sm:p-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isSelected && "bg-accent/60",
+                  !isSelected && !isOutsideMonth && "hover:bg-accent/30",
+                  isOutsideMonth && "bg-muted/10 text-muted-foreground/60",
+                )}
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <span
+                    className={cn(
+                      "inline-flex h-5 min-w-5 items-center justify-center px-1 text-[11px] sm:text-xs font-bold",
+                      isToday && "bg-primary text-primary-foreground",
+                    )}
+                  >
+                    {date.getDate()}
+                  </span>
+                  {dayAssignments.length > 0 && (
+                    <span
+                      className={cn(
+                        "px-1.5 py-0.5 border text-[9px] font-bold tabular-nums",
+                        urgentCount > 0
+                          ? "bg-destructive/10 text-destructive border-destructive/30"
+                          : "bg-primary/10 text-primary border-primary/30",
+                      )}
+                    >
+                      {dayAssignments.length}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2 hidden sm:flex flex-col gap-1">
+                  {dayAssignments.slice(0, 2).map((assignment) => {
+                    const badge = getDeadlineBadge(getDaysUntilDue(assignment.dueDate, today), assignment.status);
+                    return (
+                      <div
+                        key={assignment.id}
+                        className={cn(
+                          "w-full border px-1.5 py-1 text-[10px] leading-tight truncate font-medium",
+                          badge.className,
+                        )}
+                      >
+                        {assignment.title}
+                      </div>
+                    );
+                  })}
+                  {dayAssignments.length > 2 && (
+                    <span className="text-[9px] text-muted-foreground">+{dayAssignments.length - 2} more</span>
+                  )}
+                </div>
+
+                <div className="mt-2 flex sm:hidden items-center gap-1">
+                  {dayAssignments.slice(0, 3).map((assignment) => {
+                    const badge = getDeadlineBadge(getDaysUntilDue(assignment.dueDate, today), assignment.status);
+                    return <span key={assignment.id} className={cn("h-1.5 w-1.5", badge.dotClassName)} />;
+                  })}
+                  {dayAssignments.length > 3 && (
+                    <span className="text-[9px] text-muted-foreground">+{dayAssignments.length - 3}</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[1.35fr_1fr]">
+        <div className="border border-border bg-card">
+          <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Selected Date</p>
+              <p className="text-sm sm:text-base font-black uppercase tracking-wider">
+                {selectedDate.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+            {selectedDateKey === todayKey && (
+              <span className="px-2 py-1 border border-primary/30 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+                Today
+              </span>
+            )}
+          </div>
+
+          <div className="p-3 space-y-2">
+            {selectedDayAssignments.length === 0 ? (
+              <div className="border border-dashed border-muted-foreground/30 p-6 text-center">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">No deadlines on this day</p>
+              </div>
+            ) : (
+              selectedDayAssignments.map((assignment) => {
+                const daysUntilDue = getDaysUntilDue(assignment.dueDate, today);
+                const badge = getDeadlineBadge(daysUntilDue, assignment.status);
+                const source = sourceConfig[assignment.source];
+                const SourceIcon = source.icon;
+                return (
+                  <button
+                    key={assignment.id}
+                    onClick={() => onAssignmentClick(assignment)}
+                    className="w-full border border-border bg-card p-3 text-left hover:bg-card transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm truncate">{assignment.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {assignment.course} · {getCourseName(assignment.course)}
+                        </p>
+                      </div>
+                      <span className={cn("px-1.5 py-0.5 border text-[9px] font-bold uppercase tracking-wider", badge.className)}>
+                        {badge.label}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", source.className)}>
+                        <SourceIcon className="h-2.5 w-2.5" />
+                        {source.label}
+                      </span>
+                      <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", statusConfig[assignment.status].className)}>
+                        {statusConfig[assignment.status].label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="border border-border bg-card">
+          <div className="p-3 border-b border-border">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Next Deadlines</p>
+            <p className="text-sm font-black uppercase tracking-wider">Relative to Today</p>
+          </div>
+          <div className="p-3 space-y-2">
+            {upcomingAssignments.length === 0 ? (
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">No assessments available</p>
+            ) : (
+              upcomingAssignments.map((assignment) => {
+                const due = parseAssessmentDate(assignment.dueDate);
+                const daysUntilDue = getDaysUntilDue(assignment.dueDate, today);
+                const badge = getDeadlineBadge(daysUntilDue, assignment.status);
+                return (
+                  <button
+                    key={assignment.id}
+                    onClick={() => onAssignmentClick(assignment)}
+                    className="w-full border border-border bg-card p-2.5 text-left hover:bg-card transition-colors"
+                  >
+                    <p className="text-sm font-semibold truncate">{assignment.title}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {assignment.course} · {due.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                    <span className={cn("mt-1 inline-flex px-1.5 py-0.5 border text-[9px] font-bold uppercase tracking-wider", badge.className)}>
+                      {badge.label}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ───
 const Academics = () => {
   const { isAdmin } = useAuth();
@@ -600,6 +1013,12 @@ const Academics = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSource, setFilterSource] = useState<string>("all");
   const [detailAssignment, setDetailAssignment] = useState<Assignment | null>(null);
+  const [viewMode, setViewMode] = useState<AcademicsViewMode>("list");
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const today = startOfLocalDay(new Date());
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState<string>(() => toDateKey(startOfLocalDay(new Date())));
 
   const serverFilters = useMemo(
     () => ({
@@ -607,7 +1026,7 @@ const Academics = () => {
       search: search.trim() || undefined,
       courseCode: filterCourse !== "all" ? filterCourse : undefined,
       status: filterStatus !== "all" ? (filterStatus as "pending" | "submitted" | "graded") : undefined,
-      source: filterSource !== "all" ? (filterSource as "classroom" | "direct" | "notice") : undefined,
+      source: filterSource !== "all" ? (filterSource as "classroom" | "direct" | "notice" | "other") : undefined,
     }),
     [semId, search, filterCourse, filterStatus, filterSource],
   );
@@ -750,7 +1169,9 @@ const Academics = () => {
           queryFn: () => loadAssessments(semId),
         });
         target = refreshed.find((a) => a.id === assignment.id);
-      } catch {}
+      } catch {
+        // fallback to the assignment payload below if assessment lookup fails
+      }
     }
 
     // Last-resort fallback so edit dialog still opens.
@@ -822,7 +1243,7 @@ const Academics = () => {
     if (latest) {
       setDetailAssignment(latest);
     }
-  }, [assignments, detailAssignment?.id]);
+  }, [assignments, detailAssignment]);
 
   const stats = statsQuery.data || { total: 0, pending: 0, submitted: 0, overdue: 0 };
 
@@ -880,64 +1301,119 @@ const Academics = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search assignments, courses..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Filter className="h-3.5 w-3.5" />
-            <span className="text-[10px] uppercase tracking-widest font-bold">Filters</span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Filter className="h-3.5 w-3.5" />
+              <span className="text-[10px] uppercase tracking-widest font-bold">Filters</span>
+            </div>
+            <Select value={filterCourse} onValueChange={setFilterCourse}>
+              <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Course" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Courses</SelectItem>
+                {coursesInData.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="graded">Graded</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterSource} onValueChange={setFilterSource}>
+              <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                {sourceOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(filterCourse !== "all" || filterStatus !== "all" || filterSource !== "all" || search) && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterCourse("all"); setFilterStatus("all"); setFilterSource("all"); setSearch(""); }}>
+                Clear
+              </Button>
+            )}
           </div>
-          <Select value={filterCourse} onValueChange={setFilterCourse}>
-            <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Course" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Courses</SelectItem>
-              {coursesInData.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="graded">Graded</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterSource} onValueChange={setFilterSource}>
-            <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              {sourceOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {(filterCourse !== "all" || filterStatus !== "all" || filterSource !== "all" || search) && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterCourse("all"); setFilterStatus("all"); setFilterSource("all"); setSearch(""); }}>
-              Clear
+          <div className="inline-flex items-center gap-1 border border-border bg-muted/30 p-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "list" ? "default" : "ghost"}
+              className="h-7 px-2.5 text-xs"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="h-3 w-3" />
+              List
             </Button>
-          )}
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "calendar" ? "default" : "ghost"}
+              className="h-7 px-2.5 text-xs"
+              onClick={() => setViewMode("calendar")}
+            >
+              <CalendarDays className="h-3 w-3" />
+              Calendar
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Assignment list */}
       {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="border border-border p-3 flex items-center gap-3">
-              <div className="h-8 w-8 bg-muted animate-pulse shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3.5 w-36 bg-muted animate-pulse" />
-                <div className="h-2.5 w-48 bg-muted animate-pulse" />
+        viewMode === "calendar" ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="border border-border p-3 space-y-2">
+                  <div className="h-2.5 w-20 bg-muted animate-pulse" />
+                  <div className="h-6 w-12 bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+            <div className="border border-border bg-card p-3 sm:p-4 space-y-3">
+              <div className="h-4 w-36 bg-muted animate-pulse" />
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 35 }, (_, i) => (
+                  <div key={i} className="h-16 sm:h-20 border border-border bg-muted/40 animate-pulse" />
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border border-border bg-card p-3 flex items-center gap-3">
+                <div className="h-8 w-8 bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-36 bg-muted animate-pulse" />
+                  <div className="h-2.5 w-48 bg-muted animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       ) : filtered.length === 0 ? (
         <div className="border border-dashed border-muted-foreground/30 p-12 flex flex-col items-center gap-2">
           <BookOpen className="h-8 w-8 text-muted-foreground/40" />
           <p className="text-sm uppercase tracking-wider text-muted-foreground">No assignments match filters</p>
         </div>
+      ) : viewMode === "calendar" ? (
+        <AssessmentCalendarView
+          assignments={filtered}
+          selectedDateKey={selectedCalendarDateKey}
+          onSelectDateKey={setSelectedCalendarDateKey}
+          visibleMonth={calendarMonth}
+          onVisibleMonthChange={setCalendarMonth}
+          getCourseName={getCourseName}
+          onAssignmentClick={setDetailAssignment}
+        />
       ) : (
         <div className="space-y-2">
           {filtered.map((assignment) => (
@@ -952,12 +1428,14 @@ const Academics = () => {
       )}
 
       {/* Confidence legend */}
-      <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-widest text-muted-foreground border-t border-border pt-4">
-        <p className="font-bold">Confidence Check</p>
-        <div className="flex items-center gap-1"><div className="w-3 h-1.5 bg-emerald-500" /><span>Confident</span></div>
-        <div className="flex items-center gap-1"><div className="w-3 h-1.5 bg-amber-500" /><span>Neutral</span></div>
-        <div className="flex items-center gap-1"><div className="w-3 h-1.5 bg-destructive" /><span>Struggling</span></div>
-      </div>
+      {viewMode === "list" && (
+        <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-widest text-muted-foreground border-t border-border pt-4">
+          <p className="font-bold">Confidence Check</p>
+          <div className="flex items-center gap-1"><div className="w-3 h-1.5 bg-emerald-500" /><span>Confident</span></div>
+          <div className="flex items-center gap-1"><div className="w-3 h-1.5 bg-amber-500" /><span>Neutral</span></div>
+          <div className="flex items-center gap-1"><div className="w-3 h-1.5 bg-destructive" /><span>Struggling</span></div>
+        </div>
+      )}
 
       {/* Detail dialog */}
       <AssignmentDetailDialog

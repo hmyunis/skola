@@ -44,7 +44,7 @@ const navItems = [
   { title: "Arena", url: "/arena", icon: Swords, featureId: "ft-arena" },
   { title: "Announcements", url: "/announcements", icon: Megaphone, featureId: "ft-announcements" },
   { title: "Members", url: "/members", icon: Users, featureId: "ft-members" },
-  { title: "Appearance", url: "/settings", icon: Settings, featureId: "ft-appearance" },
+  { title: "Settings", url: "/settings", icon: Settings, featureId: "ft-appearance" },
 ];
 
 const adminItems = [

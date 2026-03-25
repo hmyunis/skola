@@ -14,6 +14,7 @@ export interface LoungeAuthor {
 export interface LoungePost {
   id: string;
   content: string;
+  imageUrl?: string | null;
   tags: string[];
   course?: string | null;
   isAnonymous: boolean;
@@ -22,6 +23,7 @@ export interface LoungePost {
   author: LoungeAuthor;
   authorId: string;
   createdAt: string;
+  editedAt?: string | null;
   userReaction: string | null;
 }
 
@@ -33,10 +35,28 @@ export interface LoungeReply {
   author: LoungeAuthor;
   authorId: string;
   createdAt: string;
+  editedAt?: string | null;
 }
 
 export interface LoungeFeedResponse {
   data: LoungePost[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
+}
+
+export interface MentionableUser {
+  id: string;
+  name: string;
+  username: string | null;
+  mentionKey: string;
+}
+
+export interface MentionableUserSearchResponse {
+  data: MentionableUser[];
   meta: {
     total: number;
     page: number;

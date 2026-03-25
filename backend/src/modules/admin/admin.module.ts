@@ -16,6 +16,7 @@ import { Course } from '../academics/entities/course.entity';
 import { ResourceReport } from '../resources/entities/resource-report.entity';
 import { LoungeReport } from '../lounge/entities/lounge-report.entity';
 import { QuizReport } from '../arena/entities/quiz-report.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { QuizReport } from '../arena/entities/quiz-report.entity';
       LoungeReport,
     ]),
     ClassroomsModule,
+    NotificationsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

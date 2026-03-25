@@ -101,6 +101,7 @@ const typeColors: Record<string, { bg: string; border: string; text: string }> =
   lecture: { bg: "bg-primary/10", border: "border-primary/40", text: "text-primary" },
   lab: { bg: "bg-emerald-500/10", border: "border-emerald-500/40", text: "text-emerald-700" },
   exam: { bg: "bg-destructive/10", border: "border-destructive/40", text: "text-destructive" },
+  other: { bg: "bg-muted", border: "border-border", text: "text-foreground" },
 };
 
 // ─── Deep clone schedule preserving Date objects ───
@@ -118,7 +119,7 @@ interface ScheduleFormValues {
   code: string;
   name: string;
   room: string;
-  type: "lecture" | "lab" | "exam";
+  type: "lecture" | "lab" | "exam" | "other";
   startTime: string;
   endTime: string;
   selectedDay: DayOfWeek;
@@ -221,7 +222,7 @@ function ScheduleItemDialog({
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
-  const [type, setType] = useState<"lecture" | "lab" | "exam">("lecture");
+  const [type, setType] = useState<"lecture" | "lab" | "exam" | "other">("lecture");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>(day);
@@ -328,7 +329,7 @@ function ScheduleItemDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[10px] uppercase tracking-widest">Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as "lecture" | "lab" | "exam")}>
+              <Select value={type} onValueChange={(v) => setType(v as "lecture" | "lab" | "exam" | "other")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -336,6 +337,7 @@ function ScheduleItemDialog({
                   <SelectItem value="lecture">Lecture</SelectItem>
                   <SelectItem value="lab">Lab</SelectItem>
                   <SelectItem value="exam">Exam</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

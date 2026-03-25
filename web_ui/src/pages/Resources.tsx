@@ -436,7 +436,7 @@ const Resources = () => {
 
       {resourcesQuery.isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-24 border border-border animate-pulse bg-muted/30" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-24 border border-border bg-card animate-pulse" />)}
         </div>
       ) : resources.length === 0 ? (
         <div className="border border-dashed border-border p-10 text-center space-y-2">
@@ -450,7 +450,7 @@ const Resources = () => {
             <div
               key={resource.id}
               ref={idx === resources.length - 1 ? lastElementRef : undefined}
-              className="border border-border p-3 sm:p-4 hover:bg-accent/20 transition-colors space-y-2 overflow-hidden"
+              className="border border-border bg-card p-3 sm:p-4 hover:bg-card transition-colors space-y-2 overflow-hidden"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">

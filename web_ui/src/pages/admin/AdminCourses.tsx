@@ -394,7 +394,7 @@ const AdminCourses = () => {
                         {[1, 2, 3].map((i) => (
                             <div
                                 key={i}
-                                className="border border-border p-3 flex items-center gap-3 animate-pulse"
+                                className="border border-border bg-card p-3 flex items-center gap-3 animate-pulse"
                             >
                                 <div className="p-2 bg-muted w-10 h-10" />
                                 <div className="flex-1 space-y-2">
@@ -416,7 +416,7 @@ const AdminCourses = () => {
                             <div
                                 key={c.id}
                                 ref={idx === courses.length - 1 ? lastElementRef : undefined}
-                                className="border border-border p-3 flex items-center gap-3 hover:bg-accent/20 transition-colors"
+                                className="border border-border bg-card p-3 flex items-center gap-3 hover:bg-card transition-colors"
                             >
                                 <div className="p-2 bg-primary/10 border border-primary/30">
                                     <BookOpen className="h-4 w-4 text-primary" />

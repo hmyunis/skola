@@ -156,7 +156,7 @@ const InviteCodesTab = () => {
         <div className="space-y-2">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Active Codes</p>
           {active.map((inv) => (
-            <div key={inv.id} className="border border-border p-3 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-accent/20 transition-colors">
+            <div key={inv.id} className="border border-border bg-card p-3 flex flex-col sm:flex-row sm:items-center gap-3 hover:bg-card transition-colors">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="p-2 border border-emerald-500/30 bg-emerald-500/10 shrink-0">
                   <Link2 className="h-4 w-4 text-emerald-600" />
@@ -200,7 +200,7 @@ const InviteCodesTab = () => {
         <div className="space-y-2">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Expired / Inactive</p>
           {expired.map((inv) => (
-            <div key={inv.id} className="border border-border/50 p-3 flex flex-col sm:flex-row sm:items-center gap-3 opacity-60">
+            <div key={inv.id} className="border border-border/50 bg-card p-3 flex flex-col sm:flex-row sm:items-center gap-3 opacity-60">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="p-2 border border-border bg-muted shrink-0">
                   <Link2 className="h-4 w-4 text-muted-foreground" />

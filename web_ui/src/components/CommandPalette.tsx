@@ -50,7 +50,7 @@ const pages: PageCommand[] = [
   { title: "Arena", url: "/arena", icon: Swords, group: "pages", featureId: "ft-arena", keywords: "quiz battle leaderboard" },
   { title: "Announcements", url: "/announcements", icon: Megaphone, group: "pages", featureId: "ft-announcements", keywords: "news alerts notices" },
   { title: "Members", url: "/members", icon: Users, group: "pages", featureId: "ft-members", keywords: "people users classmates" },
-  { title: "Appearance", url: "/settings", icon: Settings, group: "pages", featureId: "ft-appearance", keywords: "theme settings preferences" },
+  { title: "Settings", url: "/settings", icon: Settings, group: "pages", featureId: "ft-appearance", keywords: "theme appearance notifications preferences" },
 ];
 
 const adminPages: PageCommand[] = [

@@ -13,7 +13,7 @@ export interface ClassSlot {
   name: string;
   code: string;
   room: string;
-  type: "lecture" | "lab" | "exam";
+  type: "lecture" | "lab" | "exam" | "other";
   dayOfWeek?: number;
   startTime: Date;
   endTime: Date;
@@ -25,7 +25,7 @@ export interface Assignment {
   title: string;
   course: string;
   dueDate: string;
-  source: "classroom" | "direct" | "notice";
+  source: "classroom" | "direct" | "notice" | "other";
   status: "pending" | "submitted" | "graded";
   createdAt?: string;
   updatedAt?: string;

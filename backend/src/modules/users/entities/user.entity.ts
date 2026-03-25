@@ -6,6 +6,12 @@ export enum UserRole {
   OWNER = 'owner',
 }
 
+export interface UserNotificationPreferences {
+  inAppAnnouncements?: boolean;
+  browserPushAnnouncements?: boolean;
+  botDmAnnouncements?: boolean;
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -56,6 +62,18 @@ export class User {
     fontFamily?: string;
     accentColor?: string;
   };
+
+  @Column({ type: 'simple-json', nullable: true })
+  notificationPreferences: UserNotificationPreferences | null;
+
+  @Column({ type: 'boolean', default: false })
+  usePersonalImgBbApiKey: boolean;
+
+  @Column({ type: 'text', nullable: true, select: false })
+  imgbbApiKeyCiphertext: string | null;
+
+  @Column({ type: 'varchar', length: 8, nullable: true })
+  imgbbApiKeyHint: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

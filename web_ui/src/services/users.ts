@@ -11,6 +11,12 @@ export interface ManagedUserStats {
   bannedMembers: number;
 }
 
+export interface ImageUploadSettings {
+  usePersonalApiKey: boolean;
+  hasPersonalApiKey: boolean;
+  keyHint: string | null;
+}
+
 export async function fetchManagedUsers(classroomId: string): Promise<ManagedUser[]> {
   const members = await apiFetch(`/classrooms/${classroomId}/members`);
   return members.map((m: any) => ({
@@ -49,5 +55,20 @@ export async function removeMember(classroomId: string, memberId: string) {
   return apiFetch(`/classrooms/members/${memberId}`, {
     method: "DELETE",
     headers: { "x-classroom-id": classroomId },
+  });
+}
+
+export async function fetchImageUploadSettings(): Promise<ImageUploadSettings> {
+  return apiFetch("/users/me/image-upload-settings");
+}
+
+export async function saveImageUploadSettings(data: {
+  usePersonalApiKey?: boolean;
+  apiKey?: string;
+  clearApiKey?: boolean;
+}): Promise<ImageUploadSettings> {
+  return apiFetch("/users/me/image-upload-settings", {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }

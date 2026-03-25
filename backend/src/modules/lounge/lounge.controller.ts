@@ -9,6 +9,8 @@ import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { LoungeReportQueryDto } from './dto/lounge-report-query.dto';
+import { CreateLoungePostDto } from './dto/create-lounge-post.dto';
+import { LoungeMentionUsersQueryDto } from './dto/lounge-mention-users-query.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('lounge')
@@ -19,7 +21,7 @@ export class LoungeController {
   async createPost(
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body() dto: { content: string; tags?: string[]; course?: string; isAnonymous?: boolean }
+    @Body() dto: CreateLoungePostDto,
   ) {
     return this.loungeService.createPost(classroomId, user.id, dto);
   }
@@ -32,6 +34,14 @@ export class LoungeController {
   ) {
     const { search, tag, course, sort, ...pagination } = query;
     return this.loungeService.getFeed(classroomId, pagination, { search, tag, course, sort }, user.id);
+  }
+
+  @Get('mentions/users')
+  async searchMentionableUsers(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: LoungeMentionUsersQueryDto,
+  ) {
+    return this.loungeService.searchMentionableUsers(classroomId, query);
   }
 
   @Patch(':id')

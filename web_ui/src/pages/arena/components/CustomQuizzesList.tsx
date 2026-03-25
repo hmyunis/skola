@@ -179,7 +179,7 @@ export function CustomQuizzesList({ onPlay }: CustomQuizzesListProps) {
         {quizzesQuery.isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 border border-border bg-muted/30 animate-pulse" />
+              <div key={i} className="h-14 border border-border bg-card animate-pulse" />
             ))}
           </div>
         ) : (
@@ -193,7 +193,7 @@ export function CustomQuizzesList({ onPlay }: CustomQuizzesListProps) {
                 <div
                   key={quiz.id}
                   ref={idx === quizzes.length - 1 ? lastQuizRef : undefined}
-                  className="border border-border p-3 flex flex-col gap-3 sm:flex-row sm:items-center hover:bg-accent/20 transition-colors"
+                  className="border border-border bg-card p-3 flex flex-col gap-3 sm:flex-row sm:items-center hover:bg-card transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold break-words leading-relaxed">{quiz.title}</p>

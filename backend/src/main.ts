@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { ConfigService } from '@nestjs/config';
 
@@ -13,8 +14,13 @@ async function bootstrap() {
   // 1. Security Headers
   app.use(helmet());
 
-  // 2. CORS (Allow React Frontend)
+  // 2. CORS (Allow Frontend)
   const frontendUrl = configService.get<string>('FRONTEND_URL');
+
+  // Allow base64 image payloads for lounge image attachments.
+  app.use(json({ limit: '12mb' }));
+  app.use(urlencoded({ limit: '12mb', extended: true }));
+
   app.enableCors({
     origin: frontendUrl || '*', // Restrict this in production!
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
