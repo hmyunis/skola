@@ -359,7 +359,16 @@ export class AcademicsService {
 
   async getWeeklySchedule(classroomId: string) {
     // 1. Get the active semester for this classroom
-    const activeSemester = await this.getActiveSemester(classroomId);
+    const activeSemester = await this.semesterRepo.findOne({
+      where: { classroomId, isActive: true },
+      select: ['id'],
+    });
+
+    // New classrooms may not have any semester configured yet.
+    // For schedule reads, return an empty list instead of a 404.
+    if (!activeSemester) {
+      return [];
+    }
 
     // 2. Fetch all schedule items linked to courses in this active semester
     // Using QueryBuilder for efficiency
@@ -461,7 +470,10 @@ export class AcademicsService {
       );
     }
 
-    qb.orderBy('assessment.dueDate', 'ASC').addOrderBy('assessment.createdAt', 'DESC');
+    qb
+      .orderBy('assessment.dueDate IS NULL', 'ASC')
+      .addOrderBy('assessment.dueDate', 'ASC')
+      .addOrderBy('assessment.createdAt', 'DESC');
 
     const items = await qb.getMany();
     const confidenceMeta = await this.getConfidenceMeta(items.map((item) => item.id), userId);
@@ -548,7 +560,7 @@ export class AcademicsService {
       title: dto.title,
       type: dto.type,
       courseCode: dto.courseCode,
-      dueDate: dto.dueDate,
+      dueDate: dto.dueDate ?? null,
       description: dto.description?.trim() || null,
       maxScore: dto.maxScore ?? 100,
       weight: dto.weight ?? 10,
@@ -779,7 +791,7 @@ export class AcademicsService {
       title: assessment.title,
       type: assessment.type,
       courseCode: assessment.courseCode,
-      dueDate: assessment.dueDate,
+      dueDate: assessment.dueDate ?? null,
       description: assessment.description || '',
       maxScore: assessment.maxScore,
       weight: assessment.weight,

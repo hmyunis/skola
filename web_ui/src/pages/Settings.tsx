@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useTheme, FONT_FAMILIES } from "@/stores/themeStore";
+import { useClassroomStore } from "@/stores/classroomStore";
 import { userAccents } from "@/lib/themes";
 import { useUpdateUserTheme } from "@/hooks/use-theme";
 import {
@@ -208,6 +209,7 @@ const SettingsPage = () => {
   } = useTheme();
   const updateUserTheme = useUpdateUserTheme();
   const queryClient = useQueryClient();
+  const activeClassroomId = useClassroomStore((s) => s.activeClassroom?.id || null);
 
   const [usePersonalApiKey, setUsePersonalApiKey] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -225,24 +227,28 @@ const SettingsPage = () => {
   const [notificationTriggersOpen, setNotificationTriggersOpen] = useState(false);
 
   const imageSettingsQuery = useQuery({
-    queryKey: ["imageUploadSettings"],
+    queryKey: ["imageUploadSettings", activeClassroomId],
     queryFn: fetchImageUploadSettings,
+    enabled: !!activeClassroomId,
   });
 
   const notificationSettingsQuery = useQuery({
-    queryKey: ["notificationSettings"],
+    queryKey: ["notificationSettings", activeClassroomId],
     queryFn: fetchNotificationSettings,
+    enabled: !!activeClassroomId,
   });
 
   const webPushConfigQuery = useQuery({
-    queryKey: ["webPushConfig"],
+    queryKey: ["webPushConfig", activeClassroomId],
     queryFn: fetchWebPushConfig,
+    enabled: !!activeClassroomId,
   });
 
   const inAppNotificationsQuery = useQuery({
-    queryKey: ["inAppNotifications"],
+    queryKey: ["inAppNotifications", activeClassroomId],
     queryFn: () => fetchInAppNotifications(40),
     refetchInterval: 20_000,
+    enabled: !!activeClassroomId,
   });
 
   const refreshDevicePushState = useCallback(async () => {
@@ -306,7 +312,7 @@ const SettingsPage = () => {
     mutationFn: (payload: Partial<NotificationSettings>) => saveNotificationSettings(payload),
     onSuccess: (next: NotificationSettings) => {
       setNotificationSettings(next);
-      queryClient.invalidateQueries({ queryKey: ["notificationSettings"] });
+      queryClient.invalidateQueries({ queryKey: ["notificationSettings", activeClassroomId] });
       toast({ title: "Saved", description: "Notification preferences updated." });
     },
     onError: (error: unknown) => {
@@ -321,16 +327,16 @@ const SettingsPage = () => {
   const markNotificationReadMutation = useMutation({
     mutationFn: markInAppNotificationRead,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inAppNotifications"] });
-      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread"] });
+      queryClient.invalidateQueries({ queryKey: ["inAppNotifications", activeClassroomId] });
+      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread", activeClassroomId] });
     },
   });
 
   const markAllNotificationsReadMutation = useMutation({
     mutationFn: markAllInAppNotificationsRead,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inAppNotifications"] });
-      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread"] });
+      queryClient.invalidateQueries({ queryKey: ["inAppNotifications", activeClassroomId] });
+      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread", activeClassroomId] });
       toast({ title: "Done", description: "All in-app notifications marked as read." });
     },
     onError: (error: unknown) => {
@@ -508,8 +514,8 @@ const SettingsPage = () => {
     try {
       const result = await sendTestNotification(type);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["inAppNotifications"] }),
-        queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread"] }),
+        queryClient.invalidateQueries({ queryKey: ["inAppNotifications", activeClassroomId] }),
+        queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread", activeClassroomId] }),
       ]);
       toast({
         title: type === "announcement" ? "Announcement test sent" : "Mention test sent",

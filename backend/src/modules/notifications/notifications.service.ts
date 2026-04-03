@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { HttpService } from '@nestjs/axios';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import * as webpush from 'web-push';
 import {
@@ -98,8 +98,6 @@ export class NotificationsService {
   };
 
   constructor(
-    @InjectRepository(User)
-    private readonly usersRepository: Repository<User>,
     @InjectRepository(ClassroomMember)
     private readonly membersRepository: Repository<ClassroomMember>,
     @InjectRepository(InAppNotification)
@@ -135,25 +133,28 @@ export class NotificationsService {
     }
   }
 
-  async getUserPreferences(userId: string): Promise<NotificationPreferenceResponse> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return this.normalizePreferences(user.notificationPreferences);
+  async getUserPreferences(
+    userId: string,
+    classroomId: string,
+  ): Promise<NotificationPreferenceResponse> {
+    const member = await this.membersRepository.findOne({
+      where: { classroom: { id: classroomId }, user: { id: userId } },
+    });
+    if (!member) throw new NotFoundException('User not found in this classroom');
+    return this.normalizePreferences(member.notificationPreferences);
   }
 
   async updateUserPreferences(
     userId: string,
+    classroomId: string,
     dto: UpdateNotificationPreferencesDto,
   ): Promise<NotificationPreferenceResponse> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    const member = await this.membersRepository.findOne({
+      where: { classroom: { id: classroomId }, user: { id: userId } },
+    });
+    if (!member) throw new NotFoundException('User not found in this classroom');
 
-    const current = this.normalizePreferences(user.notificationPreferences);
+    const current = this.normalizePreferences(member.notificationPreferences);
     const next: NotificationPreferenceResponse = {
       inAppAnnouncements:
         dto.inAppAnnouncements === undefined
@@ -169,8 +170,8 @@ export class NotificationsService {
           : dto.botDmAnnouncements,
     };
 
-    user.notificationPreferences = next;
-    await this.usersRepository.save(user);
+    member.notificationPreferences = next;
+    await this.membersRepository.save(member);
     return next;
   }
 
@@ -184,18 +185,19 @@ export class NotificationsService {
   async sendTestNotification(
     userId: string,
     type: NotificationTestType,
-    classroomId?: string | null,
+    classroomId: string,
   ): Promise<NotificationTestResponse> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    const member = await this.membersRepository.findOne({
+      where: { classroom: { id: classroomId }, user: { id: userId } },
+      relations: ['user'],
+    });
+    const user = member?.user || null;
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('User not found in this classroom');
     }
 
-    const preferences = this.normalizePreferences(user.notificationPreferences);
-    const targetClassroomId =
-      typeof classroomId === 'string' && classroomId.trim()
-        ? classroomId.trim()
-        : null;
+    const preferences = this.normalizePreferences(member?.notificationPreferences);
+    const targetClassroomId = classroomId;
 
     const now = Date.now();
     const isAnnouncementTest = type === 'announcement';
@@ -354,17 +356,18 @@ export class NotificationsService {
 
   async listInAppNotifications(
     userId: string,
+    classroomId: string,
     limitRaw?: number,
   ): Promise<{ items: InAppNotificationResponse[]; unreadCount: number }> {
     const limit = this.clampLimit(limitRaw);
     const [rows, unreadCount] = await Promise.all([
       this.inAppNotificationsRepository.find({
-        where: { userId },
+        where: { userId, classroomId },
         order: { createdAt: 'DESC' },
         take: limit,
       }),
       this.inAppNotificationsRepository.count({
-        where: { userId, isRead: false },
+        where: { userId, classroomId, isRead: false },
       }),
     ]);
 
@@ -376,10 +379,11 @@ export class NotificationsService {
 
   async markInAppNotificationAsRead(
     userId: string,
+    classroomId: string,
     notificationId: string,
   ): Promise<{ success: true }> {
     const row = await this.inAppNotificationsRepository.findOne({
-      where: { id: notificationId, userId },
+      where: { id: notificationId, userId, classroomId },
     });
     if (!row) {
       throw new NotFoundException('Notification not found');
@@ -394,12 +398,16 @@ export class NotificationsService {
     return { success: true };
   }
 
-  async markAllInAppNotificationsAsRead(userId: string): Promise<{ success: true }> {
+  async markAllInAppNotificationsAsRead(
+    userId: string,
+    classroomId: string,
+  ): Promise<{ success: true }> {
     await this.inAppNotificationsRepository
       .createQueryBuilder()
       .update(InAppNotification)
       .set({ isRead: true, readAt: new Date() })
       .where('userId = :userId', { userId })
+      .andWhere('classroomId = :classroomId', { classroomId })
       .andWhere('isRead = :isRead', { isRead: false })
       .execute();
 
@@ -408,11 +416,13 @@ export class NotificationsService {
 
   async dismissInAppNotification(
     userId: string,
+    classroomId: string,
     notificationId: string,
   ): Promise<{ success: true }> {
     const result = await this.inAppNotificationsRepository.delete({
       id: notificationId,
       userId,
+      classroomId,
     });
 
     if (!result.affected) {
@@ -438,19 +448,21 @@ export class NotificationsService {
       .filter((member) =>
         this.shouldReceiveAudience(member.role, announcement.targetAudience),
       )
-      .map((member) => member.user)
-      .filter((user): user is User => Boolean(user))
-      .filter((user) => user.id !== actorUserId);
+      .filter((member) => Boolean(member.user))
+      .filter((member) => member.user.id !== actorUserId);
 
     if (!recipients.length) {
       return;
     }
 
     const inAppRows = recipients
-      .filter((user) => this.normalizePreferences(user.notificationPreferences).inAppAnnouncements)
-      .map((user) =>
+      .filter((member) =>
+        this.normalizePreferences(member.notificationPreferences)
+          .inAppAnnouncements,
+      )
+      .map((member) =>
         this.inAppNotificationsRepository.create({
-          userId: user.id,
+          userId: member.user.id,
           classroomId,
           kind: 'announcement',
           title: announcement.title,
@@ -483,10 +495,11 @@ export class NotificationsService {
     };
 
     const pushUserIds = recipients
-      .filter((user) =>
-        this.normalizePreferences(user.notificationPreferences).browserPushAnnouncements,
+      .filter((member) =>
+        this.normalizePreferences(member.notificationPreferences)
+          .browserPushAnnouncements,
       )
-      .map((user) => user.id);
+      .map((member) => member.user.id);
 
     const priorityLabel = announcement.priority.toUpperCase();
     const link = this.buildFrontendLink('/announcements');
@@ -494,10 +507,13 @@ export class NotificationsService {
       `New announcement (${priorityLabel})\n\n${announcement.title}\n\n${announcement.content}${
         link ? `\n\nOpen: ${link}` : ''
       }`;
-    const botRecipients = recipients.filter((user) => {
-      const wantsDm = this.normalizePreferences(user.notificationPreferences).botDmAnnouncements;
-      return wantsDm && Boolean(user.telegramId);
-    });
+    const botRecipients = recipients
+      .filter((member) => {
+        const wantsDm = this.normalizePreferences(member.notificationPreferences)
+          .botDmAnnouncements;
+        return wantsDm && Boolean(member.user.telegramId);
+      })
+      .map((member) => member.user);
 
     await Promise.all([
       this.sendBrowserPushToUserIds(pushUserIds, pushPayload),
@@ -525,11 +541,14 @@ export class NotificationsService {
       return;
     }
 
-    const recipients = await this.usersRepository
-      .createQueryBuilder('user')
-      .where('user.id IN (:...ids)', { ids: uniqueRecipientIds })
-      .getMany();
-    if (!recipients.length) {
+    const recipientMembers = await this.membersRepository.find({
+      where: {
+        classroom: { id: classroomId },
+        user: { id: In(uniqueRecipientIds) },
+      },
+      relations: ['user'],
+    });
+    if (!recipientMembers.length) {
       return;
     }
 
@@ -546,11 +565,14 @@ export class NotificationsService {
         ? normalizedBody.slice(0, 240)
         : fallbackBody;
 
-    const inAppRows = recipients
-      .filter((user) => this.normalizePreferences(user.notificationPreferences).inAppAnnouncements)
-      .map((user) =>
+    const inAppRows = recipientMembers
+      .filter((member) =>
+        this.normalizePreferences(member.notificationPreferences)
+          .inAppAnnouncements,
+      )
+      .map((member) =>
         this.inAppNotificationsRepository.create({
-          userId: user.id,
+          userId: member.user.id,
           classroomId,
           kind: 'lounge_mention',
           title,
@@ -584,19 +606,23 @@ export class NotificationsService {
         notificationType: 'lounge_mention',
       },
     };
-    const pushUserIds = recipients
-      .filter((user) =>
-        this.normalizePreferences(user.notificationPreferences).browserPushAnnouncements,
+    const pushUserIds = recipientMembers
+      .filter((member) =>
+        this.normalizePreferences(member.notificationPreferences)
+          .browserPushAnnouncements,
       )
-      .map((user) => user.id);
+      .map((member) => member.user.id);
 
     const link = this.buildFrontendLink('/lounge');
     const mentionText =
       `${title}\n\n${body}${link ? `\n\nOpen: ${link}` : ''}`;
-    const botRecipients = recipients.filter((user) => {
-      const wantsDm = this.normalizePreferences(user.notificationPreferences).botDmAnnouncements;
-      return wantsDm && Boolean(user.telegramId);
-    });
+    const botRecipients = recipientMembers
+      .filter((member) => {
+        const wantsDm = this.normalizePreferences(member.notificationPreferences)
+          .botDmAnnouncements;
+        return wantsDm && Boolean(member.user.telegramId);
+      })
+      .map((member) => member.user);
 
     await Promise.all([
       this.sendBrowserPushToUserIds(pushUserIds, pushPayload),

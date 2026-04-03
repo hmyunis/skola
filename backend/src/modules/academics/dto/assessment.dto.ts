@@ -32,8 +32,9 @@ export class CreateAssessmentDto {
   @MaxLength(32)
   courseCode: string;
 
+  @IsOptional()
   @IsDateString()
-  dueDate: string;
+  dueDate?: string | null;
 
   @IsOptional()
   @IsString()
@@ -81,7 +82,7 @@ export class UpdateAssessmentDto {
 
   @IsOptional()
   @IsDateString()
-  dueDate?: string;
+  dueDate?: string | null;
 
   @IsOptional()
   @IsString()

@@ -127,8 +127,15 @@ export class ResourcesService {
     };
   }
 
-  async vote(resourceId: string, userId: string, voteType: VoteType) {
-    const resource = await this.resourceRepo.findOne({ where: { id: resourceId } });
+  async vote(
+    resourceId: string,
+    classroomId: string,
+    userId: string,
+    voteType: VoteType,
+  ) {
+    const resource = await this.resourceRepo.findOne({
+      where: { id: resourceId, classroomId },
+    });
     if (!resource) throw new NotFoundException('Resource not found');
 
     let existingVote = await this.voteRepo.findOne({ where: { resourceId, userId } });
@@ -333,9 +340,9 @@ export class ResourcesService {
     return { success: true };
   }
 
-  async findById(id: string): Promise<Resource> {
+  async findById(id: string, classroomId: string): Promise<Resource> {
     const resource = await this.resourceRepo.findOne({ 
-      where: { id },
+      where: { id, classroomId },
       relations: ['uploader', 'course']
     });
     if (!resource) throw new NotFoundException('Resource not found');

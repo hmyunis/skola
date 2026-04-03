@@ -10,7 +10,11 @@ import {
 const ACTIVE_SEMESTER_KEY = "skola-active-semester-id";
 
 function getInitialActiveSemester(semesters: Semester[]): Semester | null {
-  // Try stored active semester
+  // Always prefer the server-side active semester.
+  const active = semesters.find((s) => s.status === "active");
+  if (active) return active;
+
+  // If none is active, try remembered local selection.
   try {
     const storedId = localStorage.getItem(ACTIVE_SEMESTER_KEY);
     if (storedId) {
@@ -18,8 +22,9 @@ function getInitialActiveSemester(semesters: Semester[]): Semester | null {
       if (found) return found;
     }
   } catch {}
-  // Fall back to first active semester, or first in list
-  return semesters.find((s) => s.status === "active") || semesters[0] || null;
+
+  // Final fallback.
+  return semesters[0] || null;
 }
 
 interface SemesterState {
@@ -62,15 +67,22 @@ export const useSemesterStore = create<SemesterState>((set, get) => ({
   updateSemester: async (sem) => {
     set({ isLoading: true, error: null });
     try {
-      const updated = await apiUpdateSemester(sem.id, sem);
-      set((state) => {
-        const next = state.semesters.map((s) => (s.id === updated.id ? updated : s));
-        const active = state.activeSemester;
-        return {
-          semesters: next,
-          activeSemester: active?.id === updated.id ? updated : active,
-          isLoading: false
-        };
+      const { id, ...payload } = sem;
+      const updated = await apiUpdateSemester(id, payload);
+      const semesters = await loadSemesters();
+      const nextActive =
+        updated.status === "active"
+          ? semesters.find((s) => s.id === updated.id) || updated
+          : getInitialActiveSemester(semesters);
+
+      if (nextActive) {
+        localStorage.setItem(ACTIVE_SEMESTER_KEY, nextActive.id);
+      }
+
+      set({
+        semesters,
+        activeSemester: nextActive,
+        isLoading: false,
       });
     } catch (err: any) {
       set({ error: err.message, isLoading: false });

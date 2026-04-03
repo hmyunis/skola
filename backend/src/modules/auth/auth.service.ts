@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { HttpService } from '@nestjs/axios';
@@ -75,18 +75,6 @@ export class AuthService {
     let user = await this.usersService.findByTelegramId(dto.id);
     
     if (user) {
-      // Check bans/suspensions
-      if (user.isBanned) {
-        throw new ForbiddenException({ reason: 'banned', message: 'Your account has been permanently banned.' });
-      }
-      if (user.suspendedUntil && new Date() < user.suspendedUntil) {
-        throw new ForbiddenException({ 
-          reason: 'suspended', 
-          suspendedUntil: user.suspendedUntil,
-          message: 'Your account is temporarily suspended.' 
-        });
-      }
-      
       // Update info if it changed
       user.photoUrl = dto.photo_url || user.photoUrl;
       user.telegramUsername = dto.username || user.telegramUsername;
@@ -108,7 +96,7 @@ export class AuthService {
     }
 
     // Step D: Generate JWT Token
-    const payload = { sub: user.id, role: user.role };
+    const payload = { sub: user.id };
     const accessToken = this.jwtService.sign(payload);
 
     return {
@@ -117,7 +105,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         initials: user.initials, // Using the virtual property
-        role: user.role,
+        role: 'student',
         telegramUsername: user.telegramUsername,
         photoUrl: user.photoUrl,
         anonymousId: user.anonymousId,

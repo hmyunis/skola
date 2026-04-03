@@ -10,7 +10,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { User, UserRole } from './entities/user.entity';
-import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
+import {
+  ClassroomMember,
+  ClassroomThemeSettings,
+} from '../classrooms/entities/classroom-member.entity';
 import { UpdateImageUploadSettingsDto } from './dto/update-image-upload-settings.dto';
 
 export interface UserImageUploadSettings {
@@ -22,6 +25,29 @@ export interface UserImageUploadSettings {
 @Injectable()
 export class UsersService {
   private readonly byokEncryptionKey: Buffer;
+
+  private toScopedProfilePayload(member: ClassroomMember): Record<string, unknown> {
+    const user = member.user;
+    return {
+      id: user.id,
+      name: user.name,
+      initials: user.initials,
+      role: member.role,
+      telegramUsername: user.telegramUsername || null,
+      photoUrl: user.photoUrl || null,
+      anonymousId: user.anonymousId || null,
+      code: user.code || null,
+      year: user.year,
+      semester: user.semester,
+      batch: user.batch || null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      isBanned: false,
+      suspendedUntil: null,
+      themeSettings: member.themeSettings || null,
+      notificationPreferences: member.notificationPreferences || null,
+    };
+  }
 
   constructor(
     @InjectRepository(User)
@@ -60,13 +86,40 @@ export class UsersService {
     await this.usersRepository.update(id, data);
   }
 
-  async updateThemeSettings(userId: string, themeSettings: any): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new Error('User not found');
+  async getScopedProfile(
+    userId: string,
+    classroomId: string,
+  ): Promise<Record<string, unknown>> {
+    const member = await this.classroomMembersRepository.findOne({
+      where: { classroom: { id: classroomId }, user: { id: userId } },
+      relations: ['user'],
+    });
+    if (!member?.user) {
+      throw new NotFoundException('User not found in this classroom');
     }
-    user.themeSettings = { ...user.themeSettings, ...themeSettings };
-    return this.usersRepository.save(user);
+
+    return this.toScopedProfilePayload(member);
+  }
+
+  async updateThemeSettings(
+    userId: string,
+    classroomId: string,
+    themeSettings: ClassroomThemeSettings,
+  ): Promise<Record<string, unknown>> {
+    const member = await this.classroomMembersRepository.findOne({
+      where: { classroom: { id: classroomId }, user: { id: userId } },
+      relations: ['user'],
+    });
+    if (!member?.user) {
+      throw new NotFoundException('User not found in this classroom');
+    }
+
+    member.themeSettings = {
+      ...(member.themeSettings || {}),
+      ...(themeSettings || {}),
+    };
+    await this.classroomMembersRepository.save(member);
+    return this.getScopedProfile(userId, classroomId);
   }
 
   async deleteAccount(id: string): Promise<void> {
@@ -115,86 +168,90 @@ export class UsersService {
       successorMembership.role = UserRole.OWNER;
       await memberRepo.save(successorMembership);
 
-      if (successorMembership.user.role !== UserRole.OWNER) {
-        successorMembership.user.role = UserRole.OWNER;
-        await userRepo.save(successorMembership.user);
-      }
-
       await userRepo.delete(ownerUserId);
     });
   }
 
-  async getImageUploadSettings(userId: string): Promise<UserImageUploadSettings> {
-    const user = await this.findByIdWithSensitiveFields(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
+  async getImageUploadSettings(
+    userId: string,
+    classroomId: string,
+  ): Promise<UserImageUploadSettings> {
+    const member = await this.findMemberWithSensitiveFields(userId, classroomId);
+    if (!member) {
+      throw new NotFoundException('User not found in this classroom');
     }
-    return this.toImageUploadSettings(user);
+    return this.toImageUploadSettings(member);
   }
 
   async updateImageUploadSettings(
     userId: string,
+    classroomId: string,
     dto: UpdateImageUploadSettingsDto,
   ): Promise<UserImageUploadSettings> {
-    const user = await this.findByIdWithSensitiveFields(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
+    const member = await this.findMemberWithSensitiveFields(userId, classroomId);
+    if (!member) {
+      throw new NotFoundException('User not found in this classroom');
     }
 
     const requestedUsePersonal =
-      dto.usePersonalApiKey === undefined ? user.usePersonalImgBbApiKey : dto.usePersonalApiKey;
+      dto.usePersonalApiKey === undefined ? member.usePersonalImgBbApiKey : dto.usePersonalApiKey;
     const normalizedApiKey = (dto.apiKey || '').trim();
     const shouldStoreNewApiKey = normalizedApiKey.length > 0;
     const shouldClearApiKey = Boolean(dto.clearApiKey);
 
     if (shouldStoreNewApiKey) {
       this.validateImgbbApiKey(normalizedApiKey);
-      user.imgbbApiKeyCiphertext = this.encryptSecret(normalizedApiKey);
-      user.imgbbApiKeyHint = this.maskKeyHint(normalizedApiKey);
+      member.imgbbApiKeyCiphertext = this.encryptSecret(normalizedApiKey);
+      member.imgbbApiKeyHint = this.maskKeyHint(normalizedApiKey);
     }
 
     if (shouldClearApiKey) {
-      user.imgbbApiKeyCiphertext = null;
-      user.imgbbApiKeyHint = null;
+      member.imgbbApiKeyCiphertext = null;
+      member.imgbbApiKeyHint = null;
     }
 
-    user.usePersonalImgBbApiKey = requestedUsePersonal;
+    member.usePersonalImgBbApiKey = requestedUsePersonal;
 
-    if (user.usePersonalImgBbApiKey && !user.imgbbApiKeyCiphertext) {
+    if (member.usePersonalImgBbApiKey && !member.imgbbApiKeyCiphertext) {
       throw new BadRequestException(
         'Personal image key mode is enabled, but no personal API key is saved.',
       );
     }
 
-    await this.usersRepository.save(user);
-    return this.toImageUploadSettings(user);
+    await this.classroomMembersRepository.save(member);
+    return this.toImageUploadSettings(member);
   }
 
-  async resolveImgbbApiKeyForUser(userId: string): Promise<{
+  async resolveImgbbApiKeyForUser(userId: string, classroomId: string): Promise<{
     usePersonalApiKey: boolean;
     personalApiKey: string | null;
   }> {
-    const user = await this.findByIdWithSensitiveFields(userId);
-    if (!user) throw new NotFoundException('User not found');
+    const member = await this.findMemberWithSensitiveFields(userId, classroomId);
+    if (!member) throw new NotFoundException('User not found in this classroom');
 
-    if (!user.usePersonalImgBbApiKey) {
+    if (!member.usePersonalImgBbApiKey) {
       return { usePersonalApiKey: false, personalApiKey: null };
     }
-    if (!user.imgbbApiKeyCiphertext) {
+    if (!member.imgbbApiKeyCiphertext) {
       return { usePersonalApiKey: true, personalApiKey: null };
     }
 
     return {
       usePersonalApiKey: true,
-      personalApiKey: this.decryptSecret(user.imgbbApiKeyCiphertext),
+      personalApiKey: this.decryptSecret(member.imgbbApiKeyCiphertext),
     };
   }
 
-  private toImageUploadSettings(user: Pick<User, 'usePersonalImgBbApiKey' | 'imgbbApiKeyCiphertext' | 'imgbbApiKeyHint'>): UserImageUploadSettings {
+  private toImageUploadSettings(
+    member: Pick<
+      ClassroomMember,
+      'usePersonalImgBbApiKey' | 'imgbbApiKeyCiphertext' | 'imgbbApiKeyHint'
+    >,
+  ): UserImageUploadSettings {
     return {
-      usePersonalApiKey: Boolean(user.usePersonalImgBbApiKey),
-      hasPersonalApiKey: Boolean(user.imgbbApiKeyCiphertext),
-      keyHint: user.imgbbApiKeyHint || null,
+      usePersonalApiKey: Boolean(member.usePersonalImgBbApiKey),
+      hasPersonalApiKey: Boolean(member.imgbbApiKeyCiphertext),
+      keyHint: member.imgbbApiKeyHint || null,
     };
   }
 
@@ -255,11 +312,16 @@ export class UsersService {
     }
   }
 
-  private async findByIdWithSensitiveFields(userId: string) {
-    return this.usersRepository
-      .createQueryBuilder('user')
-      .addSelect('user.imgbbApiKeyCiphertext')
+  private async findMemberWithSensitiveFields(
+    userId: string,
+    classroomId: string,
+  ) {
+    return this.classroomMembersRepository
+      .createQueryBuilder('member')
+      .innerJoin('member.user', 'user')
+      .addSelect('member.imgbbApiKeyCiphertext')
       .where('user.id = :userId', { userId })
+      .andWhere('member.classroomId = :classroomId', { classroomId })
       .getOne();
   }
 }

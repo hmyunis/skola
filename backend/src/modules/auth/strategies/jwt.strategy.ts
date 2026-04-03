@@ -28,11 +28,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException();
     }
-    
-    // Check if user got banned AFTER token was issued
-    if (user.isBanned) {
-        throw new UnauthorizedException('Account banned');
-    }
 
     // Attach user object to the Request (req.user)
     return user; 

@@ -16,9 +16,10 @@ export async function createSemester(semester: Omit<Semester, "id">): Promise<Se
 }
 
 export async function updateSemester(id: string, semester: Partial<Semester>): Promise<Semester> {
+  const { id: _ignored, ...payload } = semester as Partial<Semester> & { id?: string };
   return apiFetch(`/academics/semesters/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(semester),
+    body: JSON.stringify(payload),
   });
 }
 

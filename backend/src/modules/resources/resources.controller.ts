@@ -32,7 +32,7 @@ import { ResourceReportQueryDto } from './dto/resource-report-query.dto';
 
 const uploadDestination = './public/uploads/resources';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ClassroomRoleGuard)
 @Controller('resources')
 export class ResourcesController {
   constructor(private readonly resourcesService: ResourcesService) {}
@@ -183,10 +183,11 @@ export class ResourcesController {
   @Post(':id/vote')
   async voteResource(
     @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
     @Body('voteType') voteType: VoteType
   ) {
-    return this.resourcesService.vote(id, user.id, voteType);
+    return this.resourcesService.vote(id, classroomId, user.id, voteType);
   }
 
   @Post(':id/report')
@@ -224,7 +225,10 @@ export class ResourcesController {
   }
 
   @Get(':id')
-  async getResource(@Param('id') id: string) {
-    return this.resourcesService.findById(id);
+  async getResource(
+    @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.resourcesService.findById(id, classroomId);
   }
 }

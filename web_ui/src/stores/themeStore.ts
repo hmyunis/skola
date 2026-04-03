@@ -11,19 +11,23 @@ import {
 import { useAuthStore } from "./authStore";
 import { useClassroomStore } from "./classroomStore";
 
-const THEME_MODE_KEY = "skola-theme-mode";
+const THEME_MODE_KEY_PREFIX = "skola-theme-mode";
 
-function loadStoredColorMode(): ColorMode | null {
+function getThemeModeStorageKey(classroomId?: string | null) {
+  return classroomId ? `${THEME_MODE_KEY_PREFIX}:${classroomId}` : THEME_MODE_KEY_PREFIX;
+}
+
+function loadStoredColorMode(classroomId?: string | null): ColorMode | null {
   try {
-    const mode = localStorage.getItem(THEME_MODE_KEY);
+    const mode = localStorage.getItem(getThemeModeStorageKey(classroomId));
     if (mode === "light" || mode === "dark") return mode;
   } catch {}
   return null;
 }
 
-function persistColorMode(mode: ColorMode) {
+function persistColorMode(mode: ColorMode, classroomId?: string | null) {
   try {
-    localStorage.setItem(THEME_MODE_KEY, mode);
+    localStorage.setItem(getThemeModeStorageKey(classroomId), mode);
   } catch {}
 }
 
@@ -127,7 +131,7 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>((set, get) => ({
   batchTheme: batchThemes[0],
   userAccent: null,
-  colorMode: (loadStoredColorMode() || "dark") as ColorMode,
+  colorMode: (loadStoredColorMode(useClassroomStore.getState().activeClassroom?.id) || "dark") as ColorMode,
   fontFamily: "system",
   customThemes: [],
 
@@ -146,7 +150,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setColorMode: (mode) => {
     set({ colorMode: mode });
-    persistColorMode(mode);
+    persistColorMode(mode, useClassroomStore.getState().activeClassroom?.id);
     const { batchTheme, userAccent } = get();
     applyThemeToDOM(batchTheme, userAccent, mode);
   },
@@ -188,7 +192,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         ? activeClassroom.customThemes
         : [];
 
-      const storedColorMode = loadStoredColorMode();
+      const storedColorMode = loadStoredColorMode(activeClassroom?.id || null);
       const colorMode =
         storedColorMode ||
         userTheme?.colorMode ||
@@ -199,7 +203,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       const normalizedCustomThemes = classroomCustomThemes.map((theme) => normalizeTheme(theme));
 
       set({ colorMode, fontFamily, batchTheme, userAccent, customThemes: normalizedCustomThemes });
-      persistColorMode(colorMode);
+      persistColorMode(colorMode, activeClassroom?.id || null);
       applyThemeToDOM(batchTheme, userAccent, colorMode);
       applyFontToDOM(fontFamily);
     },

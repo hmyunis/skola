@@ -22,3 +22,13 @@ export interface ClassMembership {
   role: "owner" | "admin" | "student";
   joinedAt: string;
 }
+
+export type ClassroomRole = "owner" | "admin" | "student";
+
+export interface ClassroomMembershipContext {
+  classroom: Classroom;
+  role: ClassroomRole;
+  joinedAt: string;
+  status?: "active" | "suspended" | "banned";
+  suspendedUntil?: string | null;
+}

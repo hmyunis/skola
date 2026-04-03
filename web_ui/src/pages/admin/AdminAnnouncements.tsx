@@ -327,29 +327,37 @@ const AdminAnnouncements = () => {
             ))}
           </div>
         )}
-        {sorted.map((a) => {
-          const pCfg = priorityConfig[a.priority];
-          return (
-            <div key={a.id} className={cn("border p-3 sm:p-4 space-y-2 transition-colors", a.pinned ? "border-primary/30 bg-primary/5" : "border-border bg-card hover:bg-card")}>
-              <div className="flex items-center gap-2 flex-wrap">
-                {a.pinned && <Pin className="h-3 w-3 text-primary fill-primary" />}
-                <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", pCfg.color)}>{pCfg.label}</span>
-                <span className="px-1.5 py-0.5 border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{a.targetAudience}</span>
-                <div className="flex-1" />
-                <span className="text-[10px] text-muted-foreground">{formatDateTime(a.createdAt)}</span>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setEditing(a); setFormOpen(true); }}>
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => setDeletingId(a.id)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+        {!isLoading && sorted.length === 0 ? (
+          <div className="min-h-[40vh] flex items-center justify-center border border-dashed border-border bg-card">
+            <p className="text-xs sm:text-sm tracking-wider text-muted-foreground text-center px-4">
+              No announcements yet.
+            </p>
+          </div>
+        ) : (
+          sorted.map((a) => {
+            const pCfg = priorityConfig[a.priority];
+            return (
+              <div key={a.id} className={cn("border p-3 sm:p-4 space-y-2 transition-colors", a.pinned ? "border-primary/30 bg-primary/5" : "border-border bg-card hover:bg-card")}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {a.pinned && <Pin className="h-3 w-3 text-primary fill-primary" />}
+                  <span className={cn("px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", pCfg.color)}>{pCfg.label}</span>
+                  <span className="px-1.5 py-0.5 border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{a.targetAudience}</span>
+                  <div className="flex-1" />
+                  <span className="text-[10px] text-muted-foreground">{formatDateTime(a.createdAt)}</span>
+                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setEditing(a); setFormOpen(true); }}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => setDeletingId(a.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                <h3 className="text-sm font-bold">{a.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
+                <p className="text-[10px] text-muted-foreground">By {safeDisplayName(a.createdBy)} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}</p>
               </div>
-              <h3 className="text-sm font-bold">{a.title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
-              <p className="text-[10px] text-muted-foreground">By {safeDisplayName(a.createdBy)} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}</p>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       <AnnouncementFormDialog open={formOpen} onOpenChange={(o) => { setFormOpen(o); if (!o) setEditing(null); }} initial={editing} onSave={handleSave} />

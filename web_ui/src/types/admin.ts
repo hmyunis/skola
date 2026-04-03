@@ -16,7 +16,7 @@ export interface Assessment {
   title: string;
   type: "exam" | "quiz" | "assignment" | "project" | "other";
   courseCode: string;
-  dueDate: string;
+  dueDate: string | null;
   description: string;
   maxScore: number;
   weight: number;

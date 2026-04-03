@@ -12,7 +12,7 @@ import { LoungeReportQueryDto } from './dto/lounge-report-query.dto';
 import { CreateLoungePostDto } from './dto/create-lounge-post.dto';
 import { LoungeMentionUsersQueryDto } from './dto/lounge-mention-users-query.dto';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ClassroomRoleGuard)
 @Controller('lounge')
 export class LoungeController {
   constructor(private readonly loungeService: LoungeService) {}
@@ -47,49 +47,57 @@ export class LoungeController {
   @Patch(':id')
   async editPost(
     @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
     @Body() dto: { content?: string; tags?: string[]; course?: string }
   ) {
-    return this.loungeService.editPost(id, user.id, dto);
+    return this.loungeService.editPost(id, classroomId, user.id, dto);
   }
 
   @Delete(':id')
   async deletePost(
     @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
   ) {
-    return this.loungeService.deletePost(id, user);
+    return this.loungeService.deletePost(id, classroomId, user);
   }
 
   @Post(':id/react')
   async react(
     @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
     @Body('emoji') emoji: string,
   ) {
-    return this.loungeService.reactToPost(id, user.id, emoji);
+    return this.loungeService.reactToPost(id, classroomId, user.id, emoji);
   }
 
   @Get(':id/replies')
-  async getReplies(@Param('id') id: string) {
-    return this.loungeService.getReplies(id);
+  async getReplies(
+    @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.loungeService.getReplies(id, classroomId);
   }
 
   @Post(':id/reply')
   async addReply(
     @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
     @Body() dto: { content: string; isAnonymous?: boolean }
   ) {
-    return this.loungeService.addReply(id, user.id, dto);
+    return this.loungeService.addReply(id, classroomId, user.id, dto);
   }
 
   @Delete('replies/:id')
   async deleteReply(
     @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
   ) {
-    return this.loungeService.deleteReply(id, user);
+    return this.loungeService.deleteReply(id, classroomId, user);
   }
 
   @Post('reports')

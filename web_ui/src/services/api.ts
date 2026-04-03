@@ -102,7 +102,7 @@ interface AssessmentApi {
   id: string;
   title: string;
   courseCode: string;
-  dueDate: string;
+  dueDate: string | null;
   createdAt?: string;
   updatedAt?: string;
   source?: "classroom" | "direct" | "notice" | "other";
@@ -202,7 +202,6 @@ export async function fetchClassroom(classroomId: string): Promise<any> {
 }
 
 export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySchedule> {
-  const schedule = await apiFetch("/academics/schedule");
   const result: WeeklySchedule = {
     Monday: [],
     Tuesday: [],
@@ -212,6 +211,16 @@ export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySc
     Saturday: [],
     Sunday: [],
   };
+
+  let schedule: ScheduleItemApi[] = [];
+  try {
+    schedule = await apiFetch("/academics/schedule");
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return result;
+    }
+    throw error;
+  }
   
   (schedule as ScheduleItemApi[]).forEach((item) => {
     const day = WEEKDAY_BY_INDEX[item.dayOfWeek];
@@ -299,7 +308,7 @@ export async function fetchAssignments(filters?: AssignmentFilters): Promise<Ass
       id: item.id,
       title: item.title,
       course: item.courseCode,
-      dueDate: item.dueDate,
+      dueDate: item.dueDate ?? null,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       source: item.source || "classroom",

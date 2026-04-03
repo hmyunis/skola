@@ -112,15 +112,21 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('invites/:id/deactivate')
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
-  async deactivateInviteCode(@Param('id') id: string) {
-    return this.adminService.deactivateInviteCode(id);
+  async deactivateInviteCode(
+    @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.adminService.deactivateInviteCode(classroomId, id);
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('invites/:id/delete') // Or DELETE /admin/invites/:id
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
-  async deleteInviteCode(@Param('id') id: string) {
-    return this.adminService.deleteInviteCode(id);
+  async deleteInviteCode(
+    @Param('id') id: string,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.adminService.deleteInviteCode(classroomId, id);
   }
 
   @Get('invites/validate/:code')

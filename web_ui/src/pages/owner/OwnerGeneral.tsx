@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/stores/themeStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
@@ -717,9 +717,7 @@ function SemesterFormDialog({
 }
 
 function SemesterManagement() {
-  const navigate = useNavigate();
-  const { logout } = useAuthStore();
-  const { semesters, activeSemester, setActiveSemester, addSemester, updateSemester, deleteSemester, reload, isLoading } = useSemesterStore();
+  const { semesters, activeSemester, addSemester, updateSemester, deleteSemester, reload, isLoading } = useSemesterStore();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Semester | null>(null);
 
@@ -753,9 +751,12 @@ function SemesterManagement() {
   };
 
   const handleSetActive = async (sem: Semester) => {
-    setActiveSemester(sem);
-    logout();
-    navigate("/login");
+    try {
+      await updateSemester({ ...sem, status: "active" });
+      toast({ title: "Updated", description: `${sem.name} is now the active semester.` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -819,7 +820,7 @@ function SemesterManagement() {
                                 <AlertDialogTitle className="uppercase tracking-wider">Switch Active Semester?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-sm">
                                   Are you sure you want to set <strong>{sem.name}</strong> as the active semester? 
-                                  You will be logged out to apply this change system-wide.
+                                  This will immediately refresh active-semester data across the app.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -828,7 +829,7 @@ function SemesterManagement() {
                                   onClick={() => handleSetActive(sem)} 
                                   className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold uppercase tracking-widest"
                                 >
-                                  Confirm & Logout
+                                  Confirm
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -893,6 +894,7 @@ type ClassroomMemberWithUser = {
 
 function SettingsTab() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { logout } = useAuthStore();
   const { activeClassroom, setActiveClassroom, clearActiveClassroom } = useClassroomStore();
   const [telegramGroupId, setTelegramGroupId] = useState(activeClassroom?.telegramGroupId || "");
@@ -971,6 +973,7 @@ function SettingsTab() {
         body: JSON.stringify({ successorMemberId }),
       });
       toast({ title: "Account Deleted", description: "Your account and some associated data have been removed." });
+      queryClient.clear();
       clearActiveClassroom();
       logout();
       setDeleteDialogOpen(false);

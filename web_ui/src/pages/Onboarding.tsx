@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -21,6 +22,7 @@ const TELEGRAM_BOT_NAME = import.meta.env.VITE_TELEGRAM_BOT_NAME;
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { colorMode, toggleColorMode, syncThemeWithStores } = useThemeStore();
   const { user, login, accessToken, logout } = useAuthStore();
   const { setActiveClassroom } = useClassroomStore();
@@ -78,7 +80,7 @@ const Onboarding = () => {
       });
       
       setSuccess(true);
-      setActiveClassroom(result.classroom);
+      setActiveClassroom(result.classroom, result.member?.role || "owner");
       if (result.user && result.accessToken) {
         login(result.user, result.accessToken);
         syncThemeWithStores();
@@ -112,7 +114,7 @@ const Onboarding = () => {
       });
       
       setSuccess(true);
-      setActiveClassroom(result.classroom);
+      setActiveClassroom(result.classroom, result.member?.role || "student");
       if (result.user && result.accessToken) {
         login(result.user, result.accessToken);
         syncThemeWithStores();
@@ -220,7 +222,7 @@ const Onboarding = () => {
 
               <div className="text-center">
                 {user ? (
-                  <button onClick={() => { logout(); navigate("/login"); }} className="text-[10px] text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground">
+                  <button onClick={() => { queryClient.clear(); logout(); navigate("/login"); }} className="text-[10px] text-muted-foreground/50 uppercase tracking-widest hover:text-muted-foreground">
                     ← Sign out
                   </button>
                 ) : (

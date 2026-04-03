@@ -23,7 +23,7 @@ import { ReportQuizDto } from './dto/report-quiz.dto';
 import { QuizReportQueryDto } from './dto/quiz-report-query.dto';
 import { ReviewQuizReportDto } from './dto/review-quiz-report.dto';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ClassroomRoleGuard)
 @Controller('arena')
 export class ArenaController {
   constructor(private readonly arenaService: ArenaService) {}

@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/stores/authStore";
+import { useClassroomStore } from "@/stores/classroomStore";
 import { AlertTriangle } from "lucide-react";
 
 interface RoleGuardProps {
@@ -8,13 +9,16 @@ interface RoleGuardProps {
 
 export const RoleGuard = ({ allowedRoles }: RoleGuardProps) => {
   const { user } = useAuth();
+  const activeClassroomRole = useClassroomStore((s) => s.activeClassroomRole);
   const location = useLocation();
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!allowedRoles.includes(user.role)) {
+  const effectiveRole = activeClassroomRole || "student";
+
+  if (!allowedRoles.includes(effectiveRole)) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-4 text-center">

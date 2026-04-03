@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "@/stores/themeStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { apiFetch } from "@/services/api";
+import type { ClassroomMembershipContext, ClassroomRole } from "@/types/classroom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,6 @@ import {
   type TelegramUser,
 } from "@/components/TelegramLoginWidget";
 import {
-  Shield,
   Lock,
   AlertTriangle,
   ArrowRight,
@@ -25,39 +25,128 @@ import {
   Link2,
   CheckCircle2,
   XCircle,
+  Building2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-type AuthView = "login" | "signup" | "verifying" | "denied" | "success";
+type AuthView = "login" | "signup" | "verifying" | "denied" | "choose_classroom";
 type InviteStatus = "idle" | "checking" | "valid" | "invalid";
 
 const TELEGRAM_BOT_NAME = import.meta.env.VITE_TELEGRAM_BOT_NAME;
 
+interface ClassroomContextApiResponse {
+  classrooms?: ClassroomMembershipContext["classroom"][];
+  memberships?: Array<{
+    classroom?: ClassroomMembershipContext["classroom"];
+    role?: ClassroomRole;
+    joinedAt?: string;
+    status?: "active" | "suspended" | "banned";
+    suspendedUntil?: string | null;
+  }>;
+  user?: { role?: ClassroomRole; [key: string]: unknown };
+}
+
+function normalizeMemberships(
+  payload: ClassroomContextApiResponse,
+  fallbackRole: ClassroomRole,
+): ClassroomMembershipContext[] {
+  const now = Date.now();
+  if (Array.isArray(payload?.memberships) && payload.memberships.length > 0) {
+    return payload.memberships
+      .filter((item) => item?.classroom?.id)
+      .filter((item) => {
+        if (item?.status === "banned") return false;
+        if (item?.status === "suspended") {
+          if (!item.suspendedUntil) return false;
+          const until = new Date(item.suspendedUntil).getTime();
+          return Number.isFinite(until) ? until <= now : false;
+        }
+        return true;
+      })
+      .map((item) => ({
+        classroom: item.classroom!,
+        role: item.role || fallbackRole,
+        joinedAt: item.joinedAt || new Date(0).toISOString(),
+      }));
+  }
+
+  if (Array.isArray(payload?.classrooms) && payload.classrooms.length > 0) {
+    return payload.classrooms
+      .filter((classroom) => classroom?.id)
+      .map((classroom) => ({
+        classroom,
+        role: fallbackRole,
+        joinedAt: new Date(0).toISOString(),
+      }));
+  }
+
+  return [];
+}
+
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
-  const { activeClassroom, setActiveClassroom } = useClassroomStore();
+  const {
+    setMemberships,
+    setActiveClassroom,
+    clearActiveClassroom,
+    rememberedClassroomId,
+  } = useClassroomStore();
   const { colorMode, toggleColorMode, syncThemeWithStores } = useThemeStore();
   const [view, setView] = useState<AuthView>("login");
   const [inviteCode, setInviteCode] = useState("");
   const [signupTelegramGroupId, setSignupTelegramGroupId] = useState("");
   const [inviteStatus, setInviteStatus] = useState<InviteStatus>("idle");
   const [inviteError, setInviteError] = useState("");
+  const [classroomChoices, setClassroomChoices] = useState<ClassroomMembershipContext[]>([]);
+  const [selectedClassroomId, setSelectedClassroomId] = useState("");
   const [deniedReason, setDeniedReason] = useState<
     "unregistered" | "banned" | "suspended" | "not_in_group" | "invalid_invite"
   >("unregistered");
   const [suspendedUntil, setSuspendedUntil] = useState("");
 
+  const selectedMembership = useMemo(
+    () => classroomChoices.find((membership) => membership.classroom.id === selectedClassroomId) || null,
+    [classroomChoices, selectedClassroomId],
+  );
+
   const isValidGroupId = (id: string) => /^-?\d+$/.test(id.trim());
+
+  const applySingleClassroomAndProceed = (membership: ClassroomMembershipContext) => {
+    setActiveClassroom(membership.classroom, membership.role);
+    syncThemeWithStores();
+    navigate("/dashboard");
+  };
+
+  const handleClassroomConfirmation = () => {
+    if (!selectedMembership) {
+      toast({
+        title: "Choose a classroom",
+        description: "Pick the classroom you want to enter first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    applySingleClassroomAndProceed(selectedMembership);
+  };
 
   const handleTelegramAuth = async (telegramUser: TelegramUser) => {
     if (view === "signup") {
       if (!signupTelegramGroupId.trim()) {
-        toast({ title: "Missing Group ID", description: "Telegram group ID is required for signup.", variant: "destructive" });
+        toast({
+          title: "Missing Group ID",
+          description: "Telegram group ID is required for signup.",
+          variant: "destructive",
+        });
         return;
       }
       if (!isValidGroupId(signupTelegramGroupId)) {
-        toast({ title: "Invalid Group ID", description: "Telegram group IDs are numeric (e.g. -100123456789).", variant: "destructive" });
+        toast({
+          title: "Invalid Group ID",
+          description: "Telegram group IDs are numeric (e.g. -100123456789).",
+          variant: "destructive",
+        });
         return;
       }
     }
@@ -70,66 +159,100 @@ const Login = () => {
         body: JSON.stringify(telegramUser),
       });
 
-      // If we are in signup view, we need to join the classroom after login
+      // If we are in signup view, we join the classroom after login.
       if (view === "signup" && inviteStatus === "valid" && inviteCode) {
         try {
           const joinResult = await apiFetch("/classrooms/join", {
             method: "POST",
-            body: JSON.stringify({ inviteCode, telegramGroupId: signupTelegramGroupId.trim() }),
-            headers: { Authorization: `Bearer ${data.accessToken}` }
+            body: JSON.stringify({
+              inviteCode,
+              telegramGroupId: signupTelegramGroupId.trim(),
+            }),
+            headers: { Authorization: `Bearer ${data.accessToken}` },
           });
-          if (joinResult) {
-            setActiveClassroom(joinResult);
-            syncThemeWithStores();
+          if (joinResult?.classroom) {
+            setActiveClassroom(
+              joinResult.classroom,
+              (joinResult.member?.role as ClassroomRole | undefined) || "student",
+            );
           }
-        } catch (joinErr: any) {
+        } catch (joinErr: unknown) {
           console.error("Failed to join classroom:", joinErr);
-          toast({ title: "Joined with issues", description: "You are logged in, but we couldn't automatically add you to the classroom.", variant: "destructive" });
+          toast({
+            title: "Joined with issues",
+            description: "You are logged in, but we couldn't automatically add you to the classroom.",
+            variant: "destructive",
+          });
         }
       }
 
       login(data.user, data.accessToken);
-      syncThemeWithStores();
-      setView("success");
 
-      // Check if user has classrooms
-      setTimeout(async () => {
-        try {
-                    const { classrooms, user: fullUser } = await apiFetch("/classrooms/my", {
-            headers: { Authorization: `Bearer ${data.accessToken}` }
-          });
+      let classroomContext: ClassroomContextApiResponse = {};
+      try {
+        classroomContext = await apiFetch("/classrooms/my", {
+          headers: { Authorization: `Bearer ${data.accessToken}` },
+        });
+      } catch (contextErr) {
+        console.error("Failed to fetch user classrooms:", contextErr);
+        classroomContext = {
+          user: data.user,
+          memberships: [],
+          classrooms: [],
+        };
+      }
 
-          if (fullUser) {
-            login(fullUser, data.accessToken);
-          }
-          
-          if (classrooms && classrooms.length > 0) {
-            // Always set the first classroom as active and sync theme
-            setActiveClassroom(classrooms[0]);
-            syncThemeWithStores();
-            navigate("/dashboard");
-          } else {
-            // New user with no class, go to onboarding
-            navigate("/get-started");
-          }
-        } catch (err) {
-          console.error("Failed to fetch user classrooms:", err);
-          navigate("/dashboard"); // Fallback
-        }
-      }, 1200);
-    } catch (err: any) {
+      const fullUser = classroomContext?.user || data.user;
+      login(fullUser, data.accessToken);
+
+      const fallbackRole: ClassroomRole = "student";
+      const memberships = normalizeMemberships(classroomContext, fallbackRole);
+      setMemberships(memberships);
+
+      if (memberships.length === 0) {
+        clearActiveClassroom();
+        syncThemeWithStores();
+        navigate("/get-started");
+        return;
+      }
+
+      if (memberships.length === 1) {
+        applySingleClassroomAndProceed(memberships[0]);
+        return;
+      }
+
+      const preferred =
+        memberships.find((membership) => membership.classroom.id === rememberedClassroomId) ||
+        memberships[0];
+      setClassroomChoices(memberships);
+      setSelectedClassroomId(preferred.classroom.id);
+      setView("choose_classroom");
+    } catch (err: unknown) {
       console.error("Telegram auth error:", err);
-      
-      const errorData = err.data || {};
-      if (errorData.reason === "not_in_group") { setView("denied"); setDeniedReason("not_in_group"); return; }
-      if (errorData.reason === "banned") { setView("denied"); setDeniedReason("banned"); return; }
+
+      const errorData = (err as { data?: Record<string, unknown> })?.data || {};
+      if (errorData.reason === "not_in_group") {
+        setView("denied");
+        setDeniedReason("not_in_group");
+        return;
+      }
+      if (errorData.reason === "banned") {
+        setView("denied");
+        setDeniedReason("banned");
+        return;
+      }
       if (errorData.reason === "suspended") {
-        setView("denied"); setDeniedReason("suspended");
+        setView("denied");
+        setDeniedReason("suspended");
         setSuspendedUntil(errorData.suspendedUntil ? new Date(errorData.suspendedUntil).toLocaleString() : "");
         return;
       }
-      
-      toast({ title: "Authentication Failed", description: err.message || "Could not reach the server. Please try again.", variant: "destructive" });
+
+      toast({
+        title: "Authentication Failed",
+        description: err instanceof Error ? err.message : "Could not reach the server. Please try again.",
+        variant: "destructive",
+      });
       setView("login");
     }
   };
@@ -142,7 +265,7 @@ const Login = () => {
       return;
     }
     setInviteStatus("checking");
-    
+
     try {
       const result = await apiFetch(`/admin/invites/validate/${code}`);
       if (result.valid) {
@@ -152,22 +275,39 @@ const Login = () => {
         setInviteStatus("invalid");
         setInviteError("Invalid, expired, or fully used code.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setInviteStatus("invalid");
-      setInviteError(err.message || "Invalid code.");
+      setInviteError(err instanceof Error ? err.message : "Invalid code.");
     }
   };
 
-  const resetToLogin = () => { setView("login"); };
+  const resetToLogin = () => {
+    setView("login");
+  };
 
-  // ─── ACCESS DENIED ───
   if (view === "denied") {
     const deniedMessages = {
-      banned: { title: "Account Banned", message: "Your account has been permanently banned. Contact your administrator if you believe this is an error." },
-      suspended: { title: "Account Suspended", message: `Your account is temporarily suspended until ${suspendedUntil}. Please try again after the suspension period ends.` },
-      not_in_group: { title: "Not a Group Member", message: "You must be a member of the class Telegram group to access this platform." },
-      unregistered: { title: "Authentication Failed", message: "Your Telegram account is not linked to any registered student profile." },
-      invalid_invite: { title: "Invalid Invite Code", message: "The invite code is invalid, expired, or has reached its usage limit." },
+      banned: {
+        title: "Account Banned",
+        message:
+          "Your account has been permanently banned. Contact your administrator if you believe this is an error.",
+      },
+      suspended: {
+        title: "Account Suspended",
+        message: `Your account is temporarily suspended until ${suspendedUntil}. Please try again after the suspension period ends.`,
+      },
+      not_in_group: {
+        title: "Not a Group Member",
+        message: "You must be a member of the class Telegram group to access this platform.",
+      },
+      unregistered: {
+        title: "Authentication Failed",
+        message: "Your Telegram account is not linked to any registered student profile.",
+      },
+      invalid_invite: {
+        title: "Invalid Invite Code",
+        message: "The invite code is invalid, expired, or has reached its usage limit.",
+      },
     };
     const msg = deniedMessages[deniedReason];
 
@@ -180,7 +320,9 @@ const Login = () => {
               <div className="absolute inset-0 h-16 w-16 mx-auto border-2 border-destructive/30 animate-ping rounded-full" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-3xl md:text-4xl font-black uppercase tracking-[0.3em] text-destructive">ACCESS DENIED</h1>
+              <h1 className="text-3xl md:text-4xl font-black uppercase tracking-[0.3em] text-destructive">
+                ACCESS DENIED
+              </h1>
               <div className="h-0.5 bg-destructive/50 mx-auto w-48" />
             </div>
           </div>
@@ -208,7 +350,6 @@ const Login = () => {
     );
   }
 
-  // ─── Verifying ───
   if (view === "verifying") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -223,29 +364,84 @@ const Login = () => {
     );
   }
 
-  // ─── Success ───
-  if (view === "success") {
+  if (view === "choose_classroom") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="h-14 w-14 bg-emerald-500/10 border-2 border-emerald-500/40 flex items-center justify-center mx-auto">
-            <Shield className="h-7 w-7 text-emerald-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+        <button
+          onClick={toggleColorMode}
+          className="absolute top-4 right-4 p-2 border border-border bg-card hover:bg-accent transition-colors"
+          aria-label="Toggle color mode"
+        >
+          {colorMode === "light" ? (
+            <Moon className="h-4 w-4 text-foreground" />
+          ) : (
+            <Sun className="h-4 w-4 text-foreground" />
+          )}
+        </button>
+
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center space-y-3">
+            <div className="h-14 w-14 bg-primary/10 border-2 border-primary/30 flex items-center justify-center mx-auto">
+              <Building2 className="h-7 w-7 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">Choose Context</p>
+              <h1 className="text-2xl font-black uppercase tracking-wider">Select Classroom</h1>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              You belong to multiple classrooms. Choose where to continue.
+            </p>
           </div>
-          <div className="space-y-1">
-            <p className="text-sm font-bold uppercase tracking-wider text-emerald-600">Access Granted</p>
-            <p className="text-xs text-muted-foreground">Redirecting to dashboard...</p>
-          </div>
+
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              {classroomChoices.map((membership) => {
+                const isSelected = membership.classroom.id === selectedClassroomId;
+                return (
+                  <button
+                    key={membership.classroom.id}
+                    onClick={() => setSelectedClassroomId(membership.classroom.id)}
+                    className={`w-full text-left border px-3 py-3 transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-card hover:bg-accent/60"
+                    }`}
+                  >
+                    <p className="text-sm font-bold truncate">{membership.classroom.name}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+                      Role: {membership.role}
+                    </p>
+                  </button>
+                );
+              })}
+
+              <Button
+                onClick={handleClassroomConfirmation}
+                className="w-full mt-2 text-xs font-bold uppercase tracking-wider"
+                disabled={!selectedMembership}
+              >
+                Continue
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
-  // ─── SIGNUP (new account with invite code) ───
   if (view === "signup") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
-        <button onClick={toggleColorMode} className="absolute top-4 right-4 p-2 border border-border bg-card hover:bg-accent transition-colors" aria-label="Toggle color mode">
-          {colorMode === "light" ? <Moon className="h-4 w-4 text-foreground" /> : <Sun className="h-4 w-4 text-foreground" />}
+        <button
+          onClick={toggleColorMode}
+          className="absolute top-4 right-4 p-2 border border-border bg-card hover:bg-accent transition-colors"
+          aria-label="Toggle color mode"
+        >
+          {colorMode === "light" ? (
+            <Moon className="h-4 w-4 text-foreground" />
+          ) : (
+            <Sun className="h-4 w-4 text-foreground" />
+          )}
         </button>
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-3">
@@ -259,7 +455,6 @@ const Login = () => {
             <p className="text-xs text-muted-foreground">Enter your invite code and sign up with Telegram</p>
           </div>
 
-          {/* Invite code input */}
           <Card>
             <CardContent className="p-5 space-y-4">
               <div className="space-y-2">
@@ -299,7 +494,9 @@ const Login = () => {
                     {inviteStatus === "checking" ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : inviteStatus === "valid" ? (
-                      <><CheckCircle2 className="h-4 w-4" /> Valid</>
+                      <>
+                        <CheckCircle2 className="h-4 w-4" /> Valid
+                      </>
                     ) : (
                       "Verify"
                     )}
@@ -307,7 +504,7 @@ const Login = () => {
                 </div>
                 {inviteStatus === "valid" && (
                   <p className="text-[10px] text-emerald-600 dark:text-emerald-400 text-center font-bold uppercase tracking-wider flex items-center justify-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> Code verified — proceed to sign up below
+                    <CheckCircle2 className="h-3 w-3" /> Code verified - proceed to sign up below
                   </p>
                 )}
                 {inviteStatus === "invalid" && (
@@ -324,7 +521,6 @@ const Login = () => {
             </CardContent>
           </Card>
 
-          {/* Telegram Login */}
           <AnimatePresence mode="wait">
             {inviteStatus === "valid" && isValidGroupId(signupTelegramGroupId) ? (
               <motion.div
@@ -341,14 +537,19 @@ const Login = () => {
                       transition={{ delay: 0.2 }}
                       className="text-[10px] uppercase tracking-widest text-primary font-bold text-center flex items-center justify-center gap-1.5"
                     >
-                      <CheckCircle2 className="h-3 w-3" /> Unlocked — Sign up with Telegram
+                      <CheckCircle2 className="h-3 w-3" /> Unlocked - Sign up with Telegram
                     </motion.p>
                     <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
                   </CardContent>
                 </Card>
               </motion.div>
             ) : (
-              <motion.div key="locked" initial={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}>
+              <motion.div
+                key="locked"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+              >
                 <Card className="opacity-40 pointer-events-none select-none">
                   <CardContent className="p-5 space-y-3">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center flex items-center justify-center gap-1.5">
@@ -362,7 +563,10 @@ const Login = () => {
           </AnimatePresence>
 
           <div className="text-center space-y-2">
-            <button onClick={() => setView("login")} className="text-[10px] text-primary uppercase tracking-widest hover:underline">
+            <button
+              onClick={() => setView("login")}
+              className="text-[10px] text-primary uppercase tracking-widest hover:underline"
+            >
               Already have an account? Sign In
             </button>
           </div>
@@ -371,11 +575,18 @@ const Login = () => {
     );
   }
 
-  // ─── LOGIN form (returning users) ───
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
-      <button onClick={toggleColorMode} className="absolute top-4 right-4 p-2 border border-border bg-card hover:bg-accent transition-colors" aria-label="Toggle color mode">
-        {colorMode === "light" ? <Moon className="h-4 w-4 text-foreground" /> : <Sun className="h-4 w-4 text-foreground" />}
+      <button
+        onClick={toggleColorMode}
+        className="absolute top-4 right-4 p-2 border border-border bg-card hover:bg-accent transition-colors"
+        aria-label="Toggle color mode"
+      >
+        {colorMode === "light" ? (
+          <Moon className="h-4 w-4 text-foreground" />
+        ) : (
+          <Sun className="h-4 w-4 text-foreground" />
+        )}
       </button>
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-3">
@@ -388,16 +599,17 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Telegram Login Widget */}
         <Card>
           <CardContent className="p-5">
             <TelegramLoginWidget botName={TELEGRAM_BOT_NAME} onAuth={handleTelegramAuth} />
           </CardContent>
         </Card>
 
-        {/* Sign up link */}
         <div className="text-center space-y-2">
-          <button onClick={() => navigate("/get-started")} className="text-[10px] text-primary uppercase tracking-widest hover:underline">
+          <button
+            onClick={() => navigate("/get-started")}
+            className="text-[10px] text-primary uppercase tracking-widest hover:underline"
+          >
             New student? Sign Up with Invite Code
           </button>
           <div>
@@ -405,7 +617,9 @@ const Login = () => {
               Back to Home
             </Link>
           </div>
-          <p className="text-[10px] text-muted-foreground/30">SKOLA v1.0 · {new Date().getFullYear()}</p>
+          <p className="text-[10px] text-muted-foreground/30">
+            SKOLA v1.0 · {new Date().getFullYear()}
+          </p>
         </div>
       </div>
     </div>

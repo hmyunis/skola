@@ -796,15 +796,21 @@ export class AdminService {
     });
   }
 
-  async deactivateInviteCode(id: string) {
-    const invite = await this.inviteCodeRepo.findOne({ where: { id } });
+  async deactivateInviteCode(classroomId: string, id: string) {
+    const invite = await this.inviteCodeRepo.findOne({
+      where: { id, classroomId },
+    });
     if (!invite) throw new BadRequestException('Invite code not found');
     invite.isActive = false;
     return this.inviteCodeRepo.save(invite);
   }
 
-  async deleteInviteCode(id: string) {
-    return this.inviteCodeRepo.delete(id);
+  async deleteInviteCode(classroomId: string, id: string) {
+    const result = await this.inviteCodeRepo.delete({ id, classroomId });
+    if (!result.affected) {
+      throw new BadRequestException('Invite code not found');
+    }
+    return result;
   }
 
   private normalizeExportDatasetIds(requestedDatasetIds: OwnerExportDatasetId[]): OwnerExportDatasetId[] {
@@ -863,6 +869,8 @@ export class AdminService {
       membershipId: member.id,
       joinedAt: member.joinedAt,
       role: member.role,
+      status: member.status,
+      suspendedUntil: member.suspendedUntil,
       user: member.user
         ? {
             id: member.user.id,
@@ -870,13 +878,10 @@ export class AdminService {
             name: member.user.name,
             telegramUsername: member.user.telegramUsername,
             photoUrl: member.user.photoUrl,
-            role: member.user.role,
             year: member.user.year,
             semester: member.user.semester,
             batch: member.user.batch,
             anonymousId: member.user.anonymousId,
-            isBanned: member.user.isBanned,
-            suspendedUntil: member.user.suspendedUntil,
             createdAt: member.user.createdAt,
             updatedAt: member.user.updatedAt,
           }

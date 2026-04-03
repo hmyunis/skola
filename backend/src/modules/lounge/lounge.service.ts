@@ -11,11 +11,18 @@ import axios from 'axios';
 import { Repository } from 'typeorm';
 import { LoungePost } from './entities/lounge-post.entity';
 import { LoungeReaction } from './entities/lounge-reaction.entity';
-import { PaginationQueryDto, PaginatedResult } from '../../core/dto/pagination-query.dto';
+import {
+  PaginationQueryDto,
+  PaginatedResult,
+} from '../../core/dto/pagination-query.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { ClassroomsService } from '../classrooms/classrooms.service';
-import { LoungeReport, LoungeReportContentType, LoungeReportStatus } from './entities/lounge-report.entity';
+import {
+  LoungeReport,
+  LoungeReportContentType,
+  LoungeReportStatus,
+} from './entities/lounge-report.entity';
 import { CreateLoungePostDto } from './dto/create-lounge-post.dto';
 import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -61,8 +68,10 @@ export class LoungeService {
 
   constructor(
     @InjectRepository(LoungePost) private postRepo: Repository<LoungePost>,
-    @InjectRepository(LoungeReaction) private reactionRepo: Repository<LoungeReaction>,
-    @InjectRepository(LoungeReport) private reportRepo: Repository<LoungeReport>,
+    @InjectRepository(LoungeReaction)
+    private reactionRepo: Repository<LoungeReaction>,
+    @InjectRepository(LoungeReport)
+    private reportRepo: Repository<LoungeReport>,
     @InjectRepository(ClassroomMember)
     private classroomMembersRepo: Repository<ClassroomMember>,
     private classroomService: ClassroomsService,
@@ -70,7 +79,9 @@ export class LoungeService {
     private notificationsService: NotificationsService,
     private configService: ConfigService,
   ) {
-    this.globalImgbbApiKey = (this.configService.get<string>('IMGBB_API_KEY') || '').trim();
+    this.globalImgbbApiKey = (
+      this.configService.get<string>('IMGBB_API_KEY') || ''
+    ).trim();
   }
 
   async searchMentionableUsers(
@@ -101,15 +112,16 @@ export class LoungeService {
       );
     }
 
-    qb
-      .orderBy('user.name', 'ASC')
+    qb.orderBy('user.name', 'ASC')
       .addOrderBy('user.id', 'ASC')
       .skip((page - 1) * limit)
       .take(limit);
 
     const [members, total] = await qb.getManyAndCount();
     const data = members.map((member) => {
-      const username = this.normalizeTelegramUsername(member.user?.telegramUsername);
+      const username = this.normalizeTelegramUsername(
+        member.user?.telegramUsername,
+      );
       const mentionKey = username || member.user.id;
       return {
         id: member.user.id,
@@ -130,12 +142,21 @@ export class LoungeService {
     };
   }
 
-  async createPost(classroomId: string, authorId: string, data: CreateLoungePostDto) {
+  async createPost(
+    classroomId: string,
+    authorId: string,
+    data: CreateLoungePostDto,
+  ) {
     if (data.isAnonymous) {
-      const classroom = await this.classroomService.getClassroomById(classroomId);
-      const feature = (classroom.featureToggles as any[])?.find(f => f.id === 'ft-anon-posting');
+      const classroom =
+        await this.classroomService.getClassroomById(classroomId);
+      const feature = (classroom.featureToggles as any[])?.find(
+        (f) => f.id === 'ft-anon-posting',
+      );
       if (feature && !feature.enabled) {
-        throw new BadRequestException('Anonymous posting is disabled in this classroom');
+        throw new BadRequestException(
+          'Anonymous posting is disabled in this classroom',
+        );
       }
     }
 
@@ -150,7 +171,10 @@ export class LoungeService {
 
     let imageUploadResult: ImageUploadResult | null = null;
     if (hasImage) {
-      const uploadApiKey = await this.resolveApiKeyForUpload(authorId);
+      const uploadApiKey = await this.resolveApiKeyForUpload(
+        authorId,
+        classroomId,
+      );
       imageUploadResult = await this.uploadImageToImgBb(
         data.imageDataUrl!,
         data.imageName,
@@ -175,7 +199,8 @@ export class LoungeService {
       relations: ['author'],
     });
 
-    if (!withAuthor) throw new NotFoundException('Post not found after creation');
+    if (!withAuthor)
+      throw new NotFoundException('Post not found after creation');
 
     await this.dispatchMentionNotificationsForContentChange({
       contextLabel: `post ${withAuthor.id}`,
@@ -191,17 +216,25 @@ export class LoungeService {
     return { ...this.sanitizePost(withAuthor, 0), userReaction: null };
   }
 
-  async getFeed(classroomId: string, pagination: PaginationQueryDto, filters: FeedFilters, userId?: string): Promise<PaginatedResult<any>> {
+  async getFeed(
+    classroomId: string,
+    pagination: PaginationQueryDto,
+    filters: FeedFilters,
+    userId?: string,
+  ): Promise<PaginatedResult<any>> {
     const { page = 1, limit = 20 } = pagination;
 
-    const qb = this.postRepo.createQueryBuilder('post')
+    const qb = this.postRepo
+      .createQueryBuilder('post')
       .leftJoinAndSelect('post.author', 'author')
       .loadRelationCountAndMap('post.replyCount', 'post.replies')
       .where('post.classroomId = :classroomId', { classroomId })
       .andWhere('post.parentId IS NULL');
 
     if (filters.search) {
-      qb.andWhere('post.content LIKE :search', { search: `%${filters.search}%` });
+      qb.andWhere('post.content LIKE :search', {
+        search: `%${filters.search}%`,
+      });
     }
 
     if (filters.tag) {
@@ -218,9 +251,9 @@ export class LoungeService {
     const [posts, total] = await qb.getManyAndCount();
 
     // Batch-fetch the current user's reactions for all posts in this page
-    let userReactionMap: Record<string, string> = {};
+    const userReactionMap: Record<string, string> = {};
     if (userId && posts.length > 0) {
-      const postIds = posts.map(p => p.id);
+      const postIds = posts.map((p) => p.id);
       const userReactions = await this.reactionRepo
         .createQueryBuilder('r')
         .where('r.userId = :userId', { userId })
@@ -231,7 +264,7 @@ export class LoungeService {
       }
     }
 
-    const sanitizedPosts = posts.map(post => {
+    const sanitizedPosts = posts.map((post) => {
       const replyCount = (post as any).replyCount ?? 0;
       return {
         ...this.sanitizePost(post, replyCount),
@@ -241,14 +274,26 @@ export class LoungeService {
 
     return {
       data: sanitizedPosts,
-      meta: { total, page, limit, lastPage: Math.ceil(total / limit) }
+      meta: { total, page, limit, lastPage: Math.ceil(total / limit) },
     };
   }
 
-  async editPost(postId: string, userId: string, data: { content?: string; tags?: string[]; course?: string }) {
-    const post = await this.postRepo.findOne({ where: { id: postId }, relations: ['author'] });
+  async editPost(
+    postId: string,
+    classroomId: string,
+    userId: string,
+    data: { content?: string; tags?: string[]; course?: string },
+  ) {
+    const post = await this.postRepo.findOne({
+      where: { id: postId },
+      relations: ['author'],
+    });
     if (!post) throw new NotFoundException('Post not found');
-    if (post.authorId !== userId) throw new ForbiddenException('You can only edit your own posts');
+    if (post.classroomId !== classroomId) {
+      throw new ForbiddenException('Not allowed in this classroom');
+    }
+    if (post.authorId !== userId)
+      throw new ForbiddenException('You can only edit your own posts');
 
     const previousContent = post.content || '';
     let changed = false;
@@ -293,30 +338,49 @@ export class LoungeService {
         content: post.content || '',
         previousContent,
         authorId: post.authorId,
-        authorDisplayName: post.isAnonymous ? 'Someone' : post.author?.name || 'Someone',
+        authorDisplayName: post.isAnonymous
+          ? 'Someone'
+          : post.author?.name || 'Someone',
       });
     }
 
     return this.sanitizePost(post, 0);
   }
 
-  async deletePost(postId: string, user: User) {
+  async deletePost(postId: string, classroomId: string, user: User) {
     const post = await this.postRepo.findOne({ where: { id: postId } });
     if (!post) throw new NotFoundException('Post not found');
+    if (post.classroomId !== classroomId) {
+      throw new ForbiddenException('Not allowed in this classroom');
+    }
 
     const isAuthor = post.authorId === user.id;
-    const isPrivileged = user.role === UserRole.ADMIN || user.role === UserRole.OWNER;
+    const roleInClassroom = await this.getClassroomRole(
+      post.classroomId,
+      user.id,
+    );
+    const isPrivileged =
+      roleInClassroom === UserRole.ADMIN || roleInClassroom === UserRole.OWNER;
 
     if (!isAuthor && !isPrivileged) {
-      throw new ForbiddenException('You do not have permission to delete this post');
+      throw new ForbiddenException(
+        'You do not have permission to delete this post',
+      );
     }
 
     await this.postRepo.remove(post);
     return { deleted: true };
   }
 
-  async reactToPost(postId: string, userId: string, emoji: string) {
-    const post = await this.postRepo.findOne({ where: { id: postId } });
+  async reactToPost(
+    postId: string,
+    classroomId: string,
+    userId: string,
+    emoji: string,
+  ) {
+    const post = await this.postRepo.findOne({
+      where: { id: postId, classroomId },
+    });
     if (!post) throw new NotFoundException('Post not found');
     if (!post.reactions) post.reactions = {};
 
@@ -334,7 +398,10 @@ export class LoungeService {
         userReaction = null;
       } else {
         // Different emoji — remove old, apply new
-        post.reactions[existing.emoji] = Math.max((post.reactions[existing.emoji] || 0) - 1, 0);
+        post.reactions[existing.emoji] = Math.max(
+          (post.reactions[existing.emoji] || 0) - 1,
+          0,
+        );
         post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
         existing.emoji = emoji;
         await this.reactionRepo.save(existing);
@@ -343,7 +410,9 @@ export class LoungeService {
     } else {
       // No existing reaction — add new
       post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
-      await this.reactionRepo.save(this.reactionRepo.create({ postId, userId, emoji }));
+      await this.reactionRepo.save(
+        this.reactionRepo.create({ postId, userId, emoji }),
+      );
       userReaction = emoji;
     }
 
@@ -351,25 +420,51 @@ export class LoungeService {
     return { reactions: post.reactions, userReaction };
   }
 
-  async getReplies(postId: string): Promise<any[]> {
+  async getReplies(postId: string, classroomId: string): Promise<any[]> {
+    const parentPost = await this.postRepo.findOne({
+      where: { id: postId, classroomId },
+    });
+    if (!parentPost) {
+      throw new NotFoundException('Post not found');
+    }
+    if (parentPost.parentId) {
+      throw new NotFoundException('Post not found');
+    }
+
     const replies = await this.postRepo.find({
-      where: { parentId: postId },
+      where: { parentId: postId, classroomId },
       relations: ['author'],
-      order: { createdAt: 'ASC' }
+      order: { createdAt: 'ASC' },
     });
 
-    return replies.map(reply => this.sanitizeReply(reply));
+    return replies.map((reply) => this.sanitizeReply(reply));
   }
 
-  async addReply(parentId: string, authorId: string, data: { content: string; isAnonymous?: boolean }): Promise<any> {
-    const parentPost = await this.postRepo.findOne({ where: { id: parentId } });
+  async addReply(
+    parentId: string,
+    classroomId: string,
+    authorId: string,
+    data: { content: string; isAnonymous?: boolean },
+  ): Promise<any> {
+    const parentPost = await this.postRepo.findOne({
+      where: { id: parentId, classroomId },
+    });
     if (!parentPost) throw new NotFoundException('Parent post not found');
+    if (parentPost.parentId) {
+      throw new NotFoundException('Parent post not found');
+    }
 
     if (data.isAnonymous) {
-      const classroom = await this.classroomService.getClassroomById(parentPost.classroomId);
-      const feature = (classroom.featureToggles as any[])?.find(f => f.id === 'ft-anon-posting');
+      const classroom = await this.classroomService.getClassroomById(
+        parentPost.classroomId,
+      );
+      const feature = (classroom.featureToggles as any[])?.find(
+        (f) => f.id === 'ft-anon-posting',
+      );
       if (feature && !feature.enabled) {
-        throw new BadRequestException('Anonymous posting is disabled in this classroom');
+        throw new BadRequestException(
+          'Anonymous posting is disabled in this classroom',
+        );
       }
     }
 
@@ -388,13 +483,14 @@ export class LoungeService {
     });
 
     const savedReply = await this.postRepo.save(reply);
-    
-    const replyWithAuthor = await this.postRepo.findOne({ 
-      where: { id: savedReply.id }, 
-      relations: ['author'] 
+
+    const replyWithAuthor = await this.postRepo.findOne({
+      where: { id: savedReply.id },
+      relations: ['author'],
     });
-    
-    if (!replyWithAuthor?.author) throw new NotFoundException('Author not found');
+
+    if (!replyWithAuthor?.author)
+      throw new NotFoundException('Author not found');
 
     await this.dispatchMentionNotificationsForContentChange({
       contextLabel: `reply ${replyWithAuthor.id}`,
@@ -410,15 +506,24 @@ export class LoungeService {
     return this.sanitizeReply(replyWithAuthor);
   }
 
-  async deleteReply(replyId: string, user: User) {
-    const reply = await this.postRepo.findOne({ where: { id: replyId } });
+  async deleteReply(replyId: string, classroomId: string, user: User) {
+    const reply = await this.postRepo.findOne({
+      where: { id: replyId, classroomId },
+    });
     if (!reply) throw new NotFoundException('Reply not found');
 
     const isAuthor = reply.authorId === user.id;
-    const isPrivileged = user.role === UserRole.ADMIN || user.role === UserRole.OWNER;
+    const roleInClassroom = await this.getClassroomRole(
+      reply.classroomId,
+      user.id,
+    );
+    const isPrivileged =
+      roleInClassroom === UserRole.ADMIN || roleInClassroom === UserRole.OWNER;
 
     if (!isAuthor && !isPrivileged) {
-      throw new ForbiddenException('You do not have permission to delete this reply');
+      throw new ForbiddenException(
+        'You do not have permission to delete this reply',
+      );
     }
 
     await this.postRepo.remove(reply);
@@ -428,7 +533,12 @@ export class LoungeService {
   async reportContent(
     classroomId: string,
     reporterId: string,
-    dto: { contentType: 'post' | 'reply'; contentId: string; reason: string; details?: string },
+    dto: {
+      contentType: 'post' | 'reply';
+      contentId: string;
+      reason: string;
+      details?: string;
+    },
   ) {
     const content = await this.postRepo.findOne({
       where: { id: dto.contentId, classroomId },
@@ -456,19 +566,27 @@ export class LoungeService {
         classroomId,
         postId: content.id,
         reporterId,
-        contentType: dto.contentType === 'reply' ? LoungeReportContentType.REPLY : LoungeReportContentType.POST,
+        contentType:
+          dto.contentType === 'reply'
+            ? LoungeReportContentType.REPLY
+            : LoungeReportContentType.POST,
         status: LoungeReportStatus.PENDING,
       },
     });
     if (existing) {
-      throw new BadRequestException('You already submitted a pending report for this content');
+      throw new BadRequestException(
+        'You already submitted a pending report for this content',
+      );
     }
 
     const report = this.reportRepo.create({
       classroomId,
       postId: content.id,
       reporterId,
-      contentType: dto.contentType === 'reply' ? LoungeReportContentType.REPLY : LoungeReportContentType.POST,
+      contentType:
+        dto.contentType === 'reply'
+          ? LoungeReportContentType.REPLY
+          : LoungeReportContentType.POST,
       reason,
       details: dto.details?.trim() || undefined,
     });
@@ -494,7 +612,9 @@ export class LoungeService {
       id: report.id,
       type: report.contentType,
       contentId: report.postId,
-      content: report.post?.content || (report.post?.imageUrl ? '[Image attachment]' : 'Deleted content'),
+      content:
+        report.post?.content ||
+        (report.post?.imageUrl ? '[Image attachment]' : 'Deleted content'),
       author: report.post?.author?.name || 'Unknown',
       reason: report.reason,
       details: report.details,
@@ -521,7 +641,10 @@ export class LoungeService {
       throw new BadRequestException('This report was already reviewed');
     }
 
-    report.status = dto.status === 'resolved' ? LoungeReportStatus.RESOLVED : LoungeReportStatus.DISMISSED;
+    report.status =
+      dto.status === 'resolved'
+        ? LoungeReportStatus.RESOLVED
+        : LoungeReportStatus.DISMISSED;
     report.reviewedById = reviewerId;
     report.reviewedAt = new Date();
     await this.reportRepo.save(report);
@@ -549,7 +672,12 @@ export class LoungeService {
 
   private sanitizePost(post: LoungePost, replyCount: number) {
     const sanitizedAuthor = post.isAnonymous
-      ? { id: null, name: 'Anonymous', anonymousId: post.author?.anonymousId ?? null, photoUrl: null }
+      ? {
+          id: null,
+          name: 'Anonymous',
+          anonymousId: post.author?.anonymousId ?? null,
+          photoUrl: null,
+        }
       : {
           id: post.author?.id ?? null,
           name: post.author?.name ?? 'Unknown',
@@ -575,7 +703,12 @@ export class LoungeService {
 
   private sanitizeReply(reply: LoungePost) {
     const sanitizedAuthor = reply.isAnonymous
-      ? { id: null, name: 'Anonymous', anonymousId: reply.author?.anonymousId ?? null, photoUrl: null }
+      ? {
+          id: null,
+          name: 'Anonymous',
+          anonymousId: reply.author?.anonymousId ?? null,
+          photoUrl: null,
+        }
       : {
           id: reply.author?.id ?? null,
           name: reply.author?.name ?? 'Unknown',
@@ -601,7 +734,9 @@ export class LoungeService {
     const seen = new Set<string>();
     const normalized: string[] = [];
     for (const tag of tags) {
-      const value = String(tag || '').trim().toLowerCase();
+      const value = String(tag || '')
+        .trim()
+        .toLowerCase();
       if (!value || seen.has(value)) continue;
       seen.add(value);
       normalized.push(value.slice(0, 32));
@@ -644,7 +779,9 @@ export class LoungeService {
     if (raw.startsWith('data:')) {
       const match = raw.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/i);
       if (!match) {
-        throw new BadRequestException('Invalid image format. Use a base64 image data URL.');
+        throw new BadRequestException(
+          'Invalid image format. Use a base64 image data URL.',
+        );
       }
       mimeType = match[1].toLowerCase();
       base64Payload = match[2];
@@ -659,7 +796,9 @@ export class LoungeService {
     }
 
     if (mimeType && !this.allowedImageMimeTypes.has(mimeType)) {
-      throw new BadRequestException('Unsupported image type. Use JPG, PNG, WEBP, or GIF.');
+      throw new BadRequestException(
+        'Unsupported image type. Use JPG, PNG, WEBP, or GIF.',
+      );
     }
 
     let buffer: Buffer;
@@ -678,12 +817,16 @@ export class LoungeService {
     const detectedMime = this.detectImageMimeType(buffer);
     const normalizedMime = mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
     if (normalizedMime && detectedMime && normalizedMime !== detectedMime) {
-      throw new BadRequestException('Image payload does not match its MIME type.');
+      throw new BadRequestException(
+        'Image payload does not match its MIME type.',
+      );
     }
 
     const finalMime = detectedMime || normalizedMime;
     if (!finalMime || !this.allowedImageMimeTypes.has(finalMime)) {
-      throw new BadRequestException('Unsupported image type. Use JPG, PNG, WEBP, or GIF.');
+      throw new BadRequestException(
+        'Unsupported image type. Use JPG, PNG, WEBP, or GIF.',
+      );
     }
 
     return {
@@ -692,22 +835,26 @@ export class LoungeService {
   }
 
   private detectImageMimeType(buffer: Buffer): string | null {
-    if (buffer.length >= 8
-      && buffer[0] === 0x89
-      && buffer[1] === 0x50
-      && buffer[2] === 0x4e
-      && buffer[3] === 0x47
-      && buffer[4] === 0x0d
-      && buffer[5] === 0x0a
-      && buffer[6] === 0x1a
-      && buffer[7] === 0x0a) {
+    if (
+      buffer.length >= 8 &&
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0d &&
+      buffer[5] === 0x0a &&
+      buffer[6] === 0x1a &&
+      buffer[7] === 0x0a
+    ) {
       return 'image/png';
     }
 
-    if (buffer.length >= 3
-      && buffer[0] === 0xff
-      && buffer[1] === 0xd8
-      && buffer[2] === 0xff) {
+    if (
+      buffer.length >= 3 &&
+      buffer[0] === 0xff &&
+      buffer[1] === 0xd8 &&
+      buffer[2] === 0xff
+    ) {
       return 'image/jpeg';
     }
 
@@ -734,7 +881,8 @@ export class LoungeService {
 
     try {
       const parsed = new URL(input);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
+        return null;
 
       const host = parsed.hostname.toLowerCase();
       if (!host.includes('ibb.co') && !host.includes('imgbb.com')) return null;
@@ -768,7 +916,9 @@ export class LoungeService {
       if (!userId) continue;
       byId.set(userId.toLowerCase(), userId);
 
-      const username = this.normalizeTelegramUsername(member.user.telegramUsername);
+      const username = this.normalizeTelegramUsername(
+        member.user.telegramUsername,
+      );
       if (username) {
         byUsername.set(username.toLowerCase(), userId);
       }
@@ -893,8 +1043,22 @@ export class LoungeService {
     return normalized || null;
   }
 
-  private async resolveApiKeyForUpload(authorId: string): Promise<string> {
-    const personal = await this.usersService.resolveImgbbApiKeyForUser(authorId);
+  private async getClassroomRole(
+    classroomId: string,
+    userId: string,
+  ): Promise<UserRole | null> {
+    const member = await this.classroomMembersRepo.findOne({
+      where: { classroom: { id: classroomId }, user: { id: userId } },
+    });
+    return member?.role || null;
+  }
+
+  private async resolveApiKeyForUpload(
+    authorId: string,
+    classroomId: string,
+  ): Promise<string> {
+    const personal =
+      await this.usersService.resolveImgbbApiKeyForUser(authorId, classroomId);
     if (personal.usePersonalApiKey) {
       if (!personal.personalApiKey) {
         throw new BadRequestException(
@@ -917,7 +1081,6 @@ export class LoungeService {
     imageName: string | undefined,
     apiKey: string,
   ): Promise<ImageUploadResult> {
-
     const parsedImage = this.parseImagePayload(imageDataUrl);
     const payload = new URLSearchParams();
     payload.append('image', parsedImage.base64Payload);
@@ -944,7 +1107,9 @@ export class LoungeService {
       );
 
       if (!directUrl) {
-        throw new BadRequestException('Image upload succeeded but no valid direct image URL was returned.');
+        throw new BadRequestException(
+          'Image upload succeeded but no valid direct image URL was returned.',
+        );
       }
 
       return { imageUrl: directUrl };
@@ -952,10 +1117,11 @@ export class LoungeService {
       if (error instanceof BadRequestException) throw error;
 
       if (axios.isAxiosError(error)) {
-        const detail = error.response?.data?.error?.message
-          || error.response?.data?.error
-          || error.message
-          || 'Unknown upload error';
+        const detail =
+          error.response?.data?.error?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Unknown upload error';
         throw new BadRequestException(`Image upload failed: ${detail}`);
       }
 

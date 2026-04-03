@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -10,6 +10,8 @@ import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useSyncClassroom } from "@/hooks/use-classroom";
+import { apiFetch } from "@/services/api";
+import type { ClassroomMembershipContext, ClassroomRole } from "@/types/classroom";
 import {
   Sun,
   Moon,
@@ -20,6 +22,7 @@ import {
   Bell,
   Check,
   X,
+  Loader2,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { Semester } from "@/types/admin";
@@ -31,6 +34,13 @@ import {
 } from "@/services/notifications";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +54,55 @@ import {
 
 const roleLabels = { owner: "Owner", admin: "Admin", student: "Student" };
 
+interface ClassroomContextApiResponse {
+  classrooms?: ClassroomMembershipContext["classroom"][];
+  memberships?: Array<{
+    classroom?: ClassroomMembershipContext["classroom"];
+    role?: ClassroomRole;
+    joinedAt?: string;
+    status?: "active" | "suspended" | "banned";
+    suspendedUntil?: string | null;
+  }>;
+  user?: { role?: ClassroomRole; [key: string]: unknown };
+}
+
+function normalizeMemberships(
+  payload: ClassroomContextApiResponse,
+  fallbackRole: ClassroomRole,
+): ClassroomMembershipContext[] {
+  const now = Date.now();
+  if (Array.isArray(payload?.memberships) && payload.memberships.length > 0) {
+    return payload.memberships
+      .filter((item) => item?.classroom?.id)
+      .filter((item) => {
+        if (item?.status === "banned") return false;
+        if (item?.status === "suspended") {
+          if (!item.suspendedUntil) return false;
+          const until = new Date(item.suspendedUntil).getTime();
+          return Number.isFinite(until) ? until <= now : false;
+        }
+        return true;
+      })
+      .map((item) => ({
+        classroom: item.classroom!,
+        role: item.role || fallbackRole,
+        joinedAt: item.joinedAt || new Date(0).toISOString(),
+      }));
+  }
+
+  if (Array.isArray(payload?.classrooms) && payload.classrooms.length > 0) {
+    return payload.classrooms
+      .filter((classroom) => classroom?.id)
+      .map((classroom) => ({
+        classroom,
+        role: fallbackRole,
+        joinedAt: new Date(0).toISOString(),
+      }));
+  }
+
+  return [];
+}
+
 function formatNotificationTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -55,9 +114,16 @@ function formatNotificationTime(value: string) {
   });
 }
 
-function UserMenu({ activeSemester }: { activeSemester: Semester | null }) {
+function UserMenu({
+  activeSemester,
+  onLogout,
+}: {
+  activeSemester: Semester | null;
+  onLogout: () => void;
+}) {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const activeClassroomRole = useClassroomStore((s) => s.activeClassroomRole);
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -73,6 +139,7 @@ function UserMenu({ activeSemester }: { activeSemester: Semester | null }) {
   const yearValue = activeSemester?.year ?? user?.year ?? "—";
   const semesterValue = activeSemester?.name ?? user?.semester ?? "—";
   const telegramUsername = user?.telegramUsername?.replace(/^@+/, "");
+  const effectiveRole = (activeClassroomRole || "student") as keyof typeof roleLabels;
 
   return (
     <div className="relative" ref={ref}>
@@ -106,7 +173,7 @@ function UserMenu({ activeSemester }: { activeSemester: Semester | null }) {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold truncate">{user?.name || "Guest"}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{roleLabels[user?.role || "student"]}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{roleLabels[effectiveRole]}</p>
               </div>
             </div>
           </div>
@@ -164,8 +231,8 @@ function UserMenu({ activeSemester }: { activeSemester: Semester | null }) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                logout();
-                navigate("/login");
+                onLogout();
+                navigate("/login", { replace: true });
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -179,25 +246,153 @@ function UserMenu({ activeSemester }: { activeSemester: Semester | null }) {
 }
 
 export function AppLayout() {
-  const { batchTheme, colorMode, toggleColorMode } = useTheme();
-  const { user, logout } = useAuth();
+  const { batchTheme, colorMode, toggleColorMode, syncThemeWithStores } = useTheme();
+  const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [switchConfirmOpen, setSwitchConfirmOpen] = useState(false);
+  const [pendingClassroomId, setPendingClassroomId] = useState<string | null>(null);
+  const [isSwitchingClassroom, setIsSwitchingClassroom] = useState(false);
   const activeSemester = useSemesterStore((s) => s.activeSemester);
   const activeClassroom = useClassroomStore((s) => s.activeClassroom);
+  const memberships = useClassroomStore((s) => s.memberships);
+  const setMemberships = useClassroomStore((s) => s.setMemberships);
+  const setActiveClassroomById = useClassroomStore((s) => s.setActiveClassroomById);
   useSyncClassroom(); // This will keep classroom data (features, etc.) in sync
-  const { data: inAppNotificationData } = useQuery({
-    queryKey: ["inAppNotificationsUnread"],
-    queryFn: () => fetchInAppNotifications(5),
+
+  const { data: classroomContextData, isLoading: isClassroomContextLoading } = useQuery({
+    queryKey: ["classroomsContext", user?.id],
+    queryFn: () => apiFetch("/classrooms/my") as Promise<ClassroomContextApiResponse>,
     enabled: !!user,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
+  useEffect(() => {
+    if (!classroomContextData) return;
+    const fallbackRole: ClassroomRole = "student";
+    const normalizedMemberships = normalizeMemberships(classroomContextData, fallbackRole);
+    setMemberships(normalizedMemberships);
+    if (classroomContextData?.user) {
+      setUser(classroomContextData.user);
+    }
+  }, [classroomContextData, setMemberships, setUser]);
+
+  const membershipIds = useMemo(
+    () => memberships.map((membership) => membership.classroom.id),
+    [memberships],
+  );
+
+  const { data: activeSemesterByClassroomId = {} } = useQuery({
+    queryKey: ["classroomSwitcherSemesters", membershipIds],
+    enabled: membershipIds.length > 0 && !!user,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        membershipIds.map(async (classroomId) => {
+          try {
+            const semester = await apiFetch("/academics/semesters/active", {
+              headers: { "x-classroom-id": classroomId },
+            });
+            const name =
+              typeof semester?.name === "string" && semester.name.trim()
+                ? semester.name.trim()
+                : null;
+            return [classroomId, name] as const;
+          } catch (error: any) {
+            if (error?.status === 404) return [classroomId, null] as const;
+            return [classroomId, null] as const;
+          }
+        }),
+      );
+      return Object.fromEntries(entries) as Record<string, string | null>;
+    },
+  });
+
+  const classroomSwitchOptions = useMemo(
+    () =>
+      memberships.map((membership, index) => {
+        const classroom = membership.classroom;
+        const semesterName = activeSemesterByClassroomId[classroom.id] || null;
+        const friendlyFallback = `Classroom ${index + 1}`;
+        const primaryLabel = semesterName || friendlyFallback;
+        return {
+          classroomId: classroom.id,
+          primaryLabel,
+        };
+      }),
+    [memberships, activeSemesterByClassroomId],
+  );
+
+  const pendingClassroomOption = pendingClassroomId
+    ? classroomSwitchOptions.find((option) => option.classroomId === pendingClassroomId) || null
+    : null;
+
+  const selectedClassroomId =
+    switchConfirmOpen && pendingClassroomId ? pendingClassroomId : activeClassroom?.id;
+
+  const handleClassroomSwitchSelect = (classroomId: string) => {
+    if (!classroomId || classroomId === activeClassroom?.id) return;
+    setPendingClassroomId(classroomId);
+    setSwitchConfirmOpen(true);
+  };
+
+  const applyClassroomSwitch = () => {
+    if (!pendingClassroomId || pendingClassroomId === activeClassroom?.id) {
+      setSwitchConfirmOpen(false);
+      setPendingClassroomId(null);
+      return;
+    }
+    setIsSwitchingClassroom(true);
+    setActiveClassroomById(pendingClassroomId);
+    queryClient.clear();
+    syncThemeWithStores();
+    window.location.reload();
+  };
+
+  const cancelClassroomSwitch = () => {
+    setSwitchConfirmOpen(false);
+    setPendingClassroomId(null);
+    setIsSwitchingClassroom(false);
+  };
+
+  const handleLogout = () => {
+    queryClient.clear();
+    logout();
+  };
+
+  useEffect(() => {
+    if (!activeClassroom?.id || !user) return;
+    let cancelled = false;
+    apiFetch("/users/me")
+      .then((profile) => {
+        if (!cancelled && profile) {
+          setUser(profile);
+          syncThemeWithStores();
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClassroom?.id, user?.id, setUser, syncThemeWithStores]);
+
+  const { data: inAppNotificationData } = useQuery({
+    queryKey: ["inAppNotificationsUnread", activeClassroom?.id],
+    queryFn: () => fetchInAppNotifications(5),
+    enabled: !!user && !!activeClassroom?.id,
     refetchInterval: 30_000,
   });
   const markNotificationReadMutation = useMutation({
     mutationFn: markInAppNotificationRead,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread"] });
-      queryClient.invalidateQueries({ queryKey: ["inAppNotifications"] });
+      queryClient.invalidateQueries({
+        queryKey: ["inAppNotificationsUnread", activeClassroom?.id || null],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["inAppNotifications", activeClassroom?.id || null],
+      });
     },
     onError: (error: unknown) => {
       const message =
@@ -210,8 +405,12 @@ export function AppLayout() {
   const dismissNotificationMutation = useMutation({
     mutationFn: dismissInAppNotification,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inAppNotificationsUnread"] });
-      queryClient.invalidateQueries({ queryKey: ["inAppNotifications"] });
+      queryClient.invalidateQueries({
+        queryKey: ["inAppNotificationsUnread", activeClassroom?.id || null],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["inAppNotifications", activeClassroom?.id || null],
+      });
     },
     onError: (error: unknown) => {
       const message =
@@ -233,22 +432,10 @@ export function AppLayout() {
 
   // Redirection for users without a classroom
   useEffect(() => {
-    if (user && !activeClassroom) {
+    if (user && !activeClassroom && !isClassroomContextLoading && memberships.length === 0) {
       navigate("/get-started");
     }
-  }, [user, activeClassroom, navigate]);
-
-  // Enforce ban/suspend for already logged-in users
-  useEffect(() => {
-    if (!user) return;
-    if (user.isBanned) {
-      logout();
-      navigate("/login");
-    } else if (user.suspendedUntil && new Date(user.suspendedUntil) > new Date()) {
-      logout();
-      navigate("/login");
-    }
-  }, [user, logout, navigate]);
+  }, [user, activeClassroom, isClassroomContextLoading, memberships.length, navigate]);
 
   return (
     <SidebarProvider>
@@ -281,6 +468,28 @@ export function AppLayout() {
                     <span>Active semester: {activeSemester.name}</span>
                   </TooltipContent>
                 </Tooltip>
+              )}
+              {memberships.length > 1 && (
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="opacity-70 hidden sm:inline text-[10px] uppercase tracking-wider font-bold">
+                    Class
+                  </span>
+                  <Select value={selectedClassroomId} onValueChange={handleClassroomSwitchSelect}>
+                    <SelectTrigger
+                      aria-label="Switch classroom"
+                      className="h-8 w-[8.75rem] sm:w-auto sm:min-w-[10rem] max-w-[10.5rem] sm:max-w-[15rem] border-white/25 bg-white/10 text-inherit text-[11px] font-semibold focus:ring-white/40 focus:ring-offset-0 hover:bg-white/15 [&>span]:max-w-[6.75rem] sm:[&>span]:max-w-[11.5rem] [&>span]:truncate"
+                    >
+                      <SelectValue placeholder="Switch classroom" />
+                    </SelectTrigger>
+                    <SelectContent align="start" className="max-w-[20rem]">
+                      {classroomSwitchOptions.map((option) => (
+                        <SelectItem key={option.classroomId} value={option.classroomId} className="py-2">
+                          {option.primaryLabel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
               <CommandPalette />
               <div className="flex-1" />
@@ -391,8 +600,47 @@ export function AppLayout() {
                 </TooltipContent>
               </Tooltip>
 
-              <UserMenu activeSemester={activeSemester} />
+              <UserMenu activeSemester={activeSemester} onLogout={handleLogout} />
             </header>
+
+            <AlertDialog
+              open={switchConfirmOpen}
+              onOpenChange={(open) => {
+                if (open) {
+                  setSwitchConfirmOpen(true);
+                  return;
+                }
+                if (!isSwitchingClassroom) {
+                  cancelClassroomSwitch();
+                }
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Switch classroom</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {`Switch to ${pendingClassroomOption?.primaryLabel || "the selected classroom"}?`}
+                    {" "}
+                    The app will reload so all classroom-scoped data and permissions are applied cleanly.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={cancelClassroomSwitch} disabled={isSwitchingClassroom}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={applyClassroomSwitch} disabled={isSwitchingClassroom}>
+                    {isSwitchingClassroom ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Switching...
+                      </>
+                    ) : (
+                      "Switch and reload"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <main className="flex-1 overflow-auto pb-14 md:pb-0">
               <Outlet />

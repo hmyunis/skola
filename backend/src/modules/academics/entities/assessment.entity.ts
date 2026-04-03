@@ -62,8 +62,8 @@ export class Assessment {
   @Column({ length: 32 })
   courseCode: string;
 
-  @Column({ type: 'date' })
-  dueDate: string;
+  @Column({ type: 'date', nullable: true })
+  dueDate: string | null;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;

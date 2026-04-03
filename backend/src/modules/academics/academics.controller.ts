@@ -30,7 +30,7 @@ import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ClassroomRoleGuard)
 @Controller('academics')
 export class AcademicsController {
   constructor(private readonly academicsService: AcademicsService) {}

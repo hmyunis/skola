@@ -24,7 +24,7 @@ export interface Assignment {
   id: string;
   title: string;
   course: string;
-  dueDate: string;
+  dueDate: string | null;
   source: "classroom" | "direct" | "notice" | "other";
   status: "pending" | "submitted" | "graded";
   createdAt?: string;

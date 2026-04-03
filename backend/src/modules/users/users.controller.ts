@@ -13,30 +13,49 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  getProfile(@CurrentUser() user: User) {
-    return user;
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  getProfile(
+    @CurrentUser() user: User,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.usersService.getScopedProfile(user.id, classroomId);
   }
 
   @Put('me/theme')
-  @UseGuards(JwtAuthGuard)
-  updateThemeSettings(@CurrentUser() user: User, @Body() themeSettings: any) {
-    return this.usersService.updateThemeSettings(user.id, themeSettings);
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  updateThemeSettings(
+    @CurrentUser() user: User,
+    @CurrentClassroom() classroomId: string,
+    @Body() themeSettings: any,
+  ) {
+    return this.usersService.updateThemeSettings(
+      user.id,
+      classroomId,
+      themeSettings,
+    );
   }
 
   @Get('me/image-upload-settings')
-  @UseGuards(JwtAuthGuard)
-  getImageUploadSettings(@CurrentUser() user: User) {
-    return this.usersService.getImageUploadSettings(user.id);
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  getImageUploadSettings(
+    @CurrentUser() user: User,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.usersService.getImageUploadSettings(user.id, classroomId);
   }
 
   @Put('me/image-upload-settings')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   updateImageUploadSettings(
     @CurrentUser() user: User,
+    @CurrentClassroom() classroomId: string,
     @Body() dto: UpdateImageUploadSettingsDto,
   ) {
-    return this.usersService.updateImageUploadSettings(user.id, dto);
+    return this.usersService.updateImageUploadSettings(
+      user.id,
+      classroomId,
+      dto,
+    );
   }
 
   @Delete('me')

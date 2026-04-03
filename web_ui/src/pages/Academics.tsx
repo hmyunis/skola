@@ -160,13 +160,17 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
-function parseAssessmentDate(value: string) {
+function parseAssessmentDate(value: string | null | undefined) {
+  if (!value) return null;
   const trimmed = value.trim();
+  if (!trimmed) return null;
   const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
   if (dateOnlyMatch) {
-    return new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
-  return new Date(trimmed);
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function startOfLocalDay(date: Date) {
@@ -192,19 +196,35 @@ function addDays(date: Date, days: number) {
   return next;
 }
 
-function getDaysUntilDue(dueDate: string, baseDate = new Date()) {
-  const due = startOfLocalDay(parseAssessmentDate(dueDate));
-  if (Number.isNaN(due.getTime())) return 0;
+function getDaysUntilDue(dueDate: string | null, baseDate = new Date()) {
+  const parsed = parseAssessmentDate(dueDate);
+  if (!parsed) return null;
+  const due = startOfLocalDay(parsed);
   const base = startOfLocalDay(baseDate);
   return Math.round((due.getTime() - base.getTime()) / DAY_IN_MS);
 }
 
-function getDeadlineBadge(daysUntilDue: number, status: Assignment["status"]) {
+function formatDaysUntilDue(daysUntilDue: number | null) {
+  if (daysUntilDue === null) return "TBA";
+  if (daysUntilDue < 0) return `${Math.abs(daysUntilDue)}d overdue`;
+  if (daysUntilDue === 0) return "Due today";
+  return `Due in ${daysUntilDue}d`;
+}
+
+function getDeadlineBadge(daysUntilDue: number | null, status: Assignment["status"]) {
   if (status !== "pending") {
     return {
       label: status === "submitted" ? "Submitted" : "Completed",
       className: "bg-primary/10 text-primary border-primary/30",
       dotClassName: "bg-primary",
+    };
+  }
+
+  if (daysUntilDue === null) {
+    return {
+      label: "TBA",
+      className: "bg-muted text-muted-foreground border-border",
+      dotClassName: "bg-muted-foreground/70",
     };
   }
 
@@ -248,7 +268,9 @@ function compareAssignmentsByUrgency(a: Assignment, b: Assignment, baseDate: Dat
 
   const aDays = getDaysUntilDue(a.dueDate, baseDate);
   const bDays = getDaysUntilDue(b.dueDate, baseDate);
-  const dayDiff = aDays - bDays;
+  const normalizedADays = aDays ?? Number.POSITIVE_INFINITY;
+  const normalizedBDays = bDays ?? Number.POSITIVE_INFINITY;
+  const dayDiff = normalizedADays - normalizedBDays;
   if (dayDiff !== 0) return dayDiff;
 
   const statusDiff = statusPriority[a.status] - statusPriority[b.status];
@@ -326,7 +348,7 @@ function AssessmentFormDialog({
     setSource(initial?.source || "classroom");
   }, [initial, open]);
 
-  const isValid = title.trim() && courseCode && dueDate;
+  const isValid = Boolean(title.trim() && courseCode);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -379,6 +401,21 @@ function AssessmentFormDialog({
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Due Date</label>
               <DatePicker value={dueDate} onChange={setDueDate} placeholder="Due date" />
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {dueDate ? "Set" : "No due date (TBA)"}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] uppercase tracking-wider"
+                  onClick={() => setDueDate("")}
+                  disabled={!dueDate}
+                >
+                  Set TBA
+                </Button>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Max Score</label>
@@ -416,7 +453,7 @@ function AssessmentFormDialog({
                   title: title.trim(),
                   type,
                   courseCode,
-                  dueDate,
+                  dueDate: dueDate || null,
                   description: description.trim(),
                   maxScore: Number(maxScore),
                   weight: Number(weight),
@@ -453,9 +490,9 @@ function AssessmentCard({
   const typeInfo = assessmentTypeConfig[assessment.type];
   const TypeIcon = typeInfo.icon;
   const edited = isEdited(assessment);
-  const dueDate = parseAssessmentDate(assessment.dueDate);
   const daysUntilDue = getDaysUntilDue(assessment.dueDate);
-  const isOverdue = daysUntilDue < 0;
+  const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
+  const isDueSoon = daysUntilDue !== null && daysUntilDue <= 2 && daysUntilDue >= 0;
 
   return (
     <div className="border border-border bg-card p-3 sm:p-4 hover:bg-card transition-colors">
@@ -474,8 +511,12 @@ function AssessmentCard({
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {courseName} ·{" "}
-                <span className={cn(isOverdue && "text-destructive font-medium", !isOverdue && daysUntilDue <= 2 && "text-amber-600 font-medium")}>
-                  {isOverdue ? `${Math.abs(daysUntilDue)}d overdue` : daysUntilDue === 0 ? "Due today" : `Due in ${daysUntilDue}d`}
+                <span className={cn(
+                  isOverdue && "text-destructive font-medium",
+                  !isOverdue && isDueSoon && "text-amber-600 font-medium",
+                  daysUntilDue === null && "text-muted-foreground",
+                )}>
+                  {formatDaysUntilDue(daysUntilDue)}
                 </span>
               </p>
             </div>
@@ -525,10 +566,9 @@ function AssignmentRow({
   const source = sourceConfig[assignment.source];
   const status = statusConfig[assignment.status];
   const SourceIcon = source.icon;
-  const dueDate = parseAssessmentDate(assignment.dueDate);
   const daysUntilDue = getDaysUntilDue(assignment.dueDate);
-  const isOverdue = daysUntilDue < 0 && assignment.status === "pending";
-  const isDueSoon = daysUntilDue <= 2 && daysUntilDue >= 0 && assignment.status === "pending";
+  const isOverdue = daysUntilDue !== null && daysUntilDue < 0 && assignment.status === "pending";
+  const isDueSoon = daysUntilDue !== null && daysUntilDue <= 2 && daysUntilDue >= 0 && assignment.status === "pending";
   const aggregated = getDistributionPercentages(assignment);
   const totalVotes = assignment.confidenceDistribution?.total || 0;
   const edited = isEdited(assignment);
@@ -543,8 +583,12 @@ function AssignmentRow({
               <p className="font-bold text-sm truncate">{assignment.title}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {assignment.course} ·{" "}
-                <span className={cn(isOverdue && "text-destructive font-medium", isDueSoon && "text-amber-600 font-medium")}>
-                  {isOverdue ? `${Math.abs(daysUntilDue)}d overdue` : daysUntilDue === 0 ? "Due today" : `Due in ${daysUntilDue}d`}
+                <span className={cn(
+                  isOverdue && "text-destructive font-medium",
+                  isDueSoon && "text-amber-600 font-medium",
+                  daysUntilDue === null && "text-muted-foreground",
+                )}>
+                  {formatDaysUntilDue(daysUntilDue)}
                 </span>
               </p>
             </div>
@@ -605,7 +649,7 @@ function AssignmentDetailDialog({
   const courseName = getCourseName(assignment.course);
   const dueDate = parseAssessmentDate(assignment.dueDate);
   const daysUntilDue = getDaysUntilDue(assignment.dueDate);
-  const isOverdue = daysUntilDue < 0 && assignment.status === "pending";
+  const isOverdue = daysUntilDue !== null && daysUntilDue < 0 && assignment.status === "pending";
   const aggregated = getDistributionPercentages(assignment);
   const totalVotes = assignment.confidenceDistribution?.total || 0;
   const edited = isEdited(assignment);
@@ -653,9 +697,11 @@ function AssignmentDetailDialog({
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Due Date</p>
             <p className={cn("text-sm font-bold break-words", isOverdue && "text-destructive")}>
-              {dueDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-              {isOverdue && <span className="ml-2 text-xs font-medium">({Math.abs(daysUntilDue)}d overdue)</span>}
-              {!isOverdue && daysUntilDue >= 0 && (
+              {dueDate
+                ? dueDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+                : "TBA"}
+              {isOverdue && daysUntilDue !== null && <span className="ml-2 text-xs font-medium">({Math.abs(daysUntilDue)}d overdue)</span>}
+              {!isOverdue && dueDate && daysUntilDue !== null && daysUntilDue >= 0 && (
                 <span className="ml-2 text-xs font-normal text-muted-foreground">
                   ({daysUntilDue === 0 ? "Today" : `${daysUntilDue}d left`})
                 </span>
@@ -724,7 +770,7 @@ function AssessmentCalendarView({
     const grouped = new Map<string, Assignment[]>();
     assignments.forEach((assignment) => {
       const due = parseAssessmentDate(assignment.dueDate);
-      if (Number.isNaN(due.getTime())) return;
+      if (!due) return;
       const dateKey = toDateKey(due);
       const current = grouped.get(dateKey) || [];
       current.push(assignment);
@@ -746,11 +792,14 @@ function AssessmentCalendarView({
 
   const upcomingAssignments = sortedByUrgency.slice(0, 6);
   const pendingAssignments = assignments.filter((assignment) => assignment.status === "pending");
-  const overdueCount = pendingAssignments.filter((assignment) => getDaysUntilDue(assignment.dueDate, today) < 0).length;
+  const overdueCount = pendingAssignments.filter((assignment) => {
+    const days = getDaysUntilDue(assignment.dueDate, today);
+    return days !== null && days < 0;
+  }).length;
   const dueTodayCount = pendingAssignments.filter((assignment) => getDaysUntilDue(assignment.dueDate, today) === 0).length;
   const thisWeekCount = pendingAssignments.filter((assignment) => {
     const days = getDaysUntilDue(assignment.dueDate, today);
-    return days >= 0 && days <= 7;
+    return days !== null && days >= 0 && days <= 7;
   }).length;
 
   return (
@@ -824,9 +873,10 @@ function AssessmentCalendarView({
           {calendarDays.map((date) => {
             const dateKey = toDateKey(date);
             const dayAssignments = assignmentsByDate.get(dateKey) || [];
-            const urgentCount = dayAssignments.filter(
-              (assignment) => assignment.status === "pending" && getDaysUntilDue(assignment.dueDate, today) <= 3,
-            ).length;
+            const urgentCount = dayAssignments.filter((assignment) => {
+              const days = getDaysUntilDue(assignment.dueDate, today);
+              return assignment.status === "pending" && days !== null && days <= 3;
+            }).length;
             const isOutsideMonth = date.getMonth() !== monthStart.getMonth();
             const isToday = dateKey === todayKey;
             const isSelected = dateKey === selectedDateKey;
@@ -978,6 +1028,7 @@ function AssessmentCalendarView({
                 const due = parseAssessmentDate(assignment.dueDate);
                 const daysUntilDue = getDaysUntilDue(assignment.dueDate, today);
                 const badge = getDeadlineBadge(daysUntilDue, assignment.status);
+                const dueLabel = due ? due.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBA";
                 return (
                   <button
                     key={assignment.id}
@@ -986,7 +1037,7 @@ function AssessmentCalendarView({
                   >
                     <p className="text-sm font-semibold truncate">{assignment.title}</p>
                     <p className="text-[11px] text-muted-foreground truncate">
-                      {assignment.course} · {due.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {assignment.course} · {dueLabel}
                     </p>
                     <span className={cn("mt-1 inline-flex px-1.5 py-0.5 border text-[9px] font-bold uppercase tracking-wider", badge.className)}>
                       {badge.label}
