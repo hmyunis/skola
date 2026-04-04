@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSemesterInfo, fetchQuickStats } from "@/services/api";
 import { LiveStatusCard } from "@/components/LiveStatusCard";
@@ -10,18 +11,78 @@ import { useClassroomStore } from "@/stores/classroomStore";
 import { useFeatureEnabled } from "@/services/features";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BookOpen, FileText, ClipboardList } from "lucide-react";
 
+function parseSemesterDate(value: string): Date {
+  const input = String(value || "").trim();
+  if (!input) return new Date(Number.NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    // Parse date-only strings in local time to avoid timezone day/year drift.
+    return new Date(`${input}T12:00:00`);
+  }
+  return new Date(input);
+}
+
+function getSemesterYearLabel(
+  semester: { year: number; startDate: string; endDate: string } | null | undefined,
+): string {
+  if (!semester) return "—";
+  const start = parseSemesterDate(semester.startDate);
+  const end = parseSemesterDate(semester.endDate);
+
+  if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    return startYear === endYear ? String(startYear) : `${startYear}/${endYear}`;
+  }
+
+  if (!Number.isNaN(end.getTime())) {
+    return String(end.getFullYear());
+  }
+
+  return String(semester.year ?? "—");
+}
+
 function DaysRemaining({ endDate }: { endDate: string }) {
+  const [dateTooltipOpen, setDateTooltipOpen] = useState(false);
   if (!endDate) return <span className="tabular-nums font-black text-2xl">—</span>;
-  const end = new Date(endDate);
+  const end = parseSemesterDate(endDate);
   if (Number.isNaN(end.getTime())) {
     return <span className="tabular-nums font-black text-2xl">—</span>;
   }
-  const now = new Date();
-  const diff = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  const diff = Math.max(0, Math.ceil((endDateOnly.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24)));
+  const exactDateLabel = endDateOnly.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
-    <span className="tabular-nums font-black text-2xl">{diff}</span>
+    <Tooltip
+      open={dateTooltipOpen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setDateTooltipOpen(false);
+      }}
+    >
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => setDateTooltipOpen((prev) => !prev)}
+          className="tabular-nums font-black text-2xl leading-none text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={`Days left: ${diff}. Click to view exact end date.`}
+        >
+          {diff}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <span>{exactDateLabel}</span>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -76,7 +137,7 @@ const Index = () => {
                 Semester
               </p>
               <p className="text-sm font-bold uppercase tracking-wide">
-                Year {semester.year}, Sem {semester.semester}
+                Year {getSemesterYearLabel(semester)}, Sem {semester.semester}
               </p>
             </div>
             <div className="border-l border-border pl-4 text-right">

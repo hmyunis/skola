@@ -74,6 +74,7 @@ import {
     Loader2,
     ImagePlus,
     ImageOff,
+    Maximize2,
     X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -799,6 +800,7 @@ function PostCard({
 }) {
     const [reportOpen, setReportOpen] = useState(false);
     const [isImageBroken, setIsImageBroken] = useState(false);
+    const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
     const primaryTag = post.tags?.[0] as PostTag | undefined;
     const tagConfig = primaryTag ? POST_TAGS.find((t) => t.value === primaryTag) : null;
     const courseName = post.course;
@@ -815,6 +817,7 @@ function PostCard({
 
     useEffect(() => {
         setIsImageBroken(false);
+        setIsImageDialogOpen(false);
     }, [post.id, post.imageUrl]);
 
     return (
@@ -931,7 +934,7 @@ function PostCard({
                 </p>
             )}
             {post.imageUrl && !isImageBroken && (
-                <div className="overflow-hidden border border-border bg-muted/20">
+                <div className="relative overflow-hidden border border-border bg-muted/20">
                     <img
                         src={post.imageUrl}
                         alt="Lounge attachment"
@@ -939,6 +942,21 @@ function PostCard({
                         className="w-full max-h-[420px] object-cover"
                         onError={() => setIsImageBroken(true)}
                     />
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={() => setIsImageDialogOpen(true)}
+                                className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                aria-label="Open full image"
+                            >
+                                <Maximize2 className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            <span>View full image</span>
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
             )}
             {post.imageUrl && isImageBroken && (
@@ -954,6 +972,22 @@ function PostCard({
                         Open link
                     </a>
                 </div>
+            )}
+            {post.imageUrl && !isImageBroken && (
+                <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+                    <DialogContent className="w-[calc(100vw-1rem)] max-w-5xl border-none bg-transparent p-0 shadow-none [&>button]:hidden">
+                        <DialogHeader className="sr-only">
+                            <DialogTitle>Lounge attachment</DialogTitle>
+                        </DialogHeader>
+                        <div className="overflow-hidden rounded-md border border-border/50 bg-black/90">
+                            <img
+                                src={post.imageUrl}
+                                alt="Lounge attachment full view"
+                                className="w-full max-h-[calc(100vh-1rem)] object-contain sm:max-h-[calc(100vh-2rem)]"
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
             )}
             {courseName && (
                 <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">

@@ -47,8 +47,10 @@ import { useSemesterStore } from "@/stores/semesterStore";
 import { useAuth } from "@/stores/authStore";
 import { ReportDialog } from "@/components/ReportDialog";
 import {
+  AudioLines,
   Download,
   ExternalLink,
+  Image as ImageIcon,
   Loader2,
   Plus,
   Search,
@@ -57,6 +59,7 @@ import {
   Trash2,
   Pencil,
   Upload,
+  Video,
   Link as LinkIcon,
   FolderOpen,
 } from "lucide-react";
@@ -70,6 +73,39 @@ const typeTone: Record<ResourceType, string> = {
   ebook: "bg-sky-500/10 text-sky-600 border-sky-500/30",
   other: "bg-muted text-muted-foreground border-border",
 };
+const IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "svg",
+  "avif",
+  "heic",
+  "heif",
+]);
+const VIDEO_EXTENSIONS = new Set([
+  "mp4",
+  "webm",
+  "mov",
+  "m4v",
+  "ogg",
+  "ogv",
+  "mkv",
+]);
+const AUDIO_EXTENSIONS = new Set([
+  "mp3",
+  "wav",
+  "m4a",
+  "aac",
+  "ogg",
+  "oga",
+  "flac",
+  "opus",
+]);
+
+type ResourcePreviewKind = "image" | "video" | "audio" | "none";
 
 function formatBytes(bytes?: number) {
   if (!bytes) return "-";
@@ -85,6 +121,120 @@ function isValidHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function getResourceExtension(resource: Resource): string {
+  const raw = String(resource.fileName || resource.fileUrl || "").trim();
+  if (!raw) return "";
+  const clean = raw.split("?")[0].split("#")[0];
+  const dotIndex = clean.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === clean.length - 1) return "";
+  return clean.slice(dotIndex + 1).toLowerCase();
+}
+
+function getResourcePreviewKind(resource: Resource): ResourcePreviewKind {
+  if (!resource.fileUrl) return "none";
+  const ext = getResourceExtension(resource);
+  if (!ext) return "none";
+  if (IMAGE_EXTENSIONS.has(ext)) return "image";
+  if (VIDEO_EXTENSIONS.has(ext)) return "video";
+  if (AUDIO_EXTENSIONS.has(ext)) return "audio";
+  return "none";
+}
+
+function ResourceInlinePreview({ resource }: { resource: Resource }) {
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const previewKind = getResourcePreviewKind(resource);
+
+  if (!resource.fileUrl || previewKind === "none") return null;
+  if (previewFailed) {
+    return (
+      <div className="border border-dashed border-border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+        Preview unavailable for this file.
+      </div>
+    );
+  }
+
+  const mediaUrl = `${FILE_BASE}${resource.fileUrl}`;
+
+  if (previewKind === "image") {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setImageDialogOpen(true)}
+          className="group relative block w-full overflow-hidden border border-border bg-muted/20 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={`Preview image: ${resource.title}`}
+        >
+          <img
+            src={mediaUrl}
+            alt={resource.title || "Resource preview"}
+            loading="lazy"
+            className="w-full max-h-56 object-contain sm:max-h-72"
+            onError={() => setPreviewFailed(true)}
+          />
+          <div className="pointer-events-none absolute bottom-2 right-2 inline-flex items-center gap-1 border border-border/70 bg-background/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-sm">
+            <ImageIcon className="h-3 w-3" />
+            Tap to zoom
+          </div>
+        </button>
+        <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-5xl border-none bg-transparent p-0 shadow-none [&>button]:hidden">
+            <DialogHeader className="sr-only">
+              <DialogTitle>{resource.title || "Image preview"}</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-hidden border border-border/50 bg-black/90">
+              <img
+                src={mediaUrl}
+                alt={resource.title || "Resource preview"}
+                className="w-full max-h-[calc(100vh-1rem)] object-contain sm:max-h-[calc(100vh-2rem)]"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  if (previewKind === "video") {
+    return (
+      <div className="overflow-hidden border border-border bg-black">
+        <div className="flex items-center gap-1.5 border-b border-border/50 bg-background/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Video className="h-3 w-3" />
+          Video preview
+        </div>
+        <div className="aspect-video w-full">
+          <video
+            controls
+            preload="metadata"
+            playsInline
+            className="h-full w-full bg-black"
+            onError={() => setPreviewFailed(true)}
+          >
+            <source src={mediaUrl} />
+          </video>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-border bg-muted/20 p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <AudioLines className="h-3 w-3" />
+        Audio preview
+      </div>
+      <audio
+        controls
+        preload="metadata"
+        className="h-10 w-full"
+        onError={() => setPreviewFailed(true)}
+      >
+        <source src={mediaUrl} />
+      </audio>
+    </div>
+  );
 }
 
 function ResourceDialog({
@@ -465,6 +615,7 @@ const Resources = () => {
               </div>
 
               <p className="text-sm text-muted-foreground line-clamp-2 break-words">{resource.description || "No description"}</p>
+              <ResourceInlinePreview resource={resource} />
 
               <div className="flex flex-wrap gap-1">
                 {resource.tags.map((tag) => (
