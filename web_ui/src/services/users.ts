@@ -17,6 +17,18 @@ export interface ImageUploadSettings {
   keyHint: string | null;
 }
 
+export interface AccountDeletionContext {
+  classroomId: string;
+  classroomName: string;
+  isOwner: boolean;
+  adminCandidates: Array<{
+    memberId: string;
+    userId: string;
+    name: string;
+    telegramUsername: string | null;
+  }>;
+}
+
 export async function fetchManagedUsers(classroomId: string): Promise<ManagedUser[]> {
   const members = await apiFetch(`/classrooms/${classroomId}/members`);
   return members.map((m: any) => ({
@@ -69,6 +81,19 @@ export async function saveImageUploadSettings(data: {
 }): Promise<ImageUploadSettings> {
   return apiFetch("/users/me/image-upload-settings", {
     method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchAccountDeletionContext(): Promise<AccountDeletionContext> {
+  return apiFetch("/users/me/account-deletion-context");
+}
+
+export async function deleteMyAccount(data: {
+  successorMemberId?: string;
+}) {
+  return apiFetch("/users/me", {
+    method: "DELETE",
     body: JSON.stringify(data),
   });
 }

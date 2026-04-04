@@ -606,7 +606,7 @@ const Resources = () => {
                 <div className="min-w-0">
                   <p className="font-bold text-sm break-words line-clamp-2">{resource.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 break-words">
-                    {(resource.course?.code || resource.course?.name || "Unknown course")} · {(resource.uploader?.name || "Unknown uploader")} · {formatBytes(resource.fileSize)}
+                    {(resource.course?.code || resource.course?.name || "Unknown course")} · {(resource.uploader?.name || "Deleted User")} · {formatBytes(resource.fileSize)}
                   </p>
                 </div>
                 <span className={`self-start px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${typeTone[resource.type]}`}>
@@ -735,7 +735,7 @@ const Resources = () => {
         contentType="resource"
         contentId={reporting?.id || ""}
         contentPreview={`${reporting?.title || ""} ${reporting?.description || ""}`.trim()}
-        contentAuthor={reporting?.uploader?.name || "Unknown"}
+        contentAuthor={reporting?.uploader?.name || "Deleted User"}
       />
     </div>
   );

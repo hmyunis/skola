@@ -73,20 +73,30 @@ export class AuthService {
 
     // Step B: Find or Create User
     let user = await this.usersService.findByTelegramId(dto.id);
+    const name = dto.last_name ? `${dto.first_name} ${dto.last_name}` : dto.first_name;
     
     if (user) {
-      // Update info if it changed
-      user.photoUrl = dto.photo_url || user.photoUrl;
-      user.telegramUsername = dto.username || user.telegramUsername;
-      
-      // Save changes to the user object (e.g. photo URL or username updates)
-      await this.usersService.update(user.id, { 
-        photoUrl: user.photoUrl, 
-        telegramUsername: user.telegramUsername 
-      });
+      if (user.deletedAt) {
+        user = await this.usersService.reviveDeletedAccount(user.id, {
+          name,
+          telegramUsername: dto.username || null,
+          photoUrl: dto.photo_url || null,
+        });
+      } else {
+        // Update info if it changed
+        user.photoUrl = dto.photo_url || user.photoUrl;
+        user.telegramUsername = dto.username || user.telegramUsername;
+        user.name = name || user.name;
+        
+        // Save changes to the user object (e.g. photo URL or username updates)
+        await this.usersService.update(user.id, { 
+          name: user.name,
+          photoUrl: user.photoUrl, 
+          telegramUsername: user.telegramUsername,
+        });
+      }
     } else {
       // Auto-register new user
-      const name = dto.last_name ? `${dto.first_name} ${dto.last_name}` : dto.first_name;
       user = await this.usersService.create({
         telegramId: dto.id,
         name,

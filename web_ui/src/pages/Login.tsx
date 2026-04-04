@@ -247,7 +247,6 @@ const Login = () => {
         setSuspendedUntil(errorData.suspendedUntil ? new Date(errorData.suspendedUntil).toLocaleString() : "");
         return;
       }
-
       toast({
         title: "Authentication Failed",
         description: err instanceof Error ? err.message : "Could not reach the server. Please try again.",

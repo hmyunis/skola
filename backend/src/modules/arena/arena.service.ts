@@ -22,6 +22,7 @@ import { Course } from '../academics/entities/course.entity';
 import { ClassroomsService } from '../classrooms/classrooms.service';
 
 type ArenaTitle = 'Rookie' | 'Scholar' | 'Strategist' | 'Champion' | 'Legend';
+const DELETED_USER_NAME = 'Deleted User';
 
 @Injectable()
 export class ArenaService {
@@ -362,7 +363,10 @@ export class ArenaService {
     const rows = await aggregateQb
       .select([
         'user.id AS userId',
-        'COALESCE(user.anonymousId, CONCAT("Anon#", UPPER(SUBSTRING(MD5(user.id), 1, 4)))) AS anonymousId',
+        `CASE
+          WHEN user.deletedAt IS NOT NULL THEN '${DELETED_USER_NAME}'
+          ELSE COALESCE(user.anonymousId, CONCAT("Anon#", UPPER(SUBSTRING(MD5(user.id), 1, 4))))
+        END AS anonymousId`,
         'SUM(attempt.score) AS xp',
         'SUM(CASE WHEN attempt.won = 1 THEN 1 ELSE 0 END) AS wins',
         'SUM(attempt.correctAnswers) AS correctAnswers',
@@ -529,11 +533,18 @@ export class ArenaService {
     };
   }
 
-  private getAuthorDisplayName(quiz: Partial<Quiz> & { author?: { name?: string; anonymousId?: string } }) {
+  private getAuthorDisplayName(
+    quiz: Partial<Quiz> & {
+      author?: { name?: string | null; anonymousId?: string | null; deletedAt?: Date | null };
+    },
+  ) {
+    if (quiz.author?.deletedAt) {
+      return DELETED_USER_NAME;
+    }
     if (quiz.isAnonymous) {
       return quiz.author?.anonymousId || 'Anonymous';
     }
-    return quiz.author?.name || 'Unknown';
+    return quiz.author?.name || DELETED_USER_NAME;
   }
 
   private getArenaTitle(xp: number): ArenaTitle {

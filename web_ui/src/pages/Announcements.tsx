@@ -41,9 +41,9 @@ function getEditStatus(createdAt?: string, updatedAt?: string): "Edited" | "Not 
 }
 
 function safeDisplayName(value: unknown): string {
-  if (typeof value !== "string") return "Deleted user";
+  if (typeof value !== "string") return "Deleted User";
   const trimmed = value.trim();
-  return trimmed || "Deleted user";
+  return trimmed || "Deleted User";
 }
 
 const Announcements = () => {

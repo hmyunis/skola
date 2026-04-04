@@ -8,6 +8,8 @@ import { ClassroomMember } from '../classrooms/entities/classroom-member.entity'
 import { UserRole } from '../users/entities/user.entity';
 import { ResourceQueryDto } from './dto/resource-query.dto';
 
+const DELETED_USER_NAME = 'Deleted User';
+
 @Injectable()
 export class ResourcesService {
   constructor(
@@ -33,7 +35,11 @@ export class ResourcesService {
     return {
       ...resource,
       uploader: resource.uploader
-        ? { id: resource.uploader.id, name: resource.uploader.name, initials: resource.uploader.initials }
+        ? {
+            id: resource.uploader.id,
+            name: resource.uploader.deletedAt ? DELETED_USER_NAME : resource.uploader.name,
+            initials: resource.uploader.deletedAt ? 'DU' : resource.uploader.initials,
+          }
         : null,
       userVote: userVote || null,
     };

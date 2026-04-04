@@ -34,6 +34,8 @@ interface UpsertAnnouncementDto {
   sendTelegram?: boolean;
 }
 
+const DELETED_USER_NAME = 'Deleted User';
+
 export interface OwnerAnalyticsResponse {
   totalUsers: number;
   activeToday: number;
@@ -164,7 +166,9 @@ export class AdminService {
       createdAt: announcement.createdAt,
       updatedAt: announcement.updatedAt,
       expiresAt: announcement.expiresAt,
-      createdBy: announcement.author?.name || 'System',
+      createdBy: announcement.author?.deletedAt
+        ? DELETED_USER_NAME
+        : announcement.author?.name || 'System',
       targetAudience: announcement.targetAudience,
       pinned: announcement.pinned,
     };

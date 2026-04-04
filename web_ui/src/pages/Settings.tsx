@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme, FONT_FAMILIES } from "@/stores/themeStore";
 import { useClassroomStore } from "@/stores/classroomStore";
+import { useAuthStore } from "@/stores/authStore";
 import { userAccents } from "@/lib/themes";
 import { useUpdateUserTheme } from "@/hooks/use-theme";
 import {
+  deleteMyAccount,
+  fetchAccountDeletionContext,
   fetchImageUploadSettings,
   saveImageUploadSettings,
+  type AccountDeletionContext,
   type ImageUploadSettings,
 } from "@/services/users";
 import {
@@ -40,6 +44,15 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/services/api";
+import type { ClassroomMembershipContext, ClassroomRole } from "@/types/classroom";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sun,
   Moon,
@@ -52,7 +65,27 @@ import {
   CheckCircle2,
   Circle,
   Info,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
+
+const DELETE_ACCOUNT_CONFIRMATION_TEXT = "LEAVE CLASSROOM";
+
+function normalizeDeleteConfirmation(value: string) {
+  return value.trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+interface ClassroomContextApiResponse {
+  classrooms?: ClassroomMembershipContext["classroom"][];
+  memberships?: Array<{
+    classroom?: ClassroomMembershipContext["classroom"];
+    role?: ClassroomRole;
+    joinedAt?: string;
+    status?: "active" | "suspended" | "banned";
+    suspendedUntil?: string | null;
+  }>;
+  user?: { role?: ClassroomRole; [key: string]: unknown };
+}
 
 const defaultNotificationSettings: NotificationSettings = {
   inAppAnnouncements: true,
@@ -61,6 +94,43 @@ const defaultNotificationSettings: NotificationSettings = {
 };
 
 type BrowserPermissionState = NotificationPermission | "unsupported";
+
+function normalizeMemberships(
+  payload: ClassroomContextApiResponse,
+  fallbackRole: ClassroomRole,
+): ClassroomMembershipContext[] {
+  const now = Date.now();
+  if (Array.isArray(payload?.memberships) && payload.memberships.length > 0) {
+    return payload.memberships
+      .filter((item) => item?.classroom?.id)
+      .filter((item) => {
+        if (item?.status === "banned") return false;
+        if (item?.status === "suspended") {
+          if (!item.suspendedUntil) return false;
+          const until = new Date(item.suspendedUntil).getTime();
+          return Number.isFinite(until) ? until <= now : false;
+        }
+        return true;
+      })
+      .map((item) => ({
+        classroom: item.classroom!,
+        role: item.role || fallbackRole,
+        joinedAt: item.joinedAt || new Date(0).toISOString(),
+      }));
+  }
+
+  if (Array.isArray(payload?.classrooms) && payload.classrooms.length > 0) {
+    return payload.classrooms
+      .filter((classroom) => classroom?.id)
+      .map((classroom) => ({
+        classroom,
+        role: fallbackRole,
+        joinedAt: new Date(0).toISOString(),
+      }));
+  }
+
+  return [];
+}
 
 function formatNotificationTime(value: string) {
   const date = new Date(value);
@@ -192,10 +262,11 @@ function NotificationFeed({
 }
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
   const activeTab =
-    requestedTab === "notifications" || requestedTab === "byok"
+    requestedTab === "notifications" || requestedTab === "byok" || requestedTab === "account"
       ? requestedTab
       : "appearance";
 
@@ -210,6 +281,10 @@ const SettingsPage = () => {
   const updateUserTheme = useUpdateUserTheme();
   const queryClient = useQueryClient();
   const activeClassroomId = useClassroomStore((s) => s.activeClassroom?.id || null);
+  const activeClassroomName = useClassroomStore((s) => s.activeClassroom?.name || "this classroom");
+  const setMemberships = useClassroomStore((s) => s.setMemberships);
+  const clearActiveClassroom = useClassroomStore((s) => s.clearActiveClassroom);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const [usePersonalApiKey, setUsePersonalApiKey] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -225,6 +300,9 @@ const SettingsPage = () => {
   const [pushBusy, setPushBusy] = useState(false);
   const [testBusyType, setTestBusyType] = useState<NotificationTestType | null>(null);
   const [notificationTriggersOpen, setNotificationTriggersOpen] = useState(false);
+  const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false);
+  const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
+  const [successorMemberId, setSuccessorMemberId] = useState("");
 
   const imageSettingsQuery = useQuery({
     queryKey: ["imageUploadSettings", activeClassroomId],
@@ -249,6 +327,13 @@ const SettingsPage = () => {
     queryFn: () => fetchInAppNotifications(40),
     refetchInterval: 20_000,
     enabled: !!activeClassroomId,
+  });
+
+  const accountDeletionContextQuery = useQuery({
+    queryKey: ["accountDeletionContext", activeClassroomId],
+    queryFn: fetchAccountDeletionContext,
+    enabled: deleteAccountDialogOpen && !!activeClassroomId,
+    staleTime: 60_000,
   });
 
   const refreshDevicePushState = useCallback(async () => {
@@ -290,6 +375,12 @@ const SettingsPage = () => {
   useEffect(() => {
     void refreshDevicePushState();
   }, [refreshDevicePushState]);
+
+  useEffect(() => {
+    if (deleteAccountDialogOpen) return;
+    setDeleteAccountConfirmation("");
+    setSuccessorMemberId("");
+  }, [deleteAccountDialogOpen]);
 
   const imageSettingsMutation = useMutation({
     mutationFn: saveImageUploadSettings,
@@ -351,6 +442,54 @@ const SettingsPage = () => {
   const handleUpdate = (settings: any) => {
     updateUserTheme.mutate(settings);
   };
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: (payload: { successorMemberId?: string }) => deleteMyAccount(payload),
+    onSuccess: async () => {
+      let classroomContext: ClassroomContextApiResponse = {};
+      try {
+        classroomContext = await apiFetch("/classrooms/my");
+      } catch {
+        classroomContext = {};
+      }
+      const fallbackRole: ClassroomRole = "student";
+      const nextMemberships = normalizeMemberships(classroomContext, fallbackRole);
+      if (classroomContext?.user) {
+        setUser(classroomContext.user);
+      }
+      setMemberships(nextMemberships);
+      if (nextMemberships.length === 0) {
+        clearActiveClassroom();
+      }
+
+      setDeleteAccountDialogOpen(false);
+      setDeleteAccountConfirmation("");
+      setSuccessorMemberId("");
+      queryClient.clear();
+
+      if (nextMemberships.length === 0) {
+        toast({
+          title: "Classroom Left",
+          description: "You left this classroom. You can join another classroom or create one.",
+        });
+        navigate("/get-started", { replace: true });
+        return;
+      }
+
+      toast({
+        title: "Classroom Left",
+        description: "You were removed from this classroom. Your account is still active.",
+      });
+      navigate("/dashboard", { replace: true });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not leave this classroom.";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    },
+  });
 
   const saveByokSettings = () => {
     imageSettingsMutation.mutate({
@@ -545,6 +684,25 @@ const SettingsPage = () => {
   const serverPushConfigured = Boolean(
     webPushConfigQuery.data?.configured && webPushConfigQuery.data?.publicKey,
   );
+  const deletionContext: AccountDeletionContext | undefined = accountDeletionContextQuery.data;
+  const requiresSuccessor = Boolean(deletionContext?.isOwner);
+  const adminCandidates = deletionContext?.adminCandidates || [];
+  const missingSuccessor =
+    requiresSuccessor && (adminCandidates.length === 0 || !successorMemberId);
+  const isDeleteConfirmationMatched =
+    normalizeDeleteConfirmation(deleteAccountConfirmation) === DELETE_ACCOUNT_CONFIRMATION_TEXT;
+  const canConfirmDelete =
+    isDeleteConfirmationMatched &&
+    !missingSuccessor &&
+    !deleteAccountMutation.isPending &&
+    Boolean(activeClassroomId);
+
+  const submitDeleteAccount = () => {
+    if (!canConfirmDelete) return;
+    deleteAccountMutation.mutate({
+      successorMemberId: requiresSuccessor ? successorMemberId : undefined,
+    });
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-5xl">
@@ -568,6 +726,7 @@ const SettingsPage = () => {
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="byok">BYOK</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
         <TabsContent value="appearance" className="space-y-6">
@@ -997,6 +1156,138 @@ const SettingsPage = () => {
             </CardContent>
           </Card>
 
+        </TabsContent>
+
+        <TabsContent value="account" className="space-y-6">
+          <Card className="border-destructive/20 bg-card">
+            <CardHeader>
+              <CardTitle className="text-xs text-destructive flex items-center gap-2">
+                <Trash2 className="h-3.5 w-3.5" />
+                Leave Classroom
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Permanently leave {activeClassroomName}. This only removes your membership in the
+                current classroom. Your account and memberships in other classrooms stay active.
+              </p>
+
+              <div className="border border-destructive/20 bg-card p-3 space-y-1.5">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-destructive">
+                  This action is irreversible
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  You will lose access to this classroom immediately. If you are the owner, you must
+                  first hand ownership to an admin.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteAccountDialogOpen(true)}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Leave Classroom
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={deleteAccountDialogOpen} onOpenChange={setDeleteAccountDialogOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-sm uppercase tracking-wider">
+                  Confirm Leaving Classroom
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Type <span className="font-bold text-foreground">{DELETE_ACCOUNT_CONFIRMATION_TEXT}</span> to enable the delete button.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="border border-destructive/20 bg-destructive/5 p-3 space-y-1.5">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-destructive">
+                    What happens next
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    You will be removed from this classroom only. Your account can still join other
+                    classrooms or create a new one.
+                  </p>
+                </div>
+
+                {accountDeletionContextQuery.isLoading ? (
+                  <p className="text-xs text-muted-foreground">Loading deletion requirements...</p>
+                ) : accountDeletionContextQuery.isError ? (
+                  <p className="text-xs text-destructive">
+                    Could not load account deletion requirements. Close this dialog and try again.
+                  </p>
+                ) : requiresSuccessor ? (
+                  <div className="space-y-3">
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                      Owner successor required
+                    </p>
+                    <div className="space-y-1.5 border border-border p-3 bg-card">
+                      <Label className="text-xs">{deletionContext?.classroomName || activeClassroomName}</Label>
+                      {adminCandidates.length === 0 ? (
+                        <p className="text-[11px] text-destructive">
+                          Promote an admin in this classroom before leaving.
+                        </p>
+                      ) : (
+                        <Select value={successorMemberId} onValueChange={setSuccessorMemberId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an admin successor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {adminCandidates.map((candidate) => (
+                              <SelectItem key={candidate.memberId} value={candidate.memberId}>
+                                {candidate.name}
+                                {candidate.telegramUsername
+                                  ? ` (@${candidate.telegramUsername.replace(/^@+/, "")})`
+                                  : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No successor selection is required for this classroom.
+                  </p>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Confirmation</Label>
+                  <Input
+                    value={deleteAccountConfirmation}
+                    onChange={(event) => setDeleteAccountConfirmation(event.target.value)}
+                    placeholder={DELETE_ACCOUNT_CONFIRMATION_TEXT}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteAccountDialogOpen(false)}
+                    disabled={deleteAccountMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={submitDeleteAccount}
+                    disabled={!canConfirmDelete}
+                  >
+                    {deleteAccountMutation.isPending ? "Leaving..." : "Leave Classroom"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>

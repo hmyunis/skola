@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/stores/themeStore";
-import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useUpdateClassroomTheme } from "@/hooks/use-theme";
@@ -21,7 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePicker } from "@/components/DatePicker";
 import {
   Select,
@@ -42,14 +40,11 @@ import {
   Swords,
   CheckCircle2,
   Trash2,
-  AlertTriangle,
   CalendarDays,
   Pencil,
   Archive,
   Clock,
   Play,
-  ChevronDown,
-  Search,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -882,58 +877,14 @@ function SemesterManagement() {
 
 // ─── Settings Tab ───
 
-type ClassroomMemberWithUser = {
-  id: string;
-  role: "owner" | "admin" | "student";
-  user: {
-    id: string;
-    name: string;
-    telegramUsername?: string | null;
-  };
-};
-
 function SettingsTab() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { logout } = useAuthStore();
-  const { activeClassroom, setActiveClassroom, clearActiveClassroom } = useClassroomStore();
+  const { activeClassroom, setActiveClassroom } = useClassroomStore();
   const [telegramGroupId, setTelegramGroupId] = useState(activeClassroom?.telegramGroupId || "");
   const [savingTelegramGroupId, setSavingTelegramGroupId] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [successorDropdownOpen, setSuccessorDropdownOpen] = useState(false);
-  const [successorSearch, setSuccessorSearch] = useState("");
-  const [successorMemberId, setSuccessorMemberId] = useState("");
 
   useEffect(() => {
     setTelegramGroupId(activeClassroom?.telegramGroupId || "");
   }, [activeClassroom?.telegramGroupId]);
-
-  useEffect(() => {
-    if (!deleteDialogOpen) {
-      setSuccessorDropdownOpen(false);
-      setSuccessorSearch("");
-      setSuccessorMemberId("");
-    }
-  }, [deleteDialogOpen]);
-
-  const { data: classroomMembers = [], isLoading: loadingClassroomMembers } = useQuery({
-    queryKey: ["owner-delete-members", activeClassroom?.id],
-    enabled: deleteDialogOpen && !!activeClassroom?.id,
-    queryFn: async () => {
-      if (!activeClassroom) return [] as ClassroomMemberWithUser[];
-      return apiFetch(`/classrooms/${activeClassroom.id}/members`) as Promise<ClassroomMemberWithUser[]>;
-    },
-  });
-
-  const adminCandidates = classroomMembers.filter((member) => member.role === "admin");
-  const filteredAdminCandidates = adminCandidates.filter((member) => {
-    const q = successorSearch.trim().toLowerCase();
-    if (!q) return true;
-    const name = member.user?.name?.toLowerCase() || "";
-    const username = member.user?.telegramUsername?.toLowerCase() || "";
-    return name.includes(q) || username.includes(q);
-  });
-  const selectedSuccessor = adminCandidates.find((member) => member.id === successorMemberId);
 
   const handleSaveTelegramGroupId = async () => {
     if (!activeClassroom) return;
@@ -959,27 +910,6 @@ function SettingsTab() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setSavingTelegramGroupId(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!successorMemberId) {
-      toast({ title: "Successor Required", description: "Choose an admin successor before deleting your account.", variant: "destructive" });
-      return;
-    }
-    try {
-      await apiFetch("/users/me", {
-        method: "DELETE",
-        body: JSON.stringify({ successorMemberId }),
-      });
-      toast({ title: "Account Deleted", description: "Your account and some associated data have been removed." });
-      queryClient.clear();
-      clearActiveClassroom();
-      logout();
-      setDeleteDialogOpen(false);
-      navigate("/login");
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -1038,115 +968,6 @@ function SettingsTab() {
          </div>
          <SemesterManagement />
        </div>
-
-      {/* Danger Zone */}
-      <div className="space-y-4 pt-4">
-        <div className="border-b border-border pb-2">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-destructive font-bold">Danger Zone</p>
-          <h2 className="text-sm font-black uppercase tracking-wider text-destructive">Critical Actions</h2>
-        </div>
-
-        <Card className="border-destructive/20 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-xs text-destructive flex items-center gap-2">
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete Account
-            </CardTitle>
-            <CardDescription className="text-[10px] text-destructive/70">
-              Permanently remove your account and some associated data. This action is irreversible.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="text-[10px] font-black uppercase tracking-widest gap-2">
-                  <AlertTriangle className="h-3 w-3" />
-                  Delete Account
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="uppercase tracking-wider">Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-sm">
-                    Select an admin successor first. They will be promoted to owner immediately before your account is deleted.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <p className="text-[11px] text-muted-foreground">
-                  Your account and memberships are removed. Classroom data stays, and past authored content may appear as deleted user.
-                </p>
-                <div className="space-y-2">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Owner Successor (Admin)</p>
-                  <Popover open={successorDropdownOpen} onOpenChange={setSuccessorDropdownOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between text-xs">
-                        <span className={cn("truncate", !selectedSuccessor && "text-muted-foreground")}>
-                          {selectedSuccessor
-                            ? `${selectedSuccessor.user.name}${selectedSuccessor.user.telegramUsername ? ` (@${selectedSuccessor.user.telegramUsername.replace(/^@+/, "")})` : ""}`
-                            : "Select an admin"}
-                        </span>
-                        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[340px] p-0" align="start">
-                      <div className="p-2 border-b border-border">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                          <Input
-                            placeholder="Search admins..."
-                            value={successorSearch}
-                            onChange={(e) => setSuccessorSearch(e.target.value)}
-                            className="h-8 pl-7 text-xs"
-                          />
-                        </div>
-                      </div>
-                      <div className="max-h-56 overflow-y-auto p-1">
-                        {loadingClassroomMembers ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground">Loading admins...</div>
-                        ) : filteredAdminCandidates.length === 0 ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground">
-                            {adminCandidates.length === 0 ? "No admins available. Promote one first." : "No admins match your search."}
-                          </div>
-                        ) : (
-                          filteredAdminCandidates.map((member) => {
-                            const username = member.user.telegramUsername?.replace(/^@+/, "");
-                            const isSelected = member.id === successorMemberId;
-                            return (
-                              <button
-                                key={member.id}
-                                onClick={() => {
-                                  setSuccessorMemberId(member.id);
-                                  setSuccessorDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-2 py-1.5 rounded text-xs hover:bg-accent",
-                                  isSelected && "bg-accent"
-                                )}
-                              >
-                                <span className="font-bold">{member.user.name}</span>
-                                {username ? <span className="text-muted-foreground ml-1">@{username}</span> : null}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="text-xs font-bold uppercase tracking-widest">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteAccount}
-                    disabled={!successorMemberId || loadingClassroomMembers || adminCandidates.length === 0}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold uppercase tracking-widest"
-                  >
-                    Yes, Delete My Account
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

@@ -2,11 +2,11 @@ import { Controller, Get, Put, Body, UseGuards, Delete } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { User, UserRole } from './entities/user.entity';
+import { User } from './entities/user.entity';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
-import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
 import { CurrentClassroom } from '../../core/decorators/current-classroom.decorator';
 import { UpdateImageUploadSettingsDto } from './dto/update-image-upload-settings.dto';
+import { DeleteMyAccountDto } from './dto/delete-my-account.dto';
 
 @Controller('users')
 export class UsersController {
@@ -58,15 +58,24 @@ export class UsersController {
     );
   }
 
+  @Get('me/account-deletion-context')
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  getAccountDeletionContext(
+    @CurrentUser() user: User,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.usersService.getAccountDeletionContext(user.id, classroomId);
+  }
+
   @Delete('me')
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
-  @RequireClassroomRole(UserRole.OWNER)
   async deleteMyAccount(
     @CurrentUser() user: User,
     @CurrentClassroom() classroomId: string,
-    @Body() dto: { successorMemberId: string },
+    @Body()
+    dto: DeleteMyAccountDto,
   ) {
-    await this.usersService.deleteOwnerAccountWithSuccessor(
+    await this.usersService.deleteAccountInCurrentClassroom(
       user.id,
       classroomId,
       dto?.successorMemberId,

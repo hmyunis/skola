@@ -23,18 +23,18 @@ export class User {
   @Column()
   name: string;
 
-  @Column({ nullable: true })
-  telegramUsername: string;
+  @Column({ type: 'varchar', nullable: true })
+  telegramUsername: string | null;
 
-  @Column({ nullable: true })
-  photoUrl: string;
+  @Column({ type: 'varchar', nullable: true })
+  photoUrl: string | null;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.STUDENT })
   role: UserRole;
 
   // Academic Details
-  @Column({ nullable: true })
-  code: string; // Invite code used to join
+  @Column({ type: 'varchar', nullable: true })
+  code: string | null; // Invite code used to join
 
   @Column({ type: 'int', default: 1 })
   year: number;
@@ -42,26 +42,26 @@ export class User {
   @Column({ type: 'int', default: 1 })
   semester: number;
 
-  @Column({ nullable: true })
-  batch: string;
+  @Column({ type: 'varchar', nullable: true })
+  batch: string | null;
 
   // Social / Identity
-  @Column({ nullable: true, unique: true })
-  anonymousId: string; // e.g., "Anon#4A2B"
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  anonymousId: string | null; // e.g., "Anon#4A2B"
 
   // Status limits
   @Column({ default: false })
   isBanned: boolean;
 
   @Column({ type: 'timestamp', nullable: true })
-  suspendedUntil: Date;
+  suspendedUntil: Date | null;
 
   @Column({ type: 'simple-json', nullable: true })
   themeSettings: {
     colorMode?: 'light' | 'dark';
     fontFamily?: string;
     accentColor?: string;
-  };
+  } | null;
 
   @Column({ type: 'simple-json', nullable: true })
   notificationPreferences: UserNotificationPreferences | null;
@@ -74,6 +74,9 @@ export class User {
 
   @Column({ type: 'varchar', length: 8, nullable: true })
   imgbbApiKeyHint: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  deletedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

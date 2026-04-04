@@ -53,6 +53,8 @@ interface MentionParseResult {
   tokens: Set<string>;
 }
 
+const DELETED_USER_NAME = 'Deleted User';
+
 @Injectable()
 export class LoungeService {
   private readonly logger = new Logger(LoungeService.name);
@@ -680,8 +682,8 @@ export class LoungeService {
         }
       : {
           id: post.author?.id ?? null,
-          name: post.author?.name ?? 'Unknown',
-          initials: post.author?.initials ?? '??',
+          name: post.author?.deletedAt ? DELETED_USER_NAME : post.author?.name || DELETED_USER_NAME,
+          initials: post.author?.deletedAt ? 'DU' : post.author?.initials ?? 'DU',
           photoUrl: post.author?.photoUrl ?? null,
         };
 
@@ -711,8 +713,8 @@ export class LoungeService {
         }
       : {
           id: reply.author?.id ?? null,
-          name: reply.author?.name ?? 'Unknown',
-          initials: reply.author?.initials ?? '??',
+          name: reply.author?.deletedAt ? DELETED_USER_NAME : reply.author?.name || DELETED_USER_NAME,
+          initials: reply.author?.deletedAt ? 'DU' : reply.author?.initials ?? 'DU',
           photoUrl: reply.author?.photoUrl ?? null,
         };
 

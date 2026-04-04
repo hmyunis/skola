@@ -1,7 +1,6 @@
 import {
   Injectable,
   BadRequestException,
-  ForbiddenException,
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -15,11 +14,26 @@ import {
   ClassroomThemeSettings,
 } from '../classrooms/entities/classroom-member.entity';
 import { UpdateImageUploadSettingsDto } from './dto/update-image-upload-settings.dto';
+import { InAppNotification } from '../notifications/entities/in-app-notification.entity';
 
 export interface UserImageUploadSettings {
   usePersonalApiKey: boolean;
   hasPersonalApiKey: boolean;
   keyHint: string | null;
+}
+
+interface AccountDeletionAdminCandidate {
+  memberId: string;
+  userId: string;
+  name: string;
+  telegramUsername: string | null;
+}
+
+export interface AccountDeletionContext {
+  classroomId: string;
+  classroomName: string;
+  isOwner: boolean;
+  adminCandidates: AccountDeletionAdminCandidate[];
 }
 
 @Injectable()
@@ -68,9 +82,7 @@ export class UsersService {
   }
 
   async create(userData: Partial<User>): Promise<User> {
-    // Generate a unique anonymous ID
-    const randomHex = Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, '0');
-    userData.anonymousId = `Anon#${randomHex}`;
+    userData.anonymousId = userData.anonymousId || this.generateAnonymousId();
     
     // First user defaults to OWNER
     const count = await this.usersRepository.count();
@@ -84,6 +96,30 @@ export class UsersService {
 
   async update(id: string, data: Partial<User>): Promise<void> {
     await this.usersRepository.update(id, data);
+  }
+
+  async reviveDeletedAccount(
+    userId: string,
+    profile: {
+      name: string;
+      telegramUsername?: string | null;
+      photoUrl?: string | null;
+    },
+  ): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.name = profile.name;
+    user.telegramUsername = profile.telegramUsername || null;
+    user.photoUrl = profile.photoUrl || null;
+    user.deletedAt = null;
+    if (!user.anonymousId) {
+      user.anonymousId = this.generateAnonymousId();
+    }
+
+    return this.usersRepository.save(user);
   }
 
   async getScopedProfile(
@@ -126,49 +162,130 @@ export class UsersService {
     await this.usersRepository.delete(id);
   }
 
-  async deleteOwnerAccountWithSuccessor(
-    ownerUserId: string,
+  async getAccountDeletionContext(
+    userId: string,
     classroomId: string,
-    successorMemberId: string,
-  ): Promise<void> {
-    const trimmedSuccessorMemberId = (successorMemberId || '').trim();
-    if (!trimmedSuccessorMemberId) {
-      throw new BadRequestException('Please choose an admin successor before deleting your account.');
+  ): Promise<AccountDeletionContext> {
+    const membership = await this.classroomMembersRepository.findOne({
+      where: {
+        user: { id: userId },
+        classroom: { id: classroomId },
+      },
+      relations: ['classroom'],
+    });
+    if (!membership?.classroom) {
+      throw new NotFoundException('Membership in this classroom was not found.');
     }
 
+    if (membership.role !== UserRole.OWNER) {
+      return {
+        classroomId: membership.classroom.id,
+        classroomName: membership.classroom.name || 'Untitled classroom',
+        isOwner: false,
+        adminCandidates: [],
+      };
+    }
+
+    const adminMembers = await this.classroomMembersRepository.find({
+      where: {
+        classroom: { id: classroomId },
+        role: UserRole.ADMIN,
+      },
+      relations: ['user'],
+      order: { joinedAt: 'ASC' },
+    });
+    const adminCandidates: AccountDeletionAdminCandidate[] = adminMembers
+      .filter((member) => Boolean(member.user?.id))
+      .map((member) => ({
+        memberId: member.id,
+        userId: member.user.id,
+        name: member.user.name || 'Unknown',
+        telegramUsername: member.user.telegramUsername || null,
+      }));
+
+    return {
+      classroomId: membership.classroom.id,
+      classroomName: membership.classroom.name || 'Untitled classroom',
+      isOwner: true,
+      adminCandidates,
+    };
+  }
+
+  async deleteAccountInCurrentClassroom(
+    userId: string,
+    classroomId: string,
+    successorMemberId?: string,
+  ): Promise<void> {
+    const normalizedSuccessorMemberId = (successorMemberId || '').trim();
+
     await this.classroomMembersRepository.manager.transaction(async (manager) => {
-      const userRepo = manager.getRepository(User);
       const memberRepo = manager.getRepository(ClassroomMember);
+      const notificationRepo = manager.getRepository(InAppNotification);
 
-      const ownerMembership = await memberRepo.findOne({
-        where: { classroom: { id: classroomId }, user: { id: ownerUserId } },
-        relations: ['user'],
+      const membership = await memberRepo.findOne({
+        where: {
+          classroom: { id: classroomId },
+          user: { id: userId },
+        },
+        relations: ['classroom'],
       });
-      if (!ownerMembership) {
-        throw new NotFoundException('Owner membership not found for this classroom.');
-      }
-      if (ownerMembership.role !== UserRole.OWNER) {
-        throw new ForbiddenException('Only the current owner can transfer ownership and delete this account.');
+      if (!membership?.classroom) {
+        throw new NotFoundException('Membership in this classroom was not found.');
       }
 
-      const successorMembership = await memberRepo.findOne({
-        where: { id: trimmedSuccessorMemberId, classroom: { id: classroomId } },
-        relations: ['user'],
-      });
-      if (!successorMembership) {
-        throw new NotFoundException('Selected successor was not found in this classroom.');
-      }
-      if (successorMembership.user.id === ownerUserId) {
-        throw new BadRequestException('Please choose a different admin as successor.');
-      }
-      if (successorMembership.role !== UserRole.ADMIN) {
-        throw new BadRequestException('Selected successor must currently be an admin.');
+      const classroomName = membership.classroom.name || 'this classroom';
+      if (membership.role === UserRole.OWNER) {
+        const adminMembers = await memberRepo.find({
+          where: {
+            classroom: { id: classroomId },
+            role: UserRole.ADMIN,
+          },
+          relations: ['user'],
+          order: { joinedAt: 'ASC' },
+        });
+
+        if (!adminMembers.length) {
+          throw new BadRequestException(
+            `Promote an admin in ${classroomName} before leaving this classroom.`,
+          );
+        }
+
+        if (!normalizedSuccessorMemberId) {
+          throw new BadRequestException(
+            `Choose an admin successor for ${classroomName} before leaving this classroom.`,
+          );
+        }
+
+        const successorMembership = adminMembers.find(
+          (adminMember) => adminMember.id === normalizedSuccessorMemberId,
+        );
+        if (!successorMembership?.user?.id) {
+          throw new BadRequestException(
+            `Selected successor for ${classroomName} is invalid.`,
+          );
+        }
+        if (successorMembership.user.id === userId) {
+          throw new BadRequestException('Please choose a different admin as successor.');
+        }
+
+        successorMembership.role = UserRole.OWNER;
+        await memberRepo.save(successorMembership);
       }
 
-      successorMembership.role = UserRole.OWNER;
-      await memberRepo.save(successorMembership);
+      await notificationRepo
+        .createQueryBuilder()
+        .delete()
+        .from(InAppNotification)
+        .where('userId = :userId', { userId })
+        .andWhere('classroomId = :classroomId', { classroomId })
+        .execute();
 
-      await userRepo.delete(ownerUserId);
+      await memberRepo
+        .createQueryBuilder()
+        .delete()
+        .from(ClassroomMember)
+        .where('id = :membershipId', { membershipId: membership.id })
+        .execute();
     });
   }
 
@@ -267,6 +384,14 @@ export class UsersService {
   private maskKeyHint(apiKey: string) {
     const suffix = apiKey.slice(-4);
     return `...${suffix}`;
+  }
+
+  private generateAnonymousId() {
+    const randomHex = Math.floor(Math.random() * 0xffff)
+      .toString(16)
+      .toUpperCase()
+      .padStart(4, '0');
+    return `Anon#${randomHex}`;
   }
 
   private deriveByokEncryptionKey(): Buffer {
