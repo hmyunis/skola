@@ -349,7 +349,7 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
           />
         </div>
 
-        <p className="text-sm font-bold leading-relaxed py-2">{currentQ.question}</p>
+        <p className="text-sm font-bold leading-relaxed py-2 whitespace-pre-wrap break-words">{currentQ.question}</p>
 
         <div className="space-y-2">
           {currentQ.options.map((option, idx) => {

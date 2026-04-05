@@ -114,6 +114,27 @@ function formatBytes(bytes?: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatResourceDateTime(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function isResourceEdited(resource: Resource): boolean {
+  if (!resource.createdAt || !resource.updatedAt) return false;
+  const createdMs = new Date(resource.createdAt).getTime();
+  const updatedMs = new Date(resource.updatedAt).getTime();
+  if (Number.isNaN(createdMs) || Number.isNaN(updatedMs)) return false;
+  return updatedMs - createdMs > 1000;
+}
+
 function isValidHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -614,7 +635,15 @@ const Resources = () => {
                 </span>
               </div>
 
-              <p className="text-sm text-muted-foreground line-clamp-2 break-words">{resource.description || "No description"}</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{resource.description || "No description"}</p>
+              <p className="text-[10px] text-muted-foreground">
+                Created {formatResourceDateTime(resource.createdAt)} · Updated {formatResourceDateTime(resource.updatedAt || resource.createdAt)}
+                {isResourceEdited(resource) && (
+                  <span className="ml-1.5 inline-flex items-center border border-border px-1 py-0 uppercase tracking-wider text-[9px] font-semibold text-primary">
+                    Edited
+                  </span>
+                )}
+              </p>
               <ResourceInlinePreview resource={resource} />
 
               <div className="flex flex-wrap gap-1">

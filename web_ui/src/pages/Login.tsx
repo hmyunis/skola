@@ -342,7 +342,7 @@ const Login = () => {
             </CardContent>
           </Card>
           <p className="text-center text-[10px] text-muted-foreground/50 uppercase tracking-widest">
-            Error 403 · Unauthorized · {new Date().toISOString().split("T")[0]}
+            Error 403 · Unauthorized · {new Date().toLocaleDateString("en-CA")}
           </p>
         </div>
       </div>

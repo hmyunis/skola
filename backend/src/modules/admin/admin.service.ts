@@ -352,15 +352,16 @@ export class AdminService {
     ];
 
     if (announcement.expiresAt) {
-      const expiresLocal = new Date(announcement.expiresAt).toLocaleString('en-US', {
+      const expiresUtc = new Date(announcement.expiresAt).toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
+        timeZone: 'UTC',
         timeZoneName: 'short',
       });
-      lines.push(`<i>Expires: ${expiresLocal}</i>`);
+      lines.push(`<i>Expires (UTC): ${expiresUtc}</i>`);
     }
 
     const text = lines.join('\n');

@@ -10,6 +10,7 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  loading?: boolean;
 };
 
 const actionTypes = {
@@ -133,11 +134,48 @@ function dispatch(action: Action) {
 }
 
 type Toast = Omit<ToasterToast, "id">;
+type ToastHandle = {
+  id: string;
+  dismiss: () => void;
+  update: (props: Partial<ToasterToast>) => void;
+};
+type PromiseToastContent = string | Toast;
+type PromiseToastResolver<T> =
+  | PromiseToastContent
+  | ((value: T) => PromiseToastContent);
+type PromiseToastOptions<T> = {
+  loading: PromiseToastContent;
+  success: PromiseToastResolver<T>;
+  error?: PromiseToastResolver<unknown>;
+};
+type ToastFn = ((props: Toast) => ToastHandle) & {
+  promise: <T>(
+    promiseOrFactory: Promise<T> | (() => Promise<T>),
+    options: PromiseToastOptions<T>,
+  ) => Promise<T>;
+};
 
-function toast({ ...props }: Toast) {
+function resolvePromiseToastContent<T>(
+  content: PromiseToastResolver<T>,
+  value: T,
+): PromiseToastContent {
+  if (typeof content === "function") {
+    return (content as (arg: T) => PromiseToastContent)(value);
+  }
+  return content;
+}
+
+function toToastProps(content: PromiseToastContent): Toast {
+  if (typeof content === "string") {
+    return { title: content };
+  }
+  return content;
+}
+
+const toast = (({ ...props }: Toast) => {
   const id = genId();
 
-  const update = (props: ToasterToast) =>
+  const update = (props: Partial<ToasterToast>) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
@@ -161,7 +199,51 @@ function toast({ ...props }: Toast) {
     dismiss,
     update,
   };
-}
+}) as ToastFn;
+
+toast.promise = async function promiseToast<T>(
+  promiseOrFactory: Promise<T> | (() => Promise<T>),
+  options: PromiseToastOptions<T>,
+) {
+  const loadingToast = toast({
+    ...toToastProps(options.loading),
+    loading: true,
+    duration: 600000,
+  });
+
+  try {
+    const promise =
+      typeof promiseOrFactory === "function"
+        ? promiseOrFactory()
+        : promiseOrFactory;
+    const result = await promise;
+    loadingToast.update({
+      ...toToastProps(resolvePromiseToastContent(options.success, result)),
+      loading: false,
+      variant: "default",
+      duration: 3500,
+    });
+    return result;
+  } catch (error) {
+    loadingToast.update({
+      ...toToastProps(
+        resolvePromiseToastContent(
+          options.error ??
+            ((err: unknown) => ({
+              title: "Error",
+              description: err instanceof Error ? err.message : "Something went wrong.",
+              variant: "destructive",
+            })),
+          error,
+        ),
+      ),
+      loading: false,
+      variant: "destructive",
+      duration: 4000,
+    });
+    throw error;
+  }
+};
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);

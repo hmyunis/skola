@@ -76,7 +76,7 @@ export function AnnouncementsBanner() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold leading-tight">{a.title}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{a.content}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">{a.content}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button

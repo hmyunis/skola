@@ -522,7 +522,7 @@ function AssessmentCard({
             </div>
           </div>
           {assessment.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{assessment.description}</p>
+            <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words">{assessment.description}</p>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider", typeInfo.className)}>
@@ -1155,59 +1155,82 @@ const Academics = () => {
       }
       return createAssessment(payload);
     },
-    onSuccess: async (_saved, vars) => {
+    onSuccess: async () => {
       setEditingAssess(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["assessments"] }),
         queryClient.invalidateQueries({ queryKey: ["assignments"] }),
         queryClient.invalidateQueries({ queryKey: ["assessment-stats"] }),
       ]);
-      toast({
-        title: vars.mode === "update" ? "Updated" : "Created",
-        description: `${vars.assessment.title} saved.`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Could not save assessment",
-        description: getErrorMessage(error, "Please try again."),
-        variant: "destructive",
-      });
     },
   });
 
   const deleteAssessmentMutation = useMutation({
     mutationFn: ({ id }: { id: string; name: string }) => deleteAssessment(id),
-    onSuccess: async (_res, vars) => {
+    onSuccess: async () => {
       setDeletingAssessId(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["assessments"] }),
         queryClient.invalidateQueries({ queryKey: ["assignments"] }),
         queryClient.invalidateQueries({ queryKey: ["assessment-stats"] }),
       ]);
-      toast({ title: "Deleted", description: `${vars.name} removed.` });
-    },
-    onError: (error) => {
-      toast({
-        title: "Could not delete assessment",
-        description: getErrorMessage(error, "Please try again."),
-        variant: "destructive",
-      });
     },
   });
 
   const handleSaveAssessment = (assessment: AssessmentFormValues) => {
-    saveAssessmentMutation.mutate({
-      mode: editingAssess ? "update" : "create",
-      id: editingAssess?.id,
-      assessment,
-    });
+    const mode = editingAssess ? "update" : "create";
+    const verb = mode === "update" ? "Updating" : "Creating";
+
+    toast
+      .promise(
+        saveAssessmentMutation.mutateAsync({
+          mode,
+          id: editingAssess?.id,
+          assessment,
+        }),
+        {
+          loading: {
+            title: `${verb} Assessment`,
+            description: `Saving ${assessment.title}...`,
+          },
+          success: {
+            title: mode === "update" ? "Updated" : "Created",
+            description: `${assessment.title} saved.`,
+          },
+          error: (error) => ({
+            title: "Could not save assessment",
+            description: getErrorMessage(error, "Please try again."),
+            variant: "destructive",
+          }),
+        },
+      )
+      .catch(() => {
+        // handled by toast.promise
+      });
   };
 
   const handleDeleteAssessment = () => {
     if (!deletingAssessId) return;
     const name = assessments.find((a) => a.id === deletingAssessId)?.title || "Assessment";
-    deleteAssessmentMutation.mutate({ id: deletingAssessId, name });
+    toast
+      .promise(deleteAssessmentMutation.mutateAsync({ id: deletingAssessId, name }), {
+        loading: {
+          title: "Deleting Assessment",
+          description: `Removing ${name}...`,
+        },
+        success: {
+          title: "Deleted",
+          description: `${name} removed.`,
+        },
+        error: (error) => ({
+          title: "Could not delete assessment",
+          description: getErrorMessage(error, "Please try again."),
+          variant: "destructive",
+        }),
+      })
+      .catch(() => {
+        // handled by toast.promise
+      });
   };
 
   const handleEditFromDetail = async (assignment: Assignment) => {

@@ -411,8 +411,8 @@ export class AcademicsService {
       .getMany();
 
     const now = new Date();
-    const today = now.getDay();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const today = now.getUTCDay();
+    const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 
     const remainingClasses = scheduleItems.filter((item) => {
       if (item.type === ScheduleType.EXAM) return false;
@@ -741,13 +741,15 @@ export class AcademicsService {
     if (exams.length === 0) return 0;
 
     const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      ),
     );
 
     let total = 0;
@@ -759,7 +761,7 @@ export class AcademicsService {
       const cursor = new Date(firstOccurrence);
       while (cursor <= endOfMonth) {
         total += 1;
-        cursor.setDate(cursor.getDate() + 7);
+        cursor.setUTCDate(cursor.getUTCDate() + 7);
       }
     }
 
@@ -893,17 +895,17 @@ export class AcademicsService {
     const seconds = Number(secondRaw);
 
     const base = new Date(from);
-    base.setSeconds(0, 0);
+    base.setUTCSeconds(0, 0);
 
-    let dayDiff = dayOfWeek - base.getDay();
+    let dayDiff = dayOfWeek - base.getUTCDay();
     if (dayDiff < 0) dayDiff += 7;
 
     const next = new Date(base);
-    next.setDate(base.getDate() + dayDiff);
-    next.setHours(hours, minutes, seconds, 0);
+    next.setUTCDate(base.getUTCDate() + dayDiff);
+    next.setUTCHours(hours, minutes, seconds, 0);
 
     if (next <= base) {
-      next.setDate(next.getDate() + 7);
+      next.setUTCDate(next.getUTCDate() + 7);
     }
 
     return next;

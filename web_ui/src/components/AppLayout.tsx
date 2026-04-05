@@ -542,7 +542,7 @@ export function AppLayout() {
                         <div className="flex items-start gap-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold leading-snug">{item.title}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                            <p className="text-[11px] text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">
                               {item.body}
                             </p>
                             <p className="text-[10px] text-muted-foreground mt-1">

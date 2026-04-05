@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { join } from 'path';
 import { DataSource } from 'typeorm';
+import { enforceMysqlUtcSession } from './mysql-utc-session';
 
 const AppDataSource = new DataSource({
   type: 'mysql',
@@ -14,5 +15,16 @@ const AppDataSource = new DataSource({
   synchronize: false,
   timezone: 'Z',
 });
+
+const originalInitialize = AppDataSource.initialize.bind(AppDataSource);
+AppDataSource.initialize = async () => {
+  const dataSource = await originalInitialize();
+  await enforceMysqlUtcSession(dataSource, {
+    log: (message) => console.log(`[DB UTC] ${message}`),
+    warn: (message) => console.warn(`[DB UTC] ${message}`),
+    error: (message) => console.error(`[DB UTC] ${message}`),
+  });
+  return dataSource;
+};
 
 export default AppDataSource;

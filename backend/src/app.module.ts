@@ -5,6 +5,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { DataSource, DataSourceOptions } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './modules/users/users.module';
@@ -16,6 +17,7 @@ import { LoungeModule } from './modules/lounge/lounge.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SearchModule } from './modules/search/search.module';
+import { enforceMysqlUtcSession } from './database/mysql-utc-session';
 
 @Module({
   imports:[
@@ -41,6 +43,23 @@ import { SearchModule } from './modules/search/search.module';
         synchronize: false,
         timezone: 'Z', // Important for scheduling
       }),
+      dataSourceFactory: async (options) => {
+        if (!options) {
+          throw new Error('TypeORM options were not provided.');
+        }
+
+        const dataSource = await new DataSource(
+          options as DataSourceOptions,
+        ).initialize();
+
+        await enforceMysqlUtcSession(dataSource, {
+          log: (message) => console.log(`[DB UTC] ${message}`),
+          warn: (message) => console.warn(`[DB UTC] ${message}`),
+          error: (message) => console.error(`[DB UTC] ${message}`),
+        });
+
+        return dataSource;
+      },
     }),
 
     // 3. Rate Limiting (Security against DDoS/Brute force)

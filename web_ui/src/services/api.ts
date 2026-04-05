@@ -7,6 +7,58 @@ export type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, C
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
+const ISO_TIMESTAMP_WITH_ZONE_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})$/i;
+const ISO_TIMESTAMP_WITHOUT_ZONE_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?$/;
+const MYSQL_TIMESTAMP_WITHOUT_ZONE_RE =
+  /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?$/;
+
+function normalizeServerTimestamp(value: string): string {
+  if (ISO_TIMESTAMP_WITH_ZONE_RE.test(value)) {
+    return value;
+  }
+
+  let normalizedCandidate: string | null = null;
+  if (ISO_TIMESTAMP_WITHOUT_ZONE_RE.test(value)) {
+    normalizedCandidate = `${value}Z`;
+  } else if (MYSQL_TIMESTAMP_WITHOUT_ZONE_RE.test(value)) {
+    normalizedCandidate = `${value.replace(" ", "T")}Z`;
+  }
+
+  if (!normalizedCandidate) {
+    return value;
+  }
+
+  const parsed = new Date(normalizedCandidate);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toISOString();
+}
+
+function normalizeUtcTimestamps<T>(value: T): T {
+  if (typeof value === "string") {
+    return normalizeServerTimestamp(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeUtcTimestamps(item)) as T;
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const normalizedObject: Record<string, unknown> = {};
+  for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+    normalizedObject[key] = normalizeUtcTimestamps(nestedValue);
+  }
+
+  return normalizedObject as T;
+}
+
 async function parseResponseBody(response: Response): Promise<any> {
   if (response.status === 204 || response.status === 205) {
     return null;
@@ -20,14 +72,14 @@ async function parseResponseBody(response: Response): Promise<any> {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     try {
-      return JSON.parse(raw);
+      return normalizeUtcTimestamps(JSON.parse(raw));
     } catch {
       return raw;
     }
   }
 
   try {
-    return JSON.parse(raw);
+    return normalizeUtcTimestamps(JSON.parse(raw));
   } catch {
     return raw;
   }

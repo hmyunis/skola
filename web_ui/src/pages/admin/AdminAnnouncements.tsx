@@ -352,7 +352,7 @@ const AdminAnnouncements = () => {
                   </Button>
                 </div>
                 <h3 className="text-sm font-bold">{a.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{a.content}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">{a.content}</p>
                 <p className="text-[10px] text-muted-foreground">By {safeDisplayName(a.createdBy)} · {getEditStatus(a.createdAt, a.updatedAt)}{a.expiresAt ? ` · Expires ${formatDateTime(a.expiresAt)}` : ""}</p>
               </div>
             );

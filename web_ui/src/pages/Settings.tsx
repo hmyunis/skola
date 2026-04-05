@@ -238,7 +238,7 @@ function NotificationFeed({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold">{item.title}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{item.body}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">{item.body}</p>
               <p className="text-[10px] text-muted-foreground mt-1.5">
                 {formatNotificationTime(item.createdAt)}
               </p>

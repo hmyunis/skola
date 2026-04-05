@@ -46,7 +46,7 @@ async function bootstrap() {
   // cPanel sets process.env.PORT automatically for Node apps
   const port = configService.get<number>('PORT') || 3000;
   await app.listen(port);
-  
+
   logger.log(`🚀 SKOLA Backend is running on: http://localhost:${port}/api`);
 }
 bootstrap();

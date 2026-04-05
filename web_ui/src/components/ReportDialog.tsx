@@ -90,7 +90,7 @@ export function ReportDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-xs text-muted-foreground line-clamp-2 border border-border p-2">
+          <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words border border-border p-2 max-h-28 overflow-auto">
             "{contentPreview.slice(0, 120)}{contentPreview.length > 120 ? "…" : ""}"
           </p>
           <div className="space-y-1.5">

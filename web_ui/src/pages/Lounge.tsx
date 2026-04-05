@@ -84,8 +84,6 @@ import { Switch } from '@/components/ui/switch';
 import { ReportDialog } from '@/components/ReportDialog';
 
 // ─── Time ago helper ───
-const EAST_AFRICA_TIME_ZONE = 'Africa/Addis_Ababa';
-
 function parseServerTimestamp(timestamp: string): Date {
     const value = String(timestamp || '').trim();
     if (!value) return new Date(Number.NaN);
@@ -120,7 +118,6 @@ function formatExactTime(timestamp: string): string {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-        timeZone: EAST_AFRICA_TIME_ZONE,
     });
 }
 
@@ -167,6 +164,10 @@ function renderMentionHighlightedText(text: string): ReactNode[] {
     }
 
     return nodes.length ? nodes : [text];
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error && error.message ? error.message : fallback;
 }
 
 // ─── Reaction Button ───
@@ -287,7 +288,7 @@ function ReplyItem({
                         </Tooltip>
                     )}
                 </div>
-                <p className="text-xs leading-relaxed">{renderMentionHighlightedText(reply.content)}</p>
+                <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">{renderMentionHighlightedText(reply.content)}</p>
             </div>
         </div>
     );
@@ -432,10 +433,6 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
             queryClient.invalidateQueries({ queryKey: ['loungeStats'] });
             setReplyText('');
             closeMentionMenu();
-            toast({ title: 'Replied!', description: 'Your reply has been posted.' });
-        },
-        onError: () => {
-            toast({ title: 'Error', description: 'Failed to post reply.', variant: 'destructive' });
         },
     });
 
@@ -445,20 +442,52 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
             queryClient.invalidateQueries({ queryKey: ['loungeReplies', postId] });
             queryClient.invalidateQueries({ queryKey: ['loungeFeed'] });
             queryClient.invalidateQueries({ queryKey: ['loungeStats'] });
-            toast({ title: 'Deleted', description: 'Reply has been removed.' });
-        },
-        onError: () => {
-            toast({
-                title: 'Error',
-                description: 'Failed to delete reply.',
-                variant: 'destructive',
-            });
         },
     });
 
     const handleSubmit = () => {
         if (!replyText.trim()) return;
-        addReplyMutation.mutate({ content: replyText.trim(), isAnonymous });
+        toast
+            .promise(addReplyMutation.mutateAsync({ content: replyText.trim(), isAnonymous }), {
+                loading: {
+                    title: 'Posting Reply',
+                    description: 'Sending your reply...',
+                },
+                success: {
+                    title: 'Replied!',
+                    description: 'Your reply has been posted.',
+                },
+                error: (error) => ({
+                    title: 'Error',
+                    description: getErrorMessage(error, 'Failed to post reply.'),
+                    variant: 'destructive',
+                }),
+            })
+            .catch(() => {
+                // handled by toast.promise
+            });
+    };
+
+    const handleDeleteReply = (replyId: string) => {
+        toast
+            .promise(deleteReplyMutation.mutateAsync(replyId), {
+                loading: {
+                    title: 'Deleting Reply',
+                    description: 'Removing reply...',
+                },
+                success: {
+                    title: 'Deleted',
+                    description: 'Reply has been removed.',
+                },
+                error: (error) => ({
+                    title: 'Error',
+                    description: getErrorMessage(error, 'Failed to delete reply.'),
+                    variant: 'destructive',
+                }),
+            })
+            .catch(() => {
+                // handled by toast.promise
+            });
     };
 
     const isReplyOwner = (reply: LoungeReply) => reply.authorId === user?.id;
@@ -504,7 +533,7 @@ function RepliesSection({ postId, replyCount }: { postId: string; replyCount: nu
                                 reply={r}
                                 isOwner={isReplyOwner(r)}
                                 isAdmin={isAdmin}
-                                onDelete={() => deleteReplyMutation.mutate(r.id)}
+                                onDelete={() => handleDeleteReply(r.id)}
                             />
                         ))
                     )}
@@ -929,7 +958,7 @@ function PostCard({
 
             {/* Content */}
             {post.content && (
-                <p className="text-sm leading-relaxed">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                     {renderMentionHighlightedText(post.content)}
                 </p>
             )}
@@ -1637,17 +1666,6 @@ const Lounge = () => {
         mutationFn: createPost,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loungeFeed'] });
-            toast({ title: 'Posted!', description: 'Your post is live.' });
-        },
-        onError: (error: unknown) => {
-            const message = error instanceof Error && error.message
-                ? error.message
-                : 'Failed to create post.';
-            toast({
-                title: 'Error',
-                description: message,
-                variant: 'destructive',
-            });
         },
     });
 
@@ -1664,10 +1682,6 @@ const Lounge = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loungeFeed'] });
             setEditingPost(null);
-            toast({ title: 'Updated!', description: 'Your post has been edited.' });
-        },
-        onError: () => {
-            toast({ title: 'Error', description: 'Failed to edit post.', variant: 'destructive' });
         },
     });
 
@@ -1676,14 +1690,6 @@ const Lounge = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loungeFeed'] });
             setDeletingPostId(null);
-            toast({ title: 'Deleted', description: 'Post has been removed.' });
-        },
-        onError: () => {
-            toast({
-                title: 'Error',
-                description: 'Failed to delete post.',
-                variant: 'destructive',
-            });
         },
     });
 
@@ -1797,23 +1803,80 @@ const Lounge = () => {
         imageDataUrl?: string,
         imageName?: string,
     ) => {
-        createPostMutation.mutate({
-            content,
-            tags: [tag],
-            course,
-            isAnonymous,
-            imageDataUrl,
-            imageName,
-        });
+        toast
+            .promise(
+                createPostMutation.mutateAsync({
+                    content,
+                    tags: [tag],
+                    course,
+                    isAnonymous,
+                    imageDataUrl,
+                    imageName,
+                }),
+                {
+                    loading: {
+                        title: 'Posting',
+                        description: 'Publishing your post...',
+                    },
+                    success: {
+                        title: 'Posted!',
+                        description: 'Your post is live.',
+                    },
+                    error: (error) => ({
+                        title: 'Error',
+                        description: getErrorMessage(error, 'Failed to create post.'),
+                        variant: 'destructive',
+                    }),
+                },
+            )
+            .catch(() => {
+                // handled by toast.promise
+            });
     };
 
     const handleEditPost = (id: string, content: string, tag: PostTag) => {
-        editPostMutation.mutate({ id, content, tags: [tag] });
+        toast
+            .promise(editPostMutation.mutateAsync({ id, content, tags: [tag] }), {
+                loading: {
+                    title: 'Updating Post',
+                    description: 'Saving your edits...',
+                },
+                success: {
+                    title: 'Updated!',
+                    description: 'Your post has been edited.',
+                },
+                error: (error) => ({
+                    title: 'Error',
+                    description: getErrorMessage(error, 'Failed to edit post.'),
+                    variant: 'destructive',
+                }),
+            })
+            .catch(() => {
+                // handled by toast.promise
+            });
     };
 
     const handleDeletePost = () => {
         if (!deletingPostId) return;
-        deletePostMutation.mutate(deletingPostId);
+        toast
+            .promise(deletePostMutation.mutateAsync(deletingPostId), {
+                loading: {
+                    title: 'Deleting Post',
+                    description: 'Removing your post...',
+                },
+                success: {
+                    title: 'Deleted',
+                    description: 'Post has been removed.',
+                },
+                error: (error) => ({
+                    title: 'Error',
+                    description: getErrorMessage(error, 'Failed to delete post.'),
+                    variant: 'destructive',
+                }),
+            })
+            .catch(() => {
+                // handled by toast.promise
+            });
     };
 
     // ─── Derived data ───
