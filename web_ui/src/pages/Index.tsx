@@ -24,24 +24,13 @@ function parseSemesterDate(value: string): Date {
   return new Date(input);
 }
 
-function getSemesterYearLabel(
-  semester: { year: number; startDate: string; endDate: string } | null | undefined,
+function getSemesterDisplayLabel(
+  semester: { name?: string; semester: number } | null | undefined,
 ): string {
-  if (!semester) return "—";
-  const start = parseSemesterDate(semester.startDate);
-  const end = parseSemesterDate(semester.endDate);
-
-  if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
-    const startYear = start.getFullYear();
-    const endYear = end.getFullYear();
-    return startYear === endYear ? String(startYear) : `${startYear}/${endYear}`;
-  }
-
-  if (!Number.isNaN(end.getTime())) {
-    return String(end.getFullYear());
-  }
-
-  return String(semester.year ?? "—");
+  if (!semester) return "Sem —";
+  const configuredName = String(semester.name || "").trim();
+  if (configuredName) return configuredName;
+  return `Sem ${semester.semester}`;
 }
 
 function DaysRemaining({ endDate }: { endDate: string }) {
@@ -137,7 +126,7 @@ const Index = () => {
                 Semester
               </p>
               <p className="text-sm font-bold uppercase tracking-wide">
-                Year {getSemesterYearLabel(semester)}, Sem {semester.semester}
+                {getSemesterDisplayLabel(semester)}
               </p>
             </div>
             <div className="border-l border-border pl-4 text-right">

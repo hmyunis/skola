@@ -213,11 +213,13 @@ function mapScheduleItemToClassSlot(item: ScheduleItemApi, baseDate: Date): Clas
 export async function fetchSemesterInfo(): Promise<SemesterInfo | null> {
   try {
     const active = await apiFetch("/academics/semesters/active");
-    const parsedSemester = Number(String(active.name || "").match(/(?:sem(?:ester)?\s*)(\d+)/i)?.[1] || 0);
+    const semesterName = typeof active?.name === "string" ? active.name.trim() : "";
+    const parsedSemester = Number(String(semesterName || "").match(/(?:sem(?:ester)?\s*)(\d+)/i)?.[1] || 0);
 
     return {
+      name: semesterName || undefined,
       year: active.year,
-      semester: parsedSemester || (active.name.includes("2") ? 2 : 1), // Backward-compatible fallback.
+      semester: parsedSemester || (semesterName.includes("2") ? 2 : 1), // Backward-compatible fallback.
       startDate: active.startDate,
       endDate: active.endDate,
     };

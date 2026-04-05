@@ -1,6 +1,7 @@
 /** Shared API types — safe to import from backend monorepo */
 
 export interface SemesterInfo {
+  name?: string;
   year: number;
   semester: number;
   startDate: string;
