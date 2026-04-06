@@ -6,6 +6,8 @@ import {
   updateScheduleItem,
   deleteScheduleItem,
   publishScheduleDrafts,
+  confirmScheduleItem,
+  unconfirmScheduleItem,
   type ClassSlot,
   type DayOfWeek,
 } from "@/services/api";
@@ -16,6 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical, Trash2, Plus, Loader2, ArrowLeft } from "lucide-react";
 import {
   AlertDialog,
@@ -43,6 +51,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { formatTime12, hourTo12, dateToTimeInput } from "@/lib/utils";
+import { format, formatDistanceToNowStrict } from "date-fns";
+import { createAnnouncement } from "@/services/announcements";
 
 const DAYS: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_SHORT = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -59,6 +69,7 @@ const START_HOUR = 8;
 const END_HOUR = 17;
 const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
 const HOUR_HEIGHT = 64;
+const RECENT_CONFIRM_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
@@ -97,6 +108,42 @@ function getTempTimeWindow(daySlots: ClassSlot[], excludeIds: string[]): { start
   throw new Error("Could not find temporary time window for reordering");
 }
 
+type FireMode = "auto" | "on" | "off";
+type FireVisibility =
+  | { show: false; reason: "off" | "none" }
+  | { show: true; reason: "manual" }
+  | { show: true; reason: "recent"; confirmedAt: Date };
+
+function getFireMode(slot: ClassSlot): FireMode {
+  return slot.fireMode || "auto";
+}
+
+function hasConfirmedTimestamp(slot: ClassSlot): slot is ClassSlot & { confirmedAt: Date } {
+  return !!slot.confirmedAt && !Number.isNaN(slot.confirmedAt.getTime());
+}
+
+function isRecentlyConfirmed(slot: ClassSlot): slot is ClassSlot & { confirmedAt: Date } {
+  if (slot.draft || !hasConfirmedTimestamp(slot)) return false;
+  return Date.now() - slot.confirmedAt.getTime() <= RECENT_CONFIRM_WINDOW_MS;
+}
+
+function getFireVisibility(slot: ClassSlot): FireVisibility {
+  if (slot.draft) return { show: false, reason: "none" };
+  const fireMode = getFireMode(slot);
+  if (fireMode === "off") return { show: false, reason: "off" };
+  if (fireMode === "on") return { show: true, reason: "manual" };
+  if (isRecentlyConfirmed(slot)) return { show: true, reason: "recent", confirmedAt: slot.confirmedAt };
+  return { show: false, reason: "none" };
+}
+
+function formatConfirmedAtRelative(confirmedAt: Date): string {
+  return formatDistanceToNowStrict(confirmedAt, { addSuffix: true });
+}
+
+function formatConfirmedAtExact(confirmedAt: Date): string {
+  return format(confirmedAt, "PPP p");
+}
+
 const typeColors: Record<string, { bg: string; border: string; text: string }> = {
   lecture: { bg: "bg-primary/10", border: "border-primary/40", text: "text-primary" },
   lab: { bg: "bg-emerald-500/10", border: "border-emerald-500/40", text: "text-emerald-700" },
@@ -108,9 +155,91 @@ const typeColors: Record<string, { bg: string; border: string; text: string }> =
 function cloneSchedule(s: Record<string, ClassSlot[]>): Record<string, ClassSlot[]> {
   const r: Record<string, ClassSlot[]> = {};
   for (const [day, slots] of Object.entries(s)) {
-    r[day] = slots.map((sl) => ({ ...sl, startTime: new Date(sl.startTime), endTime: new Date(sl.endTime) }));
+    r[day] = slots.map((sl) => ({
+      ...sl,
+      startTime: new Date(sl.startTime),
+      endTime: new Date(sl.endTime),
+      confirmedAt: sl.confirmedAt ? new Date(sl.confirmedAt) : null,
+      fireMode: sl.fireMode || "auto",
+    }));
   }
   return r;
+}
+
+function buildScheduleSummaryMessage(schedule: Record<string, ClassSlot[]>) {
+  const now = new Date();
+  const day = now.getDay(); // 0..6
+  const diffToMonday = (day + 6) % 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const rangeLabel = `${format(monday, "MMM d")} - ${format(sunday, "MMM d, yyyy")}`;
+  const title = `Weekly Schedule Summary (${rangeLabel})`;
+  const lines: string[] = [`Week: ${rangeLabel}`, "", "Legend: 🔥 = recently confirmed or manually highlighted", ""];
+
+  DAYS.forEach((dayName, idx) => {
+    const slots = (schedule[dayName] || [])
+      .filter((slot) => !slot.draft)
+      .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+
+    lines.push(`${DAY_SHORT[idx]} (${dayName})`);
+    if (!slots.length) {
+      lines.push("- No classes");
+      lines.push("");
+      return;
+    }
+
+    for (const slot of slots) {
+      const fire = getFireVisibility(slot).show ? " 🔥" : "";
+      lines.push(
+        `- ${formatTime12(slot.startTime)}-${formatTime12(slot.endTime)} | ${slot.code} ${slot.name} | ${slot.room || "TBA"}${fire}`,
+      );
+    }
+    lines.push("");
+  });
+
+  let content = lines.join("\n").trim();
+  const MAX_CONTENT_LENGTH = 3300;
+  if (content.length > MAX_CONTENT_LENGTH) {
+    content = `${content.slice(0, MAX_CONTENT_LENGTH).trim()}\n\n...trimmed for notification length.`;
+  }
+
+  return { title, content };
+}
+
+function ConfirmedFireBadge({ slot }: { slot: ClassSlot }) {
+  const fire = getFireVisibility(slot);
+  if (!fire.show) return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="h-5 w-5 shrink-0 rounded-full border border-orange-500/40 bg-orange-500/10 text-[11px] leading-none hover:bg-orange-500/20 transition-colors"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          aria-label="View confirmation details"
+        >
+          🔥
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2.5" align="end" side="top">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hot Class</p>
+        {fire.reason === "manual" ? (
+          <p className="text-xs font-semibold mt-1">Manually highlighted by admin/owner</p>
+        ) : (
+          <>
+            <p className="text-xs font-semibold mt-1">Confirmed {formatConfirmedAtRelative(fire.confirmedAt)}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{formatConfirmedAtExact(fire.confirmedAt)}</p>
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 // ─── Schedule Dialog ───
@@ -134,8 +263,14 @@ interface ScheduleDialogProps {
   semesterId?: string;
   isSubmitting?: boolean;
   isDeleting?: boolean;
+  canConfirm?: boolean;
+  isTogglingConfirmation?: boolean;
+  isTogglingFire?: boolean;
   onSave: (values: ScheduleFormValues) => void;
   onDelete: (slot: ClassSlot, day: DayOfWeek) => void;
+  onConfirmSlot?: (slot: ClassSlot) => void;
+  onRequestUnconfirmSlot?: (slot: ClassSlot) => void;
+  onSetFireMode?: (slot: ClassSlot, fireMode: FireMode) => void;
   onClose: () => void;
 }
 
@@ -143,16 +278,29 @@ function ClassDetailDialog({
   open,
   slot,
   day,
+  canConfirm = false,
+  isTogglingConfirmation = false,
+  isTogglingFire = false,
+  onConfirmSlot,
+  onRequestUnconfirmSlot,
+  onSetFireMode,
   onClose,
 }: {
   open: boolean;
   slot: ClassSlot | null;
   day: DayOfWeek | null;
+  canConfirm?: boolean;
+  isTogglingConfirmation?: boolean;
+  isTogglingFire?: boolean;
+  onConfirmSlot?: (slot: ClassSlot) => void;
+  onRequestUnconfirmSlot?: (slot: ClassSlot) => void;
+  onSetFireMode?: (slot: ClassSlot, fireMode: FireMode) => void;
   onClose: () => void;
 }) {
   if (!slot || !day) return null;
 
   const typeLabel = slot.type.charAt(0).toUpperCase() + slot.type.slice(1);
+  const fireMode = getFireMode(slot);
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
@@ -192,7 +340,83 @@ function ClassDetailDialog({
           <div>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Status</p>
             <p className="text-sm font-medium">{slot.draft ? "Draft" : "Published"}</p>
+            {!slot.draft && hasConfirmedTimestamp(slot) ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                Confirmed {formatConfirmedAtRelative(slot.confirmedAt)} ({formatConfirmedAtExact(slot.confirmedAt)})
+              </p>
+            ) : null}
           </div>
+
+          {canConfirm && (
+            <div className="space-y-2">
+              <div className="border border-border p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Confirmation</p>
+                {slot.draft ? (
+                  <p className="text-xs text-muted-foreground">Publish this class first before confirming it.</p>
+                ) : hasConfirmedTimestamp(slot) ? (
+                  <p className="text-xs text-muted-foreground">This class is currently confirmed.</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Mark this class as confirmed for students.</p>
+                )}
+                <div className="flex gap-2">
+                  {!hasConfirmedTimestamp(slot) ? (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={slot.draft || isTogglingConfirmation}
+                      onClick={() => onConfirmSlot?.(slot)}
+                    >
+                      {isTogglingConfirmation ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Confirm
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={isTogglingConfirmation}
+                      onClick={() => onRequestUnconfirmSlot?.(slot)}
+                    >
+                      {isTogglingConfirmation ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Unconfirm
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="border border-border p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Fire Badge</p>
+                <p className="text-xs text-muted-foreground">
+                  Current mode: <span className="font-semibold uppercase">{fireMode}</span>
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Button
+                    size="sm"
+                    variant={fireMode === "on" ? "default" : "outline"}
+                    disabled={isTogglingFire || slot.draft}
+                    onClick={() => onSetFireMode?.(slot, "on")}
+                  >
+                    Show Fire
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={fireMode === "off" ? "default" : "outline"}
+                    disabled={isTogglingFire || slot.draft}
+                    onClick={() => onSetFireMode?.(slot, "off")}
+                  >
+                    Remove Fire
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={fireMode === "auto" ? "default" : "outline"}
+                    disabled={isTogglingFire || slot.draft}
+                    onClick={() => onSetFireMode?.(slot, "auto")}
+                  >
+                    Auto
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -213,8 +437,14 @@ function ScheduleItemDialog({
   semesterId,
   isSubmitting = false,
   isDeleting = false,
+  canConfirm = false,
+  isTogglingConfirmation = false,
+  isTogglingFire = false,
   onSave,
   onDelete,
+  onConfirmSlot,
+  onRequestUnconfirmSlot,
+  onSetFireMode,
   onClose,
 }: ScheduleDialogProps) {
   const [courseId, setCourseId] = useState("");
@@ -280,6 +510,7 @@ function ScheduleItemDialog({
   };
 
   const title = mode === "create" ? "Add Class" : "Edit Class";
+  const fireMode = slot ? getFireMode(slot) : "auto";
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
@@ -376,6 +607,77 @@ function ScheduleItemDialog({
             />
             <span className="text-xs font-medium uppercase tracking-wide">Mark as Draft</span>
           </label>
+
+          {mode === "edit" && slot && canConfirm && (
+            <div className="space-y-2">
+              <div className="border border-border p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Confirmation</p>
+                {slot.draft ? (
+                  <p className="text-xs text-muted-foreground">Publish this class first before confirming it.</p>
+                ) : hasConfirmedTimestamp(slot) ? (
+                  <p className="text-xs text-muted-foreground">
+                    Confirmed {formatConfirmedAtRelative(slot.confirmedAt)} ({formatConfirmedAtExact(slot.confirmedAt)})
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">This class is not yet confirmed.</p>
+                )}
+                {!hasConfirmedTimestamp(slot) ? (
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={slot.draft || isTogglingConfirmation || isSubmitting || isDeleting}
+                    onClick={() => onConfirmSlot?.(slot)}
+                  >
+                    {isTogglingConfirmation ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Confirm
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={isTogglingConfirmation || isSubmitting || isDeleting}
+                    onClick={() => onRequestUnconfirmSlot?.(slot)}
+                  >
+                    {isTogglingConfirmation ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Unconfirm
+                  </Button>
+                )}
+              </div>
+              <div className="border border-border p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Fire Badge</p>
+                <p className="text-xs text-muted-foreground">
+                  Current mode: <span className="font-semibold uppercase">{fireMode}</span>
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Button
+                    size="sm"
+                    variant={fireMode === "on" ? "default" : "outline"}
+                    disabled={slot.draft || isTogglingFire || isSubmitting || isDeleting}
+                    onClick={() => onSetFireMode?.(slot, "on")}
+                  >
+                    Show Fire
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={fireMode === "off" ? "default" : "outline"}
+                    disabled={slot.draft || isTogglingFire || isSubmitting || isDeleting}
+                    onClick={() => onSetFireMode?.(slot, "off")}
+                  >
+                    Remove Fire
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={fireMode === "auto" ? "default" : "outline"}
+                    disabled={slot.draft || isTogglingFire || isSubmitting || isDeleting}
+                    onClick={() => onSetFireMode?.(slot, "auto")}
+                  >
+                    Auto
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
@@ -433,9 +735,12 @@ function ClassBlock({
       style={{ top: `${topPct}%`, height: `${heightPct}%`, minHeight: "28px" }}
       onClick={onClick}
     >
-      <p className={`text-[10px] font-bold uppercase tracking-wider truncate ${colors.text}`}>
-        {slot.name}
-      </p>
+      <div className="flex items-start gap-1.5">
+        <p className={`min-w-0 flex-1 text-[10px] font-bold uppercase tracking-wider truncate ${colors.text}`}>
+          {slot.name}
+        </p>
+        <ConfirmedFireBadge slot={slot} />
+      </div>
       <p className="text-[9px] text-muted-foreground truncate">
         {slot.code} · {slot.room}
       </p>
@@ -647,7 +952,10 @@ function DailyAgenda({
                   {formatTime12(slot.endTime)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-bold uppercase tracking-wide ${colors.text}`}>{slot.name}</p>
+                  <div className="flex items-start gap-2">
+                    <p className={`min-w-0 flex-1 text-sm font-bold uppercase tracking-wide ${colors.text}`}>{slot.name}</p>
+                    <ConfirmedFireBadge slot={slot} />
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {slot.code} · {slot.room} ·{" "}
                     <span className="uppercase text-[10px] tracking-wider">{slot.type}</span>
@@ -679,6 +987,11 @@ const Schedule = () => {
   const [editingSlot, setEditingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
   const [deletingSlot, setDeletingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
   const [viewingSlot, setViewingSlot] = useState<{ slot: ClassSlot; day: DayOfWeek } | null>(null);
+  const [unconfirmingSlot, setUnconfirmingSlot] = useState<ClassSlot | null>(null);
+  const [notifyPreviewOpen, setNotifyPreviewOpen] = useState(false);
+  const [notifyTitle, setNotifyTitle] = useState("");
+  const [notifyContent, setNotifyContent] = useState("");
+  const [sendScheduleToTelegram, setSendScheduleToTelegram] = useState(true);
 
   const { data: fetchedSchedule, isLoading, isError, refetch } = useQuery({
     queryKey: ["weeklySchedule", semId],
@@ -692,6 +1005,26 @@ const Schedule = () => {
       queryClient.invalidateQueries({ queryKey: ["quickStats"] }),
     ]);
   }, [queryClient]);
+
+  const applyFireModeLocally = useCallback((id: string, fireMode: FireMode) => {
+    setLocalSchedule((prev) => {
+      const next: Record<string, ClassSlot[]> = {};
+      for (const [day, slots] of Object.entries(prev)) {
+        next[day] = slots.map((slot) => (slot.id === id ? { ...slot, fireMode } : slot));
+      }
+      return next;
+    });
+    setViewingSlot((prev) =>
+      prev && prev.slot.id === id
+        ? { ...prev, slot: { ...prev.slot, fireMode } }
+        : prev,
+    );
+    setEditingSlot((prev) =>
+      prev && prev.slot.id === id
+        ? { ...prev, slot: { ...prev.slot, fireMode } }
+        : prev,
+    );
+  }, []);
 
   const createMutation = useMutation({
     mutationFn: createScheduleItem,
@@ -764,6 +1097,89 @@ const Schedule = () => {
     },
   });
 
+  const confirmMutation = useMutation({
+    mutationFn: (id: string) => confirmScheduleItem(id),
+    onSuccess: async () => {
+      await refreshScheduleQueries();
+      setEditingSlot(null);
+      setViewingSlot(null);
+      toast({ title: "Class Confirmed", description: "Class marked as confirmed." });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Confirm failed",
+        description: getErrorMessage(error, "Could not confirm this class."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unconfirmMutation = useMutation({
+    mutationFn: (id: string) => unconfirmScheduleItem(id),
+    onSuccess: async () => {
+      await refreshScheduleQueries();
+      setUnconfirmingSlot(null);
+      setEditingSlot(null);
+      setViewingSlot(null);
+      toast({ title: "Confirmation Removed", description: "Class is no longer confirmed." });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Unconfirm failed",
+        description: getErrorMessage(error, "Could not remove confirmation."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const fireModeMutation = useMutation({
+    mutationFn: ({ id, fireMode }: { id: string; fireMode: FireMode }) =>
+      updateScheduleItem(id, { fireMode }),
+    onSuccess: (_data, variables) => {
+      applyFireModeLocally(variables.id, variables.fireMode);
+      void refreshScheduleQueries();
+      toast({ title: "Fire Updated", description: "Fire visibility updated for this class." });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Fire update failed",
+        description: getErrorMessage(error, "Could not update fire visibility."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const notifySummaryMutation = useMutation({
+    mutationFn: ({
+      title,
+      content,
+      sendTelegram,
+    }: {
+      title: string;
+      content: string;
+      sendTelegram: boolean;
+    }) =>
+      createAnnouncement({
+        title,
+        content,
+        priority: "normal",
+        targetAudience: "all",
+        pinned: false,
+        sendTelegram,
+      }),
+    onSuccess: () => {
+      setNotifyPreviewOpen(false);
+      toast({ title: "Weekly Summary Sent", description: "Notification delivered to enabled channels." });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Send failed",
+        description: getErrorMessage(error, "Could not send weekly schedule summary."),
+        variant: "destructive",
+      });
+    },
+  });
+
   const reorderMutation = useMutation({
     mutationFn: async ({ day, fromIdx, toIdx }: { day: DayOfWeek; fromIdx: number; toIdx: number }) => {
       const daySlots = localSchedule[day] || [];
@@ -813,6 +1229,9 @@ const Schedule = () => {
     updateMutation.isPending ||
     deleteMutation.isPending ||
     publishMutation.isPending ||
+    confirmMutation.isPending ||
+    unconfirmMutation.isPending ||
+    fireModeMutation.isPending ||
     reorderMutation.isPending;
 
   // Sync fetched data → local state
@@ -885,6 +1304,23 @@ const Schedule = () => {
     deleteMutation.mutate(deletingSlot.slot.id);
   };
 
+  const handleConfirmSlot = (slot: ClassSlot) => {
+    confirmMutation.mutate(slot.id);
+  };
+
+  const handleRequestUnconfirmSlot = (slot: ClassSlot) => {
+    setUnconfirmingSlot(slot);
+  };
+
+  const confirmUnconfirm = () => {
+    if (!unconfirmingSlot) return;
+    unconfirmMutation.mutate(unconfirmingSlot.id);
+  };
+
+  const handleSetFireMode = (slot: ClassSlot, fireMode: FireMode) => {
+    fireModeMutation.mutate({ id: slot.id, fireMode });
+  };
+
   const hasDraft = useMemo(
     () => Object.values(localSchedule).some((slots) => slots.some((slot) => slot.draft)),
     [localSchedule],
@@ -899,6 +1335,43 @@ const Schedule = () => {
     return filtered;
   }, [isAdmin, localSchedule]);
 
+  const publishedSchedule = useMemo(() => {
+    const result: Record<string, ClassSlot[]> = {};
+    for (const [day, slots] of Object.entries(localSchedule)) {
+      result[day] = slots.filter((slot) => !slot.draft);
+    }
+    return result;
+  }, [localSchedule]);
+
+  const weeklySummary = useMemo(
+    () => buildScheduleSummaryMessage(publishedSchedule),
+    [publishedSchedule],
+  );
+
+  const handleOpenNotifyPreview = () => {
+    setNotifyTitle(weeklySummary.title);
+    setNotifyContent(weeklySummary.content);
+    setNotifyPreviewOpen(true);
+  };
+
+  const sendWeeklySummary = () => {
+    const title = notifyTitle.trim();
+    const content = notifyContent.trim();
+    if (!title || !content) {
+      toast({
+        title: "Missing content",
+        description: "Title and message are required before sending.",
+        variant: "destructive",
+      });
+      return;
+    }
+    notifySummaryMutation.mutate({
+      title,
+      content,
+      sendTelegram: sendScheduleToTelegram,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl">
       {/* Header */}
@@ -909,6 +1382,16 @@ const Schedule = () => {
         </div>
         {isAdmin && (
           <div className="flex w-full sm:w-auto flex-wrap items-center gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="max-w-full"
+              onClick={handleOpenNotifyPreview}
+              disabled={notifySummaryMutation.isPending}
+            >
+              {notifySummaryMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Notify Weekly Summary
+            </Button>
             {editMode ? (
               <>
                 <Button variant="outline" size="sm" className="max-w-full" onClick={() => setCreateOpen(true)} disabled={isMutating}>
@@ -947,6 +1430,10 @@ const Schedule = () => {
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 bg-destructive/20 border border-destructive/40" />
           <span className="text-muted-foreground">Exam</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span>🔥</span>
+          <span className="text-muted-foreground">Hot (recent/manual)</span>
         </div>
         {showDraft && (
           <div className="flex items-center gap-1.5">
@@ -1001,6 +1488,12 @@ const Schedule = () => {
         open={!!viewingSlot}
         slot={viewingSlot?.slot || null}
         day={viewingSlot?.day || null}
+        canConfirm={isAdmin}
+        isTogglingConfirmation={confirmMutation.isPending || unconfirmMutation.isPending}
+        isTogglingFire={fireModeMutation.isPending}
+        onConfirmSlot={handleConfirmSlot}
+        onRequestUnconfirmSlot={handleRequestUnconfirmSlot}
+        onSetFireMode={handleSetFireMode}
         onClose={() => setViewingSlot(null)}
       />
 
@@ -1024,10 +1517,68 @@ const Schedule = () => {
         semesterId={semId}
         isSubmitting={updateMutation.isPending}
         isDeleting={deleteMutation.isPending}
+        canConfirm={isAdmin}
+        isTogglingConfirmation={confirmMutation.isPending || unconfirmMutation.isPending}
+        isTogglingFire={fireModeMutation.isPending}
         onSave={handleSaveEdit}
         onDelete={handleDeleteSlot}
+        onConfirmSlot={handleConfirmSlot}
+        onRequestUnconfirmSlot={handleRequestUnconfirmSlot}
+        onSetFireMode={handleSetFireMode}
         onClose={() => setEditingSlot(null)}
       />
+
+      <Dialog open={notifyPreviewOpen} onOpenChange={setNotifyPreviewOpen}>
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-wider text-sm">Weekly Summary Preview</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="border border-border p-3">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Title</Label>
+              <Input
+                className="mt-2"
+                value={notifyTitle}
+                onChange={(e) => setNotifyTitle(e.target.value)}
+                placeholder="Weekly Schedule Summary"
+              />
+            </div>
+            <div className="border border-border p-3">
+              <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Message</Label>
+              <Textarea
+                className="mt-2 min-h-[260px] font-mono text-[11px] leading-relaxed"
+                value={notifyContent}
+                onChange={(e) => setNotifyContent(e.target.value)}
+                placeholder="Write notification message..."
+              />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendScheduleToTelegram}
+                onChange={(e) => setSendScheduleToTelegram(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              <span className="text-xs text-muted-foreground">
+                Also send to classroom Telegram group by bot (if configured)
+              </span>
+            </label>
+          </div>
+          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" size="sm" onClick={() => setNotifyPreviewOpen(false)} disabled={notifySummaryMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={sendWeeklySummary}
+              disabled={notifySummaryMutation.isPending || !notifyTitle.trim() || !notifyContent.trim()}
+            >
+              {notifySummaryMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Send Notification
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deletingSlot} onOpenChange={() => setDeletingSlot(null)}>
@@ -1047,6 +1598,26 @@ const Schedule = () => {
             >
               {deleteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unconfirm confirmation */}
+      <AlertDialog open={!!unconfirmingSlot} onOpenChange={() => setUnconfirmingSlot(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase tracking-wider text-sm">Remove Confirmation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove confirmation from{" "}
+              <span className="font-bold">{unconfirmingSlot?.name}</span> ({unconfirmingSlot?.code})?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unconfirmMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUnconfirm} disabled={unconfirmMutation.isPending}>
+              {unconfirmMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Remove Confirmation
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

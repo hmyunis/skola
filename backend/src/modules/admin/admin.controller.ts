@@ -1,4 +1,14 @@
-import { Controller, Post, Body, UseGuards, Get, Param, Put, Delete, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Param,
+  Put,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
@@ -7,7 +17,10 @@ import { CurrentClassroom } from '../../core/decorators/current-classroom.decora
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { AdminService, OwnerExportDatasetId } from './admin.service';
-import { AnnouncementTargetAudience, PriorityLevel } from './entities/announcement.entity';
+import {
+  AnnouncementTargetAudience,
+  PriorityLevel,
+} from './entities/announcement.entity';
 import { ModerationQueryDto } from './dto/moderation-query.dto';
 
 @Controller('admin')
@@ -31,7 +44,8 @@ export class AdminController {
   async createAnnouncement(
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body() dto: {
+    @Body()
+    dto: {
       title: string;
       content: string;
       priority?: PriorityLevel;
@@ -39,7 +53,7 @@ export class AdminController {
       pinned?: boolean;
       expiresAt?: string | Date;
       sendTelegram?: boolean;
-    }
+    },
   ) {
     return this.adminService.createAnnouncement(classroomId, user.id, dto);
   }
@@ -57,9 +71,7 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
   @Post('surprise-assessment/stop')
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
-  async stopSurpriseAssessment(
-    @CurrentClassroom() classroomId: string,
-  ) {
+  async stopSurpriseAssessment(@CurrentClassroom() classroomId: string) {
     return this.adminService.stopSurpriseAssessment(classroomId);
   }
 
@@ -69,14 +81,15 @@ export class AdminController {
   async updateAnnouncement(
     @CurrentClassroom() classroomId: string,
     @Param('id') id: string,
-    @Body() dto: {
+    @Body()
+    dto: {
       title: string;
       content: string;
       priority?: PriorityLevel;
       targetAudience?: AnnouncementTargetAudience;
       pinned?: boolean;
       expiresAt?: string | Date;
-    }
+    },
   ) {
     return this.adminService.updateAnnouncement(classroomId, id, dto);
   }
@@ -97,7 +110,7 @@ export class AdminController {
   async generateInviteCode(
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body() dto: { maxUses?: number; expiresAt?: Date }
+    @Body() dto: { maxUses?: number; expiresAt?: Date },
   ) {
     return this.adminService.generateInviteCode(classroomId, user.id, dto);
   }
@@ -176,7 +189,10 @@ export class AdminController {
     @CurrentClassroom() classroomId: string,
     @Body() dto: { datasetIds: OwnerExportDatasetId[] },
   ) {
-    return this.adminService.exportOwnerData(classroomId, dto?.datasetIds || []);
+    return this.adminService.exportOwnerData(
+      classroomId,
+      dto?.datasetIds || [],
+    );
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
@@ -184,7 +200,7 @@ export class AdminController {
   @RequireClassroomRole(UserRole.OWNER) // ONLY the Owner can toggle global features
   async updateFeatureToggles(
     @CurrentClassroom() classroomId: string,
-    @Body() toggles: Record<string, boolean> // e.g., { social: false, arena: true }
+    @Body() toggles: Record<string, boolean>, // e.g., { social: false, arena: true }
   ) {
     return this.adminService.updateFeatureToggles(classroomId, toggles);
   }

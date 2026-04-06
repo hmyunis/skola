@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Course } from './course.entity';
 
 export enum ScheduleType {
@@ -8,12 +14,20 @@ export enum ScheduleType {
   OTHER = 'other',
 }
 
+export enum ScheduleFireMode {
+  AUTO = 'auto',
+  ON = 'on',
+  OFF = 'off',
+}
+
 @Entity('schedule_items')
 export class ScheduleItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Course, (course) => course.scheduleItems, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Course, (course) => course.scheduleItems, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'courseId' })
   course: Course;
 
@@ -40,4 +54,17 @@ export class ScheduleItem {
 
   @Column({ default: false })
   isDraft: boolean; // Feature: Admins can toggle Draft/Publish
+
+  @Column({ type: 'datetime', nullable: true })
+  confirmedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  confirmedById: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: ScheduleFireMode,
+    default: ScheduleFireMode.AUTO,
+  })
+  fireMode: ScheduleFireMode;
 }

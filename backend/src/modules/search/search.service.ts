@@ -108,12 +108,42 @@ export class SearchService {
 
     const [courses, assessments, resources, quizzes, posts, members] =
       await Promise.all([
-        this.searchCourses(classroomId, contains, prefix, normalized, safeLimit),
-        this.searchAssessments(classroomId, contains, prefix, normalized, safeLimit),
-        this.searchResources(classroomId, contains, prefix, normalized, safeLimit),
-        this.searchQuizzes(classroomId, contains, prefix, normalized, safeLimit),
+        this.searchCourses(
+          classroomId,
+          contains,
+          prefix,
+          normalized,
+          safeLimit,
+        ),
+        this.searchAssessments(
+          classroomId,
+          contains,
+          prefix,
+          normalized,
+          safeLimit,
+        ),
+        this.searchResources(
+          classroomId,
+          contains,
+          prefix,
+          normalized,
+          safeLimit,
+        ),
+        this.searchQuizzes(
+          classroomId,
+          contains,
+          prefix,
+          normalized,
+          safeLimit,
+        ),
         this.searchPosts(classroomId, contains, prefix, normalized, safeLimit),
-        this.searchMembers(classroomId, contains, prefix, normalized, safeLimit),
+        this.searchMembers(
+          classroomId,
+          contains,
+          prefix,
+          normalized,
+          safeLimit,
+        ),
       ]);
 
     return {
@@ -218,7 +248,9 @@ export class SearchService {
     return rows.map((row) => ({
       id: row.id,
       title: row.title,
-      subtitle: row.courseCode ? `${row.courseCode} - due ${row.dueDate}` : `Due ${row.dueDate}`,
+      subtitle: row.courseCode
+        ? `${row.courseCode} - due ${row.dueDate}`
+        : `Due ${row.dueDate}`,
       url: '/academics',
     }));
   }
@@ -283,9 +315,12 @@ export class SearchService {
       .addSelect('quiz.courseCode', 'courseCode')
       .where('quiz.classroomId = :classroomId', { classroomId })
       .andWhere('quiz.isPublished = :isPublished', { isPublished: true })
-      .andWhere('(LOWER(quiz.title) LIKE :contains OR LOWER(quiz.courseCode) LIKE :contains)', {
-        contains,
-      })
+      .andWhere(
+        '(LOWER(quiz.title) LIKE :contains OR LOWER(quiz.courseCode) LIKE :contains)',
+        {
+          contains,
+        },
+      )
       .orderBy(
         `CASE
           WHEN LOWER(quiz.title) = :exact THEN 0

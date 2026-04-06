@@ -35,7 +35,11 @@ export class AuthService {
     // Create a data check string by sorting keys alphabetically
     // We must use the raw values sent by Telegram.
     const dataCheckString = Object.keys(rest)
-      .filter(key => rest[key as keyof typeof rest] !== undefined && rest[key as keyof typeof rest] !== null)
+      .filter(
+        (key) =>
+          rest[key as keyof typeof rest] !== undefined &&
+          rest[key as keyof typeof rest] !== null,
+      )
       .sort()
       .map((key) => `${key}=${rest[key as keyof typeof rest]}`)
       .join('\n');
@@ -50,7 +54,9 @@ export class AuthService {
 
     if (!isValid) {
       this.logger.warn(`Telegram hash mismatch!`);
-      this.logger.debug(`Data check string: [${dataCheckString.replace(/\n/g, '\\n')}]`);
+      this.logger.debug(
+        `Data check string: [${dataCheckString.replace(/\n/g, '\\n')}]`,
+      );
       this.logger.debug(`Computed: ${computedHash}`);
       this.logger.debug(`Received: ${hash}`);
       this.logger.debug(`Token length: ${botToken.length}`);
@@ -63,18 +69,27 @@ export class AuthService {
   async loginWithTelegram(dto: TelegramLoginDto) {
     // Step A: Validate Hash & Time
     if (!this.verifyTelegramHash(dto)) {
-      throw new UnauthorizedException({ reason: 'unregistered', message: 'Invalid Telegram hash' });
+      throw new UnauthorizedException({
+        reason: 'unregistered',
+        message: 'Invalid Telegram hash',
+      });
     }
 
     const now = Math.floor(Date.now() / 1000);
-    if (now - dto.auth_date > 300) { // 5 minutes expiry
-      throw new UnauthorizedException({ reason: 'unregistered', message: 'Authentication payload expired' });
+    if (now - dto.auth_date > 300) {
+      // 5 minutes expiry
+      throw new UnauthorizedException({
+        reason: 'unregistered',
+        message: 'Authentication payload expired',
+      });
     }
 
     // Step B: Find or Create User
     let user = await this.usersService.findByTelegramId(dto.id);
-    const name = dto.last_name ? `${dto.first_name} ${dto.last_name}` : dto.first_name;
-    
+    const name = dto.last_name
+      ? `${dto.first_name} ${dto.last_name}`
+      : dto.first_name;
+
     if (user) {
       if (user.deletedAt) {
         user = await this.usersService.reviveDeletedAccount(user.id, {
@@ -87,11 +102,11 @@ export class AuthService {
         user.photoUrl = dto.photo_url || user.photoUrl;
         user.telegramUsername = dto.username || user.telegramUsername;
         user.name = name || user.name;
-        
+
         // Save changes to the user object (e.g. photo URL or username updates)
-        await this.usersService.update(user.id, { 
+        await this.usersService.update(user.id, {
           name: user.name,
-          photoUrl: user.photoUrl, 
+          photoUrl: user.photoUrl,
           telegramUsername: user.telegramUsername,
         });
       }

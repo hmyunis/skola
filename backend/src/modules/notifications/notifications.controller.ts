@@ -115,7 +115,10 @@ export class NotificationsController {
     @CurrentUser() user: User,
     @Body() dto: RemoveWebPushSubscriptionDto,
   ) {
-    return this.notificationsService.removeWebPushSubscription(user.id, dto.endpoint);
+    return this.notificationsService.removeWebPushSubscription(
+      user.id,
+      dto.endpoint,
+    );
   }
 
   @Post('test')

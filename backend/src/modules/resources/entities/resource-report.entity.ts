@@ -21,7 +21,9 @@ export class ResourceReport {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Resource, (resource) => resource.reports, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Resource, (resource) => resource.reports, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'resourceId' })
   resource: Resource;
 
@@ -51,7 +53,11 @@ export class ResourceReport {
   @Column({ type: 'text', nullable: true })
   details: string;
 
-  @Column({ type: 'enum', enum: ResourceReportStatus, default: ResourceReportStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: ResourceReportStatus,
+    default: ResourceReportStatus.PENDING,
+  })
   status: ResourceReportStatus;
 
   @Column({ type: 'timestamp', nullable: true })

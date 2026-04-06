@@ -23,7 +23,9 @@ export class AssessmentRating {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Assessment, (assessment) => assessment.ratings, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Assessment, (assessment) => assessment.ratings, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'assessmentId' })
   assessment: Assessment;
 

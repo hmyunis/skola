@@ -6,12 +6,7 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      User,
-      ClassroomMember,
-    ]),
-  ],
+  imports: [TypeOrmModule.forFeature([User, ClassroomMember])],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService], // Exported so AuthModule can use it

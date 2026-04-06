@@ -59,7 +59,11 @@ export class LoungeReport {
   @Column({ type: 'text', nullable: true })
   details: string;
 
-  @Column({ type: 'enum', enum: LoungeReportStatus, default: LoungeReportStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: LoungeReportStatus,
+    default: LoungeReportStatus.PENDING,
+  })
   status: LoungeReportStatus;
 
   @Column({ type: 'timestamp', nullable: true })

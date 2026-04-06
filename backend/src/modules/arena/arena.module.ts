@@ -12,7 +12,14 @@ import { Course } from '../academics/entities/course.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Quiz, QuizQuestion, QuizAttempt, QuizReport, ClassroomMember, Course]),
+    TypeOrmModule.forFeature([
+      Quiz,
+      QuizQuestion,
+      QuizAttempt,
+      QuizReport,
+      ClassroomMember,
+      Course,
+    ]),
     ClassroomsModule,
   ],
   controllers: [ArenaController],

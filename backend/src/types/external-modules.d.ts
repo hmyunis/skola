@@ -31,12 +31,19 @@ declare module 'multer' {
     error: Error | null,
     destination: string,
   ) => void;
-  export type FilenameCallback = (error: Error | null, filename: string) => void;
+  export type FilenameCallback = (
+    error: Error | null,
+    filename: string,
+  ) => void;
 
   export interface DiskStorageOptions {
     destination?:
       | string
-      | ((req: Request, file: Express.Multer.File, cb: DestinationCallback) => void);
+      | ((
+          req: Request,
+          file: Express.Multer.File,
+          cb: DestinationCallback,
+        ) => void);
     filename?: (
       req: Request,
       file: Express.Multer.File,

@@ -580,8 +580,8 @@ function AssignmentRow({
           <div className="flex items-start gap-2">
             {isOverdue && <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />}
             <div className="min-w-0">
-              <p className="font-bold text-sm truncate">{assignment.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="font-bold text-sm break-words">{assignment.title}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 break-words">
                 {assignment.course} ·{" "}
                 <span className={cn(
                   isOverdue && "text-destructive font-medium",
@@ -990,8 +990,8 @@ function AssessmentCalendarView({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-bold text-sm truncate">{assignment.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="font-bold text-sm break-words">{assignment.title}</p>
+                        <p className="text-xs text-muted-foreground break-words">
                           {assignment.course} · {getCourseName(assignment.course)}
                         </p>
                       </div>
@@ -1035,8 +1035,8 @@ function AssessmentCalendarView({
                     onClick={() => onAssignmentClick(assignment)}
                     className="w-full border border-border bg-card p-2.5 text-left hover:bg-card transition-colors"
                   >
-                    <p className="text-sm font-semibold truncate">{assignment.title}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">
+                    <p className="text-sm font-semibold break-words">{assignment.title}</p>
+                    <p className="text-[11px] text-muted-foreground break-words">
                       {assignment.course} · {dueLabel}
                     </p>
                     <span className={cn("mt-1 inline-flex px-1.5 py-0.5 border text-[9px] font-bold uppercase tracking-wider", badge.className)}>
@@ -1322,7 +1322,7 @@ const Academics = () => {
   const stats = statsQuery.data || { total: 0, pending: 0, submitted: 0, overdue: 0 };
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-5xl">
+    <div className="w-full max-w-5xl overflow-x-hidden p-4 md:p-6 space-y-5">
       {/* Header */}
       <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
@@ -1375,51 +1375,57 @@ const Academics = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search assignments, courses..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="flex w-full items-center gap-1.5 text-muted-foreground sm:w-auto">
               <Filter className="h-3.5 w-3.5" />
               <span className="text-[10px] uppercase tracking-widest font-bold">Filters</span>
             </div>
-            <Select value={filterCourse} onValueChange={setFilterCourse}>
-              <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Course" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Courses</SelectItem>
-                {coursesInData.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="graded">Graded</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterSource} onValueChange={setFilterSource}>
-              <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
-                {sourceOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-full sm:w-auto">
+              <Select value={filterCourse} onValueChange={setFilterCourse}>
+                <SelectTrigger className="h-8 w-full text-xs sm:w-[140px]"><SelectValue placeholder="Course" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Courses</SelectItem>
+                  {coursesInData.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-auto">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="h-8 w-full text-xs sm:w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="graded">Graded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-auto">
+              <Select value={filterSource} onValueChange={setFilterSource}>
+                <SelectTrigger className="h-8 w-full text-xs sm:w-[140px]"><SelectValue placeholder="Source" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  {sourceOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {(filterCourse !== "all" || filterStatus !== "all" || filterSource !== "all" || search) && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterCourse("all"); setFilterStatus("all"); setFilterSource("all"); setSearch(""); }}>
+              <Button variant="ghost" size="sm" className="h-8 w-full text-xs sm:w-auto" onClick={() => { setFilterCourse("all"); setFilterStatus("all"); setFilterSource("all"); setSearch(""); }}>
                 Clear
               </Button>
             )}
           </div>
-          <div className="inline-flex items-center gap-1 border border-border bg-muted/30 p-1">
+          <div className="inline-flex w-full items-center justify-between gap-1 border border-border bg-muted/30 p-1 sm:w-auto sm:justify-start">
             <Button
               type="button"
               size="sm"
               variant={viewMode === "list" ? "default" : "ghost"}
-              className="h-7 px-2.5 text-xs"
+              className="h-7 flex-1 px-2.5 text-xs sm:flex-none"
               onClick={() => setViewMode("list")}
             >
               <List className="h-3 w-3" />
@@ -1429,7 +1435,7 @@ const Academics = () => {
               type="button"
               size="sm"
               variant={viewMode === "calendar" ? "default" : "ghost"}
-              className="h-7 px-2.5 text-xs"
+              className="h-7 flex-1 px-2.5 text-xs sm:flex-none"
               onClick={() => setViewMode("calendar")}
             >
               <CalendarDays className="h-3 w-3" />

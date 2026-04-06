@@ -682,8 +682,12 @@ export class LoungeService {
         }
       : {
           id: post.author?.id ?? null,
-          name: post.author?.deletedAt ? DELETED_USER_NAME : post.author?.name || DELETED_USER_NAME,
-          initials: post.author?.deletedAt ? 'DU' : post.author?.initials ?? 'DU',
+          name: post.author?.deletedAt
+            ? DELETED_USER_NAME
+            : post.author?.name || DELETED_USER_NAME,
+          initials: post.author?.deletedAt
+            ? 'DU'
+            : (post.author?.initials ?? 'DU'),
           photoUrl: post.author?.photoUrl ?? null,
         };
 
@@ -713,8 +717,12 @@ export class LoungeService {
         }
       : {
           id: reply.author?.id ?? null,
-          name: reply.author?.deletedAt ? DELETED_USER_NAME : reply.author?.name || DELETED_USER_NAME,
-          initials: reply.author?.deletedAt ? 'DU' : reply.author?.initials ?? 'DU',
+          name: reply.author?.deletedAt
+            ? DELETED_USER_NAME
+            : reply.author?.name || DELETED_USER_NAME,
+          initials: reply.author?.deletedAt
+            ? 'DU'
+            : (reply.author?.initials ?? 'DU'),
           photoUrl: reply.author?.photoUrl ?? null,
         };
 
@@ -1059,8 +1067,10 @@ export class LoungeService {
     authorId: string,
     classroomId: string,
   ): Promise<string> {
-    const personal =
-      await this.usersService.resolveImgbbApiKeyForUser(authorId, classroomId);
+    const personal = await this.usersService.resolveImgbbApiKeyForUser(
+      authorId,
+      classroomId,
+    );
     if (personal.usePersonalApiKey) {
       if (!personal.personalApiKey) {
         throw new BadRequestException(

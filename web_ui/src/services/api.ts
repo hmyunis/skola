@@ -143,6 +143,9 @@ interface ScheduleItemApi {
   location?: string | null;
   isOnline?: boolean;
   isDraft?: boolean;
+  confirmedAt?: string | null;
+  confirmedById?: string | null;
+  fireMode?: "auto" | "on" | "off";
   course?: {
     id: string;
     name: string;
@@ -207,6 +210,9 @@ function mapScheduleItemToClassSlot(item: ScheduleItemApi, baseDate: Date): Clas
     startTime: parseTimeToDate(baseDate, item.startTime),
     endTime: parseTimeToDate(baseDate, item.endTime),
     draft: !!item.isDraft,
+    confirmedAt: item.confirmedAt ? new Date(item.confirmedAt) : null,
+    confirmedById: item.confirmedById ?? null,
+    fireMode: item.fireMode || "auto",
   };
 }
 
@@ -299,6 +305,7 @@ export async function createScheduleItem(data: {
   location?: string;
   isOnline?: boolean;
   isDraft?: boolean;
+  fireMode?: "auto" | "on" | "off";
 }) {
   return apiFetch("/academics/schedule", {
     method: "POST",
@@ -317,6 +324,7 @@ export async function updateScheduleItem(
     location?: string;
     isOnline?: boolean;
     isDraft?: boolean;
+    fireMode?: "auto" | "on" | "off";
   }>,
 ) {
   return apiFetch(`/academics/schedule/${itemId}`, {
@@ -331,6 +339,18 @@ export async function deleteScheduleItem(itemId: string) {
 
 export async function publishScheduleDrafts(): Promise<{ updated: number }> {
   return apiFetch("/academics/schedule/publish", {
+    method: "POST",
+  });
+}
+
+export async function confirmScheduleItem(itemId: string) {
+  return apiFetch(`/academics/schedule/${itemId}/confirm`, {
+    method: "POST",
+  });
+}
+
+export async function unconfirmScheduleItem(itemId: string) {
+  return apiFetch(`/academics/schedule/${itemId}/unconfirm`, {
     method: "POST",
   });
 }

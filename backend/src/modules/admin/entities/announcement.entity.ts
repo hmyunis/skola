@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Classroom } from '../../classrooms/entities/classroom.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -36,7 +44,11 @@ export class Announcement {
   @Column({ type: 'enum', enum: PriorityLevel, default: PriorityLevel.NORMAL })
   priority: PriorityLevel;
 
-  @Column({ type: 'enum', enum: AnnouncementTargetAudience, default: AnnouncementTargetAudience.ALL })
+  @Column({
+    type: 'enum',
+    enum: AnnouncementTargetAudience,
+    default: AnnouncementTargetAudience.ALL,
+  })
   targetAudience: AnnouncementTargetAudience;
 
   @Column({ default: false })

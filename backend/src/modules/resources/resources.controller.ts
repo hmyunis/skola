@@ -43,7 +43,11 @@ export class ResourcesController {
     @CurrentUser() user: User,
     @Query() query: ResourceQueryDto,
   ) {
-    return this.resourcesService.findAllForClassroom(classroomId, user.id, query);
+    return this.resourcesService.findAllForClassroom(
+      classroomId,
+      user.id,
+      query,
+    );
   }
 
   @Get('stats')
@@ -83,7 +87,8 @@ export class ResourcesController {
           cb(null, uploadDestination);
         },
         filename: (_req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -94,7 +99,7 @@ export class ResourcesController {
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
     @UploadedFile() file: Express.Multer.File,
-    @Body() data: any
+    @Body() data: any,
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
@@ -138,7 +143,8 @@ export class ResourcesController {
           cb(null, uploadDestination);
         },
         filename: (_req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -185,7 +191,7 @@ export class ResourcesController {
     @Param('id') id: string,
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body('voteType') voteType: VoteType
+    @Body('voteType') voteType: VoteType,
   ) {
     return this.resourcesService.vote(id, classroomId, user.id, voteType);
   }
@@ -221,7 +227,12 @@ export class ResourcesController {
     @CurrentUser() user: User,
     @Body() data: ReviewResourceReportDto,
   ) {
-    return this.resourcesService.reviewReport(reportId, classroomId, user.id, data);
+    return this.resourcesService.reviewReport(
+      reportId,
+      classroomId,
+      user.id,
+      data,
+    );
   }
 
   @Get(':id')

@@ -74,10 +74,18 @@ export class Assessment {
   @Column({ type: 'int', default: 10 })
   weight: number;
 
-  @Column({ type: 'enum', enum: AssessmentStatus, default: AssessmentStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: AssessmentStatus,
+    default: AssessmentStatus.PENDING,
+  })
   status: AssessmentStatus;
 
-  @Column({ type: 'enum', enum: AssessmentSource, default: AssessmentSource.CLASSROOM })
+  @Column({
+    type: 'enum',
+    enum: AssessmentSource,
+    default: AssessmentSource.CLASSROOM,
+  })
   source: AssessmentSource;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL' })

@@ -8,7 +8,14 @@ import { ResourcesController } from './resources.controller';
 import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Resource, ResourceVote, ResourceReport, ClassroomMember])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Resource,
+      ResourceVote,
+      ResourceReport,
+      ClassroomMember,
+    ]),
+  ],
   controllers: [ResourcesController],
   providers: [ResourcesService],
   exports: [ResourcesService],

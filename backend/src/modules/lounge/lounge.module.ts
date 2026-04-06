@@ -12,7 +12,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([LoungePost, LoungeReaction, LoungeReport, ClassroomMember]),
+    TypeOrmModule.forFeature([
+      LoungePost,
+      LoungeReaction,
+      LoungeReport,
+      ClassroomMember,
+    ]),
     ClassroomsModule,
     UsersModule,
     NotificationsModule,

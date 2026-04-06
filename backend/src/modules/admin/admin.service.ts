@@ -1,7 +1,16 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { Announcement, AnnouncementTargetAudience, PriorityLevel } from './entities/announcement.entity';
+import {
+  Announcement,
+  AnnouncementTargetAudience,
+  PriorityLevel,
+} from './entities/announcement.entity';
 import { InviteCode } from './entities/invite-code.entity';
 import { Classroom } from '../classrooms/entities/classroom.entity';
 import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
@@ -14,13 +23,19 @@ import { Resource } from '../resources/entities/resource.entity';
 import { Quiz } from '../arena/entities/quiz.entity';
 import { QuizAttempt } from '../arena/entities/quiz-attempt.entity';
 import { Course } from '../academics/entities/course.entity';
-import { ResourceReport, ResourceReportStatus } from '../resources/entities/resource-report.entity';
+import {
+  ResourceReport,
+  ResourceReportStatus,
+} from '../resources/entities/resource-report.entity';
 import {
   LoungeReport,
   LoungeReportContentType,
   LoungeReportStatus,
 } from '../lounge/entities/lounge-report.entity';
-import { QuizReport, QuizReportStatus } from '../arena/entities/quiz-report.entity';
+import {
+  QuizReport,
+  QuizReportStatus,
+} from '../arena/entities/quiz-report.entity';
 import { ModerationQueryDto } from './dto/moderation-query.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -45,11 +60,21 @@ export interface OwnerAnalyticsResponse {
   avgDailyActive: number;
   engagementRate: number;
   topCourses: { code: string; name: string; engagement: number }[];
-  weeklyActivity: { day: string; posts: number; resources: number; quizzes: number }[];
+  weeklyActivity: {
+    day: string;
+    posts: number;
+    resources: number;
+    quizzes: number;
+  }[];
   userGrowth: { month: string; users: number }[];
 }
 
-export type OwnerExportDatasetId = 'users' | 'posts' | 'resources' | 'quizzes' | 'analytics';
+export type OwnerExportDatasetId =
+  | 'users'
+  | 'posts'
+  | 'resources'
+  | 'quizzes'
+  | 'analytics';
 
 export interface OwnerExportDatasetSummary {
   id: OwnerExportDatasetId;
@@ -94,8 +119,17 @@ export interface ModerationItem {
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
-  private static readonly SURPRISE_ASSESSMENT_TITLE = 'Surprise Assessment Alarm';
-  private static readonly DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+  private static readonly SURPRISE_ASSESSMENT_TITLE =
+    'Surprise Assessment Alarm';
+  private static readonly DAY_LABELS = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ] as const;
   private static readonly TOP_COURSE_RESOURCE_WEIGHT = 2;
   private static readonly TOP_COURSE_QUIZ_WEIGHT = 3;
   private static readonly TOP_COURSE_ATTEMPT_WEIGHT = 1;
@@ -107,7 +141,8 @@ export class AdminService {
   > = {
     users: {
       label: 'Users & Profiles',
-      description: 'All classroom members, role assignments, and account metadata.',
+      description:
+        'All classroom members, role assignments, and account metadata.',
     },
     posts: {
       label: 'Lounge Posts & Replies',
@@ -115,11 +150,13 @@ export class AdminService {
     },
     resources: {
       label: 'Resource Metadata',
-      description: 'All resource entries and metadata (without raw uploaded files).',
+      description:
+        'All resource entries and metadata (without raw uploaded files).',
     },
     quizzes: {
       label: 'Quiz Data',
-      description: 'All quizzes, question sets, attempts, and leaderboard snapshots.',
+      description:
+        'All quizzes, question sets, attempts, and leaderboard snapshots.',
     },
     analytics: {
       label: 'Analytics Logs',
@@ -128,16 +165,22 @@ export class AdminService {
   };
 
   constructor(
-    @InjectRepository(Announcement) private announcementRepo: Repository<Announcement>,
-    @InjectRepository(InviteCode) private inviteCodeRepo: Repository<InviteCode>,
+    @InjectRepository(Announcement)
+    private announcementRepo: Repository<Announcement>,
+    @InjectRepository(InviteCode)
+    private inviteCodeRepo: Repository<InviteCode>,
     @InjectRepository(Classroom) private classroomRepo: Repository<Classroom>,
-    @InjectRepository(ClassroomMember) private memberRepo: Repository<ClassroomMember>,
+    @InjectRepository(ClassroomMember)
+    private memberRepo: Repository<ClassroomMember>,
     @InjectRepository(LoungePost) private postRepo: Repository<LoungePost>,
     @InjectRepository(Resource) private resourceRepo: Repository<Resource>,
-    @InjectRepository(ResourceReport) private resourceReportRepo: Repository<ResourceReport>,
-    @InjectRepository(LoungeReport) private loungeReportRepo: Repository<LoungeReport>,
+    @InjectRepository(ResourceReport)
+    private resourceReportRepo: Repository<ResourceReport>,
+    @InjectRepository(LoungeReport)
+    private loungeReportRepo: Repository<LoungeReport>,
     @InjectRepository(Quiz) private quizRepo: Repository<Quiz>,
-    @InjectRepository(QuizReport) private quizReportRepo: Repository<QuizReport>,
+    @InjectRepository(QuizReport)
+    private quizReportRepo: Repository<QuizReport>,
     @InjectRepository(QuizAttempt) private attemptRepo: Repository<QuizAttempt>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     private readonly httpService: HttpService,
@@ -147,7 +190,10 @@ export class AdminService {
 
   private toAudienceFilter(role: UserRole): AnnouncementTargetAudience[] {
     if (role === UserRole.STUDENT) {
-      return [AnnouncementTargetAudience.ALL, AnnouncementTargetAudience.STUDENTS];
+      return [
+        AnnouncementTargetAudience.ALL,
+        AnnouncementTargetAudience.STUDENTS,
+      ];
     }
 
     return [
@@ -198,9 +244,16 @@ export class AdminService {
     return announcements.map((a) => this.toAnnouncementResponse(a));
   }
 
-  async createAnnouncement(classroomId: string, authorId: string, data: UpsertAnnouncementDto) {
+  async createAnnouncement(
+    classroomId: string,
+    authorId: string,
+    data: UpsertAnnouncementDto,
+  ) {
     const parsedExpiresAt = data.expiresAt ? new Date(data.expiresAt) : null;
-    const expiresAt = parsedExpiresAt && !Number.isNaN(parsedExpiresAt.getTime()) ? parsedExpiresAt : null;
+    const expiresAt =
+      parsedExpiresAt && !Number.isNaN(parsedExpiresAt.getTime())
+        ? parsedExpiresAt
+        : null;
 
     const announcement = this.announcementRepo.create({
       classroomId,
@@ -244,7 +297,9 @@ export class AdminService {
   }
 
   async triggerSurpriseAssessment(classroomId: string, authorId: string) {
-    const classroom = await this.classroomRepo.findOne({ where: { id: classroomId } });
+    const classroom = await this.classroomRepo.findOne({
+      where: { id: classroomId },
+    });
     if (!classroom) {
       throw new NotFoundException('Classroom not found');
     }
@@ -255,14 +310,17 @@ export class AdminService {
     const panicEnabled = panicFeature ? Boolean(panicFeature.enabled) : true;
 
     if (!panicEnabled) {
-      throw new BadRequestException('Surprise Assessment feature is disabled for this classroom.');
+      throw new BadRequestException(
+        'Surprise Assessment feature is disabled for this classroom.',
+      );
     }
 
     const announcement = this.announcementRepo.create({
       classroomId,
       authorId,
       title: AdminService.SURPRISE_ASSESSMENT_TITLE,
-      content: 'A surprise assessment has been triggered. Check with your instructor immediately.',
+      content:
+        'A surprise assessment has been triggered. Check with your instructor immediately.',
       priority: PriorityLevel.URGENT,
       targetAudience: AnnouncementTargetAudience.ALL,
       pinned: true,
@@ -301,8 +359,13 @@ export class AdminService {
     const activeAlarms = await this.announcementRepo
       .createQueryBuilder('announcement')
       .where('announcement.classroomId = :classroomId', { classroomId })
-      .andWhere('announcement.title = :title', { title: AdminService.SURPRISE_ASSESSMENT_TITLE })
-      .andWhere('(announcement.expiresAt IS NULL OR announcement.expiresAt > :now)', { now })
+      .andWhere('announcement.title = :title', {
+        title: AdminService.SURPRISE_ASSESSMENT_TITLE,
+      })
+      .andWhere(
+        '(announcement.expiresAt IS NULL OR announcement.expiresAt > :now)',
+        { now },
+      )
       .getMany();
 
     if (!activeAlarms.length) {
@@ -318,10 +381,17 @@ export class AdminService {
     return { success: true, stopped: activeAlarms.length };
   }
 
-  private async sendAnnouncementToTelegram(classroomId: string, announcement: Announcement): Promise<void> {
-    const classroom = await this.classroomRepo.findOne({ where: { id: classroomId } });
+  private async sendAnnouncementToTelegram(
+    classroomId: string,
+    announcement: Announcement,
+  ): Promise<void> {
+    const classroom = await this.classroomRepo.findOne({
+      where: { id: classroomId },
+    });
     if (!classroom?.telegramGroupId) {
-      throw new BadRequestException('No Telegram group is configured for this classroom.');
+      throw new BadRequestException(
+        'No Telegram group is configured for this classroom.',
+      );
     }
 
     let botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
@@ -331,16 +401,16 @@ export class AdminService {
     botToken = botToken.trim().replace(/^["']|["']$/g, '');
 
     const icon =
-      announcement.priority === PriorityLevel.URGENT ? '🚨'
-      : announcement.priority === PriorityLevel.HIGH ? '⚠️'
-      : announcement.priority === PriorityLevel.NORMAL ? '📢'
-      : 'ℹ️';
+      announcement.priority === PriorityLevel.URGENT
+        ? '🚨'
+        : announcement.priority === PriorityLevel.HIGH
+          ? '⚠️'
+          : announcement.priority === PriorityLevel.NORMAL
+            ? '📢'
+            : 'ℹ️';
 
     const escapeHtml = (value: string) =>
-      value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     const lines = [
       `${icon} <b>New Announcement</b>`,
@@ -352,15 +422,18 @@ export class AdminService {
     ];
 
     if (announcement.expiresAt) {
-      const expiresUtc = new Date(announcement.expiresAt).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'UTC',
-        timeZoneName: 'short',
-      });
+      const expiresUtc = new Date(announcement.expiresAt).toLocaleString(
+        'en-US',
+        {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'UTC',
+          timeZoneName: 'short',
+        },
+      );
       lines.push(`<i>Expires (UTC): ${expiresUtc}</i>`);
     }
 
@@ -368,22 +441,30 @@ export class AdminService {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
     try {
-      await firstValueFrom(this.httpService.post(url, {
-        chat_id: classroom.telegramGroupId,
-        text,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      }));
+      await firstValueFrom(
+        this.httpService.post(url, {
+          chat_id: classroom.telegramGroupId,
+          text,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        }),
+      );
     } catch (error: any) {
       this.logger.error(
         `Failed to send Telegram announcement for classroom ${classroomId}`,
         error?.response?.data || error?.message,
       );
-      throw new BadRequestException('Failed to send announcement to Telegram. Ensure bot is in the group with posting permissions.');
+      throw new BadRequestException(
+        'Failed to send announcement to Telegram. Ensure bot is in the group with posting permissions.',
+      );
     }
   }
 
-  async updateAnnouncement(classroomId: string, announcementId: string, data: UpsertAnnouncementDto) {
+  async updateAnnouncement(
+    classroomId: string,
+    announcementId: string,
+    data: UpsertAnnouncementDto,
+  ) {
     const announcement = await this.announcementRepo.findOne({
       where: { id: announcementId, classroomId },
       relations: ['author'],
@@ -394,12 +475,16 @@ export class AdminService {
     }
 
     const parsedExpiresAt = data.expiresAt ? new Date(data.expiresAt) : null;
-    const expiresAt = parsedExpiresAt && !Number.isNaN(parsedExpiresAt.getTime()) ? parsedExpiresAt : null;
+    const expiresAt =
+      parsedExpiresAt && !Number.isNaN(parsedExpiresAt.getTime())
+        ? parsedExpiresAt
+        : null;
 
     announcement.title = data.title;
     announcement.content = data.content;
     announcement.priority = data.priority || PriorityLevel.NORMAL;
-    announcement.targetAudience = data.targetAudience || AnnouncementTargetAudience.ALL;
+    announcement.targetAudience =
+      data.targetAudience || AnnouncementTargetAudience.ALL;
     announcement.pinned = Boolean(data.pinned);
     announcement.expiresAt = expiresAt;
 
@@ -429,10 +514,14 @@ export class AdminService {
     return { success: true };
   }
 
-  async generateInviteCode(classroomId: string, createdBy: string, data: { maxUses?: number; expiresAt?: Date }) {
+  async generateInviteCode(
+    classroomId: string,
+    createdBy: string,
+    data: { maxUses?: number; expiresAt?: Date },
+  ) {
     // Generate a unique code
     const code = this.generateRandomCode();
-    
+
     const inviteCode = this.inviteCodeRepo.create({
       code,
       classroomId,
@@ -461,7 +550,9 @@ export class AdminService {
       if (invite.maxUses && invite.uses >= invite.maxUses) {
         invite.isActive = false;
         await this.inviteCodeRepo.save(invite);
-        throw new BadRequestException('Invite code has reached its maximum uses');
+        throw new BadRequestException(
+          'Invite code has reached its maximum uses',
+        );
       }
 
       return {
@@ -491,7 +582,10 @@ export class AdminService {
     throw new BadRequestException('Invalid or inactive invite code');
   }
 
-  async getModerationReports(classroomId: string, query: ModerationQueryDto): Promise<ModerationItem[]> {
+  async getModerationReports(
+    classroomId: string,
+    query: ModerationQueryDto,
+  ): Promise<ModerationItem[]> {
     const status = query.status;
     const type = query.type;
 
@@ -587,7 +681,11 @@ export class AdminService {
     const typeFilter = query.type;
 
     if (statusFilter) {
-      const total = await this.countModerationByStatus(classroomId, statusFilter, typeFilter);
+      const total = await this.countModerationByStatus(
+        classroomId,
+        statusFilter,
+        typeFilter,
+      );
       return {
         total,
         pending: statusFilter === 'pending' ? total : 0,
@@ -655,7 +753,9 @@ export class AdminService {
     return resourceTotal + loungeTotal + quizTotal;
   }
 
-  async getOwnerAnalytics(classroomId: string): Promise<OwnerAnalyticsResponse> {
+  async getOwnerAnalytics(
+    classroomId: string,
+  ): Promise<OwnerAnalyticsResponse> {
     const now = new Date();
     const todayStartUtc = this.startOfUtcDay(now);
     const tomorrowStartUtc = this.addUtcDays(todayStartUtc, 1);
@@ -663,36 +763,51 @@ export class AdminService {
     const weekStartUtc = this.startOfUtcWeek(todayStartUtc);
     const weekEndUtc = this.addUtcDays(weekStartUtc, 7);
 
-    const [totalUsers, totalPosts, totalResources, totalQuizzes, dailyActiveUsers, weeklyActivity, topCourses, userGrowth] =
-      await Promise.all([
-        this.memberRepo
-          .createQueryBuilder('member')
-          .where('member.classroomId = :classroomId', { classroomId })
-          .getCount(),
-        this.postRepo
-          .createQueryBuilder('post')
-          .where('post.classroomId = :classroomId', { classroomId })
-          .andWhere('post.parentId IS NULL')
-          .getCount(),
-        this.resourceRepo
-          .createQueryBuilder('resource')
-          .where('resource.classroomId = :classroomId', { classroomId })
-          .getCount(),
-        this.quizRepo
-          .createQueryBuilder('quiz')
-          .where('quiz.classroomId = :classroomId', { classroomId })
-          .getCount(),
-        this.getDailyActiveUsersByDate(classroomId, sevenDayWindowStartUtc, tomorrowStartUtc),
-        this.getWeeklyActivity(classroomId, weekStartUtc, weekEndUtc),
-        this.getTopCourses(classroomId),
-        this.getUserGrowth(classroomId, now),
-      ]);
+    const [
+      totalUsers,
+      totalPosts,
+      totalResources,
+      totalQuizzes,
+      dailyActiveUsers,
+      weeklyActivity,
+      topCourses,
+      userGrowth,
+    ] = await Promise.all([
+      this.memberRepo
+        .createQueryBuilder('member')
+        .where('member.classroomId = :classroomId', { classroomId })
+        .getCount(),
+      this.postRepo
+        .createQueryBuilder('post')
+        .where('post.classroomId = :classroomId', { classroomId })
+        .andWhere('post.parentId IS NULL')
+        .getCount(),
+      this.resourceRepo
+        .createQueryBuilder('resource')
+        .where('resource.classroomId = :classroomId', { classroomId })
+        .getCount(),
+      this.quizRepo
+        .createQueryBuilder('quiz')
+        .where('quiz.classroomId = :classroomId', { classroomId })
+        .getCount(),
+      this.getDailyActiveUsersByDate(
+        classroomId,
+        sevenDayWindowStartUtc,
+        tomorrowStartUtc,
+      ),
+      this.getWeeklyActivity(classroomId, weekStartUtc, weekEndUtc),
+      this.getTopCourses(classroomId),
+      this.getUserGrowth(classroomId, now),
+    ]);
 
     const todayKey = this.toUtcDateKey(todayStartUtc);
     const activeToday = dailyActiveUsers.get(todayKey)?.size || 0;
-    const avgDailyActive = Math.round(this.averageDailyActive(dailyActiveUsers, sevenDayWindowStartUtc, 7));
+    const avgDailyActive = Math.round(
+      this.averageDailyActive(dailyActiveUsers, sevenDayWindowStartUtc, 7),
+    );
     const sevenDayActiveUsers = this.countDistinctUsers(dailyActiveUsers);
-    const engagementRate = totalUsers > 0 ? Math.round((sevenDayActiveUsers / totalUsers) * 100) : 0;
+    const engagementRate =
+      totalUsers > 0 ? Math.round((sevenDayActiveUsers / totalUsers) * 100) : 0;
 
     return {
       totalUsers,
@@ -708,7 +823,9 @@ export class AdminService {
     };
   }
 
-  async getOwnerExportDatasets(classroomId: string): Promise<OwnerExportDatasetSummary[]> {
+  async getOwnerExportDatasets(
+    classroomId: string,
+  ): Promise<OwnerExportDatasetSummary[]> {
     const [users, posts, resources, quizzes] = await Promise.all([
       this.memberRepo
         .createQueryBuilder('member')
@@ -736,7 +853,9 @@ export class AdminService {
       analytics: AdminService.EXPORT_LOG_WINDOW_DAYS,
     };
 
-    return (Object.keys(AdminService.EXPORT_DATASET_DETAILS) as OwnerExportDatasetId[]).map((id) => ({
+    return (
+      Object.keys(AdminService.EXPORT_DATASET_DETAILS) as OwnerExportDatasetId[]
+    ).map((id) => ({
       id,
       label: AdminService.EXPORT_DATASET_DETAILS[id].label,
       description: AdminService.EXPORT_DATASET_DETAILS[id].description,
@@ -763,7 +882,13 @@ export class AdminService {
     }
 
     const datasetEntries = await Promise.all(
-      datasetIds.map(async (datasetId) => [datasetId, await this.buildExportDataset(classroomId, datasetId)] as const),
+      datasetIds.map(
+        async (datasetId) =>
+          [
+            datasetId,
+            await this.buildExportDataset(classroomId, datasetId),
+          ] as const,
+      ),
     );
 
     return {
@@ -775,8 +900,13 @@ export class AdminService {
     };
   }
 
-  async updateFeatureToggles(classroomId: string, toggles: Record<string, boolean>) {
-    const classroom = await this.classroomRepo.findOne({ where: { id: classroomId } });
+  async updateFeatureToggles(
+    classroomId: string,
+    toggles: Record<string, boolean>,
+  ) {
+    const classroom = await this.classroomRepo.findOne({
+      where: { id: classroomId },
+    });
     if (!classroom) {
       throw new BadRequestException('Classroom not found');
     }
@@ -818,7 +948,9 @@ export class AdminService {
     return result;
   }
 
-  private normalizeExportDatasetIds(requestedDatasetIds: OwnerExportDatasetId[]): OwnerExportDatasetId[] {
+  private normalizeExportDatasetIds(
+    requestedDatasetIds: OwnerExportDatasetId[],
+  ): OwnerExportDatasetId[] {
     if (!Array.isArray(requestedDatasetIds)) return [];
 
     const allowed = new Set<OwnerExportDatasetId>([
@@ -832,20 +964,29 @@ export class AdminService {
     const normalized = Array.from(
       new Set(
         requestedDatasetIds.map((id) =>
-          String(id || '').trim().toLowerCase(),
+          String(id || '')
+            .trim()
+            .toLowerCase(),
         ),
       ),
     );
 
-    const invalid = normalized.filter((id) => !allowed.has(id as OwnerExportDatasetId));
+    const invalid = normalized.filter(
+      (id) => !allowed.has(id as OwnerExportDatasetId),
+    );
     if (invalid.length) {
-      throw new BadRequestException(`Unknown export dataset(s): ${invalid.join(', ')}`);
+      throw new BadRequestException(
+        `Unknown export dataset(s): ${invalid.join(', ')}`,
+      );
     }
 
     return normalized as OwnerExportDatasetId[];
   }
 
-  private async buildExportDataset(classroomId: string, datasetId: OwnerExportDatasetId) {
+  private async buildExportDataset(
+    classroomId: string,
+    datasetId: OwnerExportDatasetId,
+  ) {
     switch (datasetId) {
       case 'users':
         return this.exportUsersDataset(classroomId);
@@ -1052,7 +1193,10 @@ export class AdminService {
   private async exportAnalyticsDataset(classroomId: string) {
     const now = new Date();
     const endExclusive = this.addUtcDays(this.startOfUtcDay(now), 1);
-    const startInclusive = this.addUtcDays(endExclusive, -AdminService.EXPORT_LOG_WINDOW_DAYS);
+    const startInclusive = this.addUtcDays(
+      endExclusive,
+      -AdminService.EXPORT_LOG_WINDOW_DAYS,
+    );
     const [summary, dailyActivity] = await Promise.all([
       this.getOwnerAnalytics(classroomId),
       this.getDailyActivityBreakdown(classroomId, startInclusive, endExclusive),
@@ -1083,7 +1227,13 @@ export class AdminService {
       activeUsers: number;
     }[]
   > {
-    const [postsByDay, resourcesByDay, quizzesByDay, attemptsByDay, dailyActiveUsers] = await Promise.all([
+    const [
+      postsByDay,
+      resourcesByDay,
+      quizzesByDay,
+      attemptsByDay,
+      dailyActiveUsers,
+    ] = await Promise.all([
       this.postRepo
         .createQueryBuilder('post')
         .select('DATE(post.createdAt)', 'dateKey')
@@ -1124,14 +1274,25 @@ export class AdminService {
       this.getDailyActiveUsersByDate(classroomId, startInclusive, endExclusive),
     ]);
 
-    const postsMap = new Map(postsByDay.map((row) => [row.dateKey, Number(row.total || 0)]));
-    const resourcesMap = new Map(resourcesByDay.map((row) => [row.dateKey, Number(row.total || 0)]));
-    const quizzesMap = new Map(quizzesByDay.map((row) => [row.dateKey, Number(row.total || 0)]));
-    const attemptsMap = new Map(attemptsByDay.map((row) => [row.dateKey, Number(row.total || 0)]));
+    const postsMap = new Map(
+      postsByDay.map((row) => [row.dateKey, Number(row.total || 0)]),
+    );
+    const resourcesMap = new Map(
+      resourcesByDay.map((row) => [row.dateKey, Number(row.total || 0)]),
+    );
+    const quizzesMap = new Map(
+      quizzesByDay.map((row) => [row.dateKey, Number(row.total || 0)]),
+    );
+    const attemptsMap = new Map(
+      attemptsByDay.map((row) => [row.dateKey, Number(row.total || 0)]),
+    );
 
     const days = Math.max(
       1,
-      Math.ceil((endExclusive.getTime() - startInclusive.getTime()) / (24 * 60 * 60 * 1000)),
+      Math.ceil(
+        (endExclusive.getTime() - startInclusive.getTime()) /
+          (24 * 60 * 60 * 1000),
+      ),
     );
 
     return Array.from({ length: days }).map((_, offset) => {
@@ -1148,7 +1309,10 @@ export class AdminService {
     });
   }
 
-  private estimateDatasetSizeBytes(datasetId: OwnerExportDatasetId, recordCount: number): number {
+  private estimateDatasetSizeBytes(
+    datasetId: OwnerExportDatasetId,
+    recordCount: number,
+  ): number {
     const count = Math.max(1, recordCount);
     if (datasetId === 'users') return 2048 + count * 520;
     if (datasetId === 'posts') return 3072 + count * 920;
@@ -1158,11 +1322,13 @@ export class AdminService {
   }
 
   private slugify(value: string): string {
-    return value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'classroom';
+    return (
+      value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'classroom'
+    );
   }
 
   private async getDailyActiveUsersByDate(
@@ -1170,48 +1336,56 @@ export class AdminService {
     startInclusive: Date,
     endExclusive: Date,
   ): Promise<Map<string, Set<string>>> {
-    const [loungeEvents, resourceEvents, quizEvents, attemptEvents] = await Promise.all([
-      this.postRepo
-        .createQueryBuilder('post')
-        .select('post.authorId', 'userId')
-        .addSelect('DATE(post.createdAt)', 'dayKey')
-        .where('post.classroomId = :classroomId', { classroomId })
-        .andWhere('post.authorId IS NOT NULL')
-        .andWhere('post.createdAt >= :startInclusive', { startInclusive })
-        .andWhere('post.createdAt < :endExclusive', { endExclusive })
-        .getRawMany<ActivityEventRow>(),
-      this.resourceRepo
-        .createQueryBuilder('resource')
-        .select('resource.uploaderId', 'userId')
-        .addSelect('DATE(resource.createdAt)', 'dayKey')
-        .where('resource.classroomId = :classroomId', { classroomId })
-        .andWhere('resource.uploaderId IS NOT NULL')
-        .andWhere('resource.createdAt >= :startInclusive', { startInclusive })
-        .andWhere('resource.createdAt < :endExclusive', { endExclusive })
-        .getRawMany<ActivityEventRow>(),
-      this.quizRepo
-        .createQueryBuilder('quiz')
-        .select('quiz.authorId', 'userId')
-        .addSelect('DATE(quiz.createdAt)', 'dayKey')
-        .where('quiz.classroomId = :classroomId', { classroomId })
-        .andWhere('quiz.authorId IS NOT NULL')
-        .andWhere('quiz.createdAt >= :startInclusive', { startInclusive })
-        .andWhere('quiz.createdAt < :endExclusive', { endExclusive })
-        .getRawMany<ActivityEventRow>(),
-      this.attemptRepo
-        .createQueryBuilder('attempt')
-        .innerJoin('attempt.quiz', 'quiz')
-        .select('attempt.userId', 'userId')
-        .addSelect('DATE(attempt.completedAt)', 'dayKey')
-        .where('quiz.classroomId = :classroomId', { classroomId })
-        .andWhere('attempt.userId IS NOT NULL')
-        .andWhere('attempt.completedAt >= :startInclusive', { startInclusive })
-        .andWhere('attempt.completedAt < :endExclusive', { endExclusive })
-        .getRawMany<ActivityEventRow>(),
-    ]);
+    const [loungeEvents, resourceEvents, quizEvents, attemptEvents] =
+      await Promise.all([
+        this.postRepo
+          .createQueryBuilder('post')
+          .select('post.authorId', 'userId')
+          .addSelect('DATE(post.createdAt)', 'dayKey')
+          .where('post.classroomId = :classroomId', { classroomId })
+          .andWhere('post.authorId IS NOT NULL')
+          .andWhere('post.createdAt >= :startInclusive', { startInclusive })
+          .andWhere('post.createdAt < :endExclusive', { endExclusive })
+          .getRawMany<ActivityEventRow>(),
+        this.resourceRepo
+          .createQueryBuilder('resource')
+          .select('resource.uploaderId', 'userId')
+          .addSelect('DATE(resource.createdAt)', 'dayKey')
+          .where('resource.classroomId = :classroomId', { classroomId })
+          .andWhere('resource.uploaderId IS NOT NULL')
+          .andWhere('resource.createdAt >= :startInclusive', { startInclusive })
+          .andWhere('resource.createdAt < :endExclusive', { endExclusive })
+          .getRawMany<ActivityEventRow>(),
+        this.quizRepo
+          .createQueryBuilder('quiz')
+          .select('quiz.authorId', 'userId')
+          .addSelect('DATE(quiz.createdAt)', 'dayKey')
+          .where('quiz.classroomId = :classroomId', { classroomId })
+          .andWhere('quiz.authorId IS NOT NULL')
+          .andWhere('quiz.createdAt >= :startInclusive', { startInclusive })
+          .andWhere('quiz.createdAt < :endExclusive', { endExclusive })
+          .getRawMany<ActivityEventRow>(),
+        this.attemptRepo
+          .createQueryBuilder('attempt')
+          .innerJoin('attempt.quiz', 'quiz')
+          .select('attempt.userId', 'userId')
+          .addSelect('DATE(attempt.completedAt)', 'dayKey')
+          .where('quiz.classroomId = :classroomId', { classroomId })
+          .andWhere('attempt.userId IS NOT NULL')
+          .andWhere('attempt.completedAt >= :startInclusive', {
+            startInclusive,
+          })
+          .andWhere('attempt.completedAt < :endExclusive', { endExclusive })
+          .getRawMany<ActivityEventRow>(),
+      ]);
 
     const result = new Map<string, Set<string>>();
-    const events = [...loungeEvents, ...resourceEvents, ...quizEvents, ...attemptEvents];
+    const events = [
+      ...loungeEvents,
+      ...resourceEvents,
+      ...quizEvents,
+      ...attemptEvents,
+    ];
 
     for (const row of events) {
       if (!row.userId) continue;
@@ -1227,7 +1401,9 @@ export class AdminService {
     classroomId: string,
     weekStartInclusive: Date,
     weekEndExclusive: Date,
-  ): Promise<{ day: string; posts: number; resources: number; quizzes: number }[]> {
+  ): Promise<
+    { day: string; posts: number; resources: number; quizzes: number }[]
+  > {
     const [postRows, resourceRows, quizRows] = await Promise.all([
       this.postRepo
         .createQueryBuilder('post')
@@ -1235,7 +1411,9 @@ export class AdminService {
         .addSelect('COUNT(post.id)', 'total')
         .where('post.classroomId = :classroomId', { classroomId })
         .andWhere('post.parentId IS NULL')
-        .andWhere('post.createdAt >= :weekStartInclusive', { weekStartInclusive })
+        .andWhere('post.createdAt >= :weekStartInclusive', {
+          weekStartInclusive,
+        })
         .andWhere('post.createdAt < :weekEndExclusive', { weekEndExclusive })
         .groupBy('DATE(post.createdAt)')
         .getRawMany<{ dateKey: string; total: string }>(),
@@ -1244,8 +1422,12 @@ export class AdminService {
         .select('DATE(resource.createdAt)', 'dateKey')
         .addSelect('COUNT(resource.id)', 'total')
         .where('resource.classroomId = :classroomId', { classroomId })
-        .andWhere('resource.createdAt >= :weekStartInclusive', { weekStartInclusive })
-        .andWhere('resource.createdAt < :weekEndExclusive', { weekEndExclusive })
+        .andWhere('resource.createdAt >= :weekStartInclusive', {
+          weekStartInclusive,
+        })
+        .andWhere('resource.createdAt < :weekEndExclusive', {
+          weekEndExclusive,
+        })
         .groupBy('DATE(resource.createdAt)')
         .getRawMany<{ dateKey: string; total: string }>(),
       this.quizRepo
@@ -1253,15 +1435,23 @@ export class AdminService {
         .select('DATE(quiz.createdAt)', 'dateKey')
         .addSelect('COUNT(quiz.id)', 'total')
         .where('quiz.classroomId = :classroomId', { classroomId })
-        .andWhere('quiz.createdAt >= :weekStartInclusive', { weekStartInclusive })
+        .andWhere('quiz.createdAt >= :weekStartInclusive', {
+          weekStartInclusive,
+        })
         .andWhere('quiz.createdAt < :weekEndExclusive', { weekEndExclusive })
         .groupBy('DATE(quiz.createdAt)')
         .getRawMany<{ dateKey: string; total: string }>(),
     ]);
 
-    const postMap = new Map(postRows.map((row) => [row.dateKey, Number(row.total || 0)]));
-    const resourceMap = new Map(resourceRows.map((row) => [row.dateKey, Number(row.total || 0)]));
-    const quizMap = new Map(quizRows.map((row) => [row.dateKey, Number(row.total || 0)]));
+    const postMap = new Map(
+      postRows.map((row) => [row.dateKey, Number(row.total || 0)]),
+    );
+    const resourceMap = new Map(
+      resourceRows.map((row) => [row.dateKey, Number(row.total || 0)]),
+    );
+    const quizMap = new Map(
+      quizRows.map((row) => [row.dateKey, Number(row.total || 0)]),
+    );
 
     return Array.from({ length: 7 }).map((_, dayIndex) => {
       const date = this.addUtcDays(weekStartInclusive, dayIndex);
@@ -1275,56 +1465,59 @@ export class AdminService {
     });
   }
 
-  private async getTopCourses(classroomId: string): Promise<{ code: string; name: string; engagement: number }[]> {
-    const [courseRows, resourceRows, quizRows, attemptRows, loungeRows] = await Promise.all([
-      this.courseRepo
-        .createQueryBuilder('course')
-        .select('UPPER(course.code)', 'code')
-        .addSelect('course.name', 'name')
-        .where('course.classroomId = :classroomId', { classroomId })
-        .andWhere('course.code IS NOT NULL')
-        .andWhere('TRIM(course.code) != \'\'')
-        .getRawMany<{ code: string; name: string }>(),
-      this.resourceRepo
-        .createQueryBuilder('resource')
-        .innerJoin('resource.course', 'course')
-        .select('UPPER(course.code)', 'code')
-        .addSelect('COUNT(resource.id)', 'total')
-        .where('resource.classroomId = :classroomId', { classroomId })
-        .andWhere('course.code IS NOT NULL')
-        .andWhere('TRIM(course.code) != \'\'')
-        .groupBy('UPPER(course.code)')
-        .getRawMany<{ code: string; total: string }>(),
-      this.quizRepo
-        .createQueryBuilder('quiz')
-        .select('UPPER(quiz.courseCode)', 'code')
-        .addSelect('COUNT(quiz.id)', 'total')
-        .where('quiz.classroomId = :classroomId', { classroomId })
-        .andWhere('quiz.courseCode IS NOT NULL')
-        .andWhere('TRIM(quiz.courseCode) != \'\'')
-        .groupBy('UPPER(quiz.courseCode)')
-        .getRawMany<{ code: string; total: string }>(),
-      this.attemptRepo
-        .createQueryBuilder('attempt')
-        .innerJoin('attempt.quiz', 'quiz')
-        .select('UPPER(quiz.courseCode)', 'code')
-        .addSelect('COUNT(attempt.id)', 'total')
-        .where('quiz.classroomId = :classroomId', { classroomId })
-        .andWhere('quiz.courseCode IS NOT NULL')
-        .andWhere('TRIM(quiz.courseCode) != \'\'')
-        .groupBy('UPPER(quiz.courseCode)')
-        .getRawMany<{ code: string; total: string }>(),
-      this.postRepo
-        .createQueryBuilder('post')
-        .select('UPPER(post.course)', 'code')
-        .addSelect('COUNT(post.id)', 'total')
-        .where('post.classroomId = :classroomId', { classroomId })
-        .andWhere('post.parentId IS NULL')
-        .andWhere('post.course IS NOT NULL')
-        .andWhere('TRIM(post.course) != \'\'')
-        .groupBy('UPPER(post.course)')
-        .getRawMany<{ code: string; total: string }>(),
-    ]);
+  private async getTopCourses(
+    classroomId: string,
+  ): Promise<{ code: string; name: string; engagement: number }[]> {
+    const [courseRows, resourceRows, quizRows, attemptRows, loungeRows] =
+      await Promise.all([
+        this.courseRepo
+          .createQueryBuilder('course')
+          .select('UPPER(course.code)', 'code')
+          .addSelect('course.name', 'name')
+          .where('course.classroomId = :classroomId', { classroomId })
+          .andWhere('course.code IS NOT NULL')
+          .andWhere("TRIM(course.code) != ''")
+          .getRawMany<{ code: string; name: string }>(),
+        this.resourceRepo
+          .createQueryBuilder('resource')
+          .innerJoin('resource.course', 'course')
+          .select('UPPER(course.code)', 'code')
+          .addSelect('COUNT(resource.id)', 'total')
+          .where('resource.classroomId = :classroomId', { classroomId })
+          .andWhere('course.code IS NOT NULL')
+          .andWhere("TRIM(course.code) != ''")
+          .groupBy('UPPER(course.code)')
+          .getRawMany<{ code: string; total: string }>(),
+        this.quizRepo
+          .createQueryBuilder('quiz')
+          .select('UPPER(quiz.courseCode)', 'code')
+          .addSelect('COUNT(quiz.id)', 'total')
+          .where('quiz.classroomId = :classroomId', { classroomId })
+          .andWhere('quiz.courseCode IS NOT NULL')
+          .andWhere("TRIM(quiz.courseCode) != ''")
+          .groupBy('UPPER(quiz.courseCode)')
+          .getRawMany<{ code: string; total: string }>(),
+        this.attemptRepo
+          .createQueryBuilder('attempt')
+          .innerJoin('attempt.quiz', 'quiz')
+          .select('UPPER(quiz.courseCode)', 'code')
+          .addSelect('COUNT(attempt.id)', 'total')
+          .where('quiz.classroomId = :classroomId', { classroomId })
+          .andWhere('quiz.courseCode IS NOT NULL')
+          .andWhere("TRIM(quiz.courseCode) != ''")
+          .groupBy('UPPER(quiz.courseCode)')
+          .getRawMany<{ code: string; total: string }>(),
+        this.postRepo
+          .createQueryBuilder('post')
+          .select('UPPER(post.course)', 'code')
+          .addSelect('COUNT(post.id)', 'total')
+          .where('post.classroomId = :classroomId', { classroomId })
+          .andWhere('post.parentId IS NULL')
+          .andWhere('post.course IS NOT NULL')
+          .andWhere("TRIM(post.course) != ''")
+          .groupBy('UPPER(post.course)')
+          .getRawMany<{ code: string; total: string }>(),
+      ]);
 
     const courseNames = new Map<string, string>();
     for (const row of courseRows) {
@@ -1332,7 +1525,15 @@ export class AdminService {
       courseNames.set(row.code, row.name || row.code);
     }
 
-    type CourseTotals = { code: string; name: string; resources: number; quizzes: number; attempts: number; lounge: number; score: number };
+    type CourseTotals = {
+      code: string;
+      name: string;
+      resources: number;
+      quizzes: number;
+      attempts: number;
+      lounge: number;
+      score: number;
+    };
     const totals = new Map<string, CourseTotals>();
 
     const ensureCourse = (code: string): CourseTotals => {
@@ -1421,14 +1622,19 @@ export class AdminService {
         .getRawMany<{ monthKey: string; total: string }>(),
     ]);
 
-    const monthlyNewUsers = new Map(monthlyRows.map((row) => [row.monthKey, Number(row.total || 0)]));
+    const monthlyNewUsers = new Map(
+      monthlyRows.map((row) => [row.monthKey, Number(row.total || 0)]),
+    );
     let runningTotal = beforeWindowTotal;
 
     return monthStarts.map((monthStart) => {
       const monthKey = this.toMonthKey(monthStart);
       runningTotal += monthlyNewUsers.get(monthKey) || 0;
       return {
-        month: monthStart.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }),
+        month: monthStart.toLocaleString('en-US', {
+          month: 'short',
+          timeZone: 'UTC',
+        }),
         users: runningTotal,
       };
     });
@@ -1481,7 +1687,9 @@ export class AdminService {
   }
 
   private getTrailingUtcMonthStarts(date: Date, count: number): Date[] {
-    const currentMonthStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+    const currentMonthStart = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1),
+    );
     const result: Date[] = [];
     for (let i = count - 1; i >= 0; i -= 1) {
       result.push(this.addUtcMonths(currentMonthStart, -i));

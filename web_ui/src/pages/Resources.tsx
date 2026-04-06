@@ -7,6 +7,7 @@ import {
   deleteResource,
   fetchResourceStats,
   fetchResources,
+  type ResourceListResponse,
   updateResource,
   updateResourceFile,
   uploadResourceFile,
@@ -31,6 +32,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -392,6 +398,10 @@ const Resources = () => {
   const [deleting, setDeleting] = useState<Resource | null>(null);
   const [reporting, setReporting] = useState<Resource | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const resourcesInfiniteQueryKey = useMemo(
+    () => ["resources", "infinite", { courseFilter, typeFilter, search }] as const,
+    [courseFilter, typeFilter, search],
+  );
 
   const coursesQuery = useQuery({
     queryKey: ["courses", "resources", semId],
@@ -408,7 +418,7 @@ const Resources = () => {
   );
 
   const resourcesQuery = useInfiniteQuery({
-    queryKey: ["resources", "infinite", { courseFilter, typeFilter, search }],
+    queryKey: resourcesInfiniteQueryKey,
     queryFn: ({ pageParam = 1 }) =>
       fetchResources({
         page: pageParam,
@@ -435,6 +445,56 @@ const Resources = () => {
     queryClient.invalidateQueries({ queryKey: ["resources", "infinite"] });
     queryClient.invalidateQueries({ queryKey: ["resources", "stats"] });
   };
+
+  const prependCreatedResourceToTop = useCallback((resource: Resource) => {
+    if (courseFilter !== "all" && resource.courseId !== courseFilter) return;
+    if (typeFilter !== "all" && resource.type !== (typeFilter as ResourceType)) return;
+
+    const searchTerm = search.trim().toLowerCase();
+    if (searchTerm) {
+      const haystack = [
+        resource.title,
+        resource.description || "",
+        resource.tags.join(" "),
+        resource.course?.code || "",
+        resource.course?.name || "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(searchTerm)) return;
+    }
+
+    queryClient.setQueryData<{
+      pages: ResourceListResponse[];
+      pageParams: unknown[];
+    }>(resourcesInfiniteQueryKey, (prev) => {
+      if (!prev) return prev;
+      const alreadyExists = prev.pages.some((page) =>
+        page.data.some((item) => item.id === resource.id),
+      );
+      const totalDelta = alreadyExists ? 0 : 1;
+
+      const pages = prev.pages.map((page, pageIndex) => {
+        const deduped = page.data.filter((item) => item.id !== resource.id);
+        const nextData = pageIndex === 0 ? [resource, ...deduped] : deduped;
+        const nextTotal = page.meta.total + totalDelta;
+        return {
+          ...page,
+          data: nextData,
+          meta: {
+            ...page.meta,
+            total: nextTotal,
+            lastPage: Math.max(1, Math.ceil(nextTotal / page.meta.limit)),
+          },
+        };
+      });
+
+      return {
+        ...prev,
+        pages,
+      };
+    });
+  }, [courseFilter, queryClient, resourcesInfiniteQueryKey, search, typeFilter]);
 
   const createMutation = useMutation({
     mutationFn: async (payload: {
@@ -468,7 +528,8 @@ const Resources = () => {
         tags: payload.tags,
       });
     },
-    onSuccess: () => {
+    onSuccess: (createdResource) => {
+      prependCreatedResourceToTop(createdResource);
       invalidateResourceQueries();
       toast({ title: "Resource created" });
       setFormOpen(false);
@@ -617,12 +678,17 @@ const Resources = () => {
       ) : (
         <div className="space-y-2">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{totalCount} result{totalCount === 1 ? "" : "s"}</p>
-          {resources.map((resource, idx) => (
-            <div
-              key={resource.id}
-              ref={idx === resources.length - 1 ? lastElementRef : undefined}
-              className="border border-border bg-card p-3 sm:p-4 hover:bg-card transition-colors space-y-2 overflow-hidden"
-            >
+          {resources.map((resource, idx) => {
+            const edited = isResourceEdited(resource);
+            const editedAtLabel = formatResourceDateTime(
+              resource.updatedAt || resource.createdAt,
+            );
+            return (
+              <div
+                key={resource.id}
+                ref={idx === resources.length - 1 ? lastElementRef : undefined}
+                className="border border-border bg-card p-3 sm:p-4 hover:bg-card transition-colors space-y-2 overflow-hidden"
+              >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="font-bold text-sm break-words line-clamp-2">{resource.title}</p>
@@ -636,14 +702,25 @@ const Resources = () => {
               </div>
 
               <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{resource.description || "No description"}</p>
-              <p className="text-[10px] text-muted-foreground">
-                Created {formatResourceDateTime(resource.createdAt)} · Updated {formatResourceDateTime(resource.updatedAt || resource.createdAt)}
-                {isResourceEdited(resource) && (
-                  <span className="ml-1.5 inline-flex items-center border border-border px-1 py-0 uppercase tracking-wider text-[9px] font-semibold text-primary">
-                    Edited
-                  </span>
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span>Created {formatResourceDateTime(resource.createdAt)}</span>
+                {edited && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center border border-border px-1 py-0 uppercase tracking-wider text-[9px] font-semibold text-primary hover:bg-primary/5"
+                        aria-label="Show edited timestamp"
+                      >
+                        Edited
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto max-w-[260px] p-2 text-xs" align="start">
+                      Edited {editedAtLabel}
+                    </PopoverContent>
+                  </Popover>
                 )}
-              </p>
+              </div>
               <ResourceInlinePreview resource={resource} />
 
               <div className="flex flex-wrap gap-1">
@@ -689,8 +766,9 @@ const Resources = () => {
                   </Button>
                 )}
                 </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
           {resourcesQuery.isFetchingNextPage && (
             <div className="flex justify-center py-3">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

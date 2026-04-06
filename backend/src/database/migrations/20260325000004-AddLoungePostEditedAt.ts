@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddLoungePostEditedAt20260325000004
-  implements MigrationInterface
-{
+export class AddLoungePostEditedAt20260325000004 implements MigrationInterface {
   name = 'AddLoungePostEditedAt20260325000004';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

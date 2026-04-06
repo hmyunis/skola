@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { Classroom } from '../../classrooms/entities/classroom.entity';
 import { Course } from './course.entity';
 
@@ -7,7 +14,9 @@ export class Semester {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Classroom, (classroom) => classroom.semesters, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Classroom, (classroom) => classroom.semesters, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'classroomId' })
   classroom: Classroom;
 

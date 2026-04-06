@@ -43,6 +43,10 @@ export class CreateScheduleItemDto {
   @IsOptional()
   @IsBoolean()
   isDraft?: boolean;
+
+  @IsOptional()
+  @IsIn(['auto', 'on', 'off'])
+  fireMode?: 'auto' | 'on' | 'off';
 }
 
 export class UpdateScheduleItemDto {
@@ -81,4 +85,8 @@ export class UpdateScheduleItemDto {
   @IsOptional()
   @IsBoolean()
   isDraft?: boolean;
+
+  @IsOptional()
+  @IsIn(['auto', 'on', 'off'])
+  fireMode?: 'auto' | 'on' | 'off';
 }

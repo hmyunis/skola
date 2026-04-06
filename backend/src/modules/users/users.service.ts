@@ -40,7 +40,9 @@ export interface AccountDeletionContext {
 export class UsersService {
   private readonly byokEncryptionKey: Buffer;
 
-  private toScopedProfilePayload(member: ClassroomMember): Record<string, unknown> {
+  private toScopedProfilePayload(
+    member: ClassroomMember,
+  ): Record<string, unknown> {
     const user = member.user;
     return {
       id: user.id,
@@ -83,7 +85,7 @@ export class UsersService {
 
   async create(userData: Partial<User>): Promise<User> {
     userData.anonymousId = userData.anonymousId || this.generateAnonymousId();
-    
+
     // First user defaults to OWNER
     const count = await this.usersRepository.count();
     if (count === 0) {
@@ -174,7 +176,9 @@ export class UsersService {
       relations: ['classroom'],
     });
     if (!membership?.classroom) {
-      throw new NotFoundException('Membership in this classroom was not found.');
+      throw new NotFoundException(
+        'Membership in this classroom was not found.',
+      );
     }
 
     if (membership.role !== UserRole.OWNER) {
@@ -218,82 +222,91 @@ export class UsersService {
   ): Promise<void> {
     const normalizedSuccessorMemberId = (successorMemberId || '').trim();
 
-    await this.classroomMembersRepository.manager.transaction(async (manager) => {
-      const memberRepo = manager.getRepository(ClassroomMember);
-      const notificationRepo = manager.getRepository(InAppNotification);
+    await this.classroomMembersRepository.manager.transaction(
+      async (manager) => {
+        const memberRepo = manager.getRepository(ClassroomMember);
+        const notificationRepo = manager.getRepository(InAppNotification);
 
-      const membership = await memberRepo.findOne({
-        where: {
-          classroom: { id: classroomId },
-          user: { id: userId },
-        },
-        relations: ['classroom'],
-      });
-      if (!membership?.classroom) {
-        throw new NotFoundException('Membership in this classroom was not found.');
-      }
-
-      const classroomName = membership.classroom.name || 'this classroom';
-      if (membership.role === UserRole.OWNER) {
-        const adminMembers = await memberRepo.find({
+        const membership = await memberRepo.findOne({
           where: {
             classroom: { id: classroomId },
-            role: UserRole.ADMIN,
+            user: { id: userId },
           },
-          relations: ['user'],
-          order: { joinedAt: 'ASC' },
+          relations: ['classroom'],
         });
-
-        if (!adminMembers.length) {
-          throw new BadRequestException(
-            `Promote an admin in ${classroomName} before leaving this classroom.`,
+        if (!membership?.classroom) {
+          throw new NotFoundException(
+            'Membership in this classroom was not found.',
           );
         }
 
-        if (!normalizedSuccessorMemberId) {
-          throw new BadRequestException(
-            `Choose an admin successor for ${classroomName} before leaving this classroom.`,
+        const classroomName = membership.classroom.name || 'this classroom';
+        if (membership.role === UserRole.OWNER) {
+          const adminMembers = await memberRepo.find({
+            where: {
+              classroom: { id: classroomId },
+              role: UserRole.ADMIN,
+            },
+            relations: ['user'],
+            order: { joinedAt: 'ASC' },
+          });
+
+          if (!adminMembers.length) {
+            throw new BadRequestException(
+              `Promote an admin in ${classroomName} before leaving this classroom.`,
+            );
+          }
+
+          if (!normalizedSuccessorMemberId) {
+            throw new BadRequestException(
+              `Choose an admin successor for ${classroomName} before leaving this classroom.`,
+            );
+          }
+
+          const successorMembership = adminMembers.find(
+            (adminMember) => adminMember.id === normalizedSuccessorMemberId,
           );
+          if (!successorMembership?.user?.id) {
+            throw new BadRequestException(
+              `Selected successor for ${classroomName} is invalid.`,
+            );
+          }
+          if (successorMembership.user.id === userId) {
+            throw new BadRequestException(
+              'Please choose a different admin as successor.',
+            );
+          }
+
+          successorMembership.role = UserRole.OWNER;
+          await memberRepo.save(successorMembership);
         }
 
-        const successorMembership = adminMembers.find(
-          (adminMember) => adminMember.id === normalizedSuccessorMemberId,
-        );
-        if (!successorMembership?.user?.id) {
-          throw new BadRequestException(
-            `Selected successor for ${classroomName} is invalid.`,
-          );
-        }
-        if (successorMembership.user.id === userId) {
-          throw new BadRequestException('Please choose a different admin as successor.');
-        }
+        await notificationRepo
+          .createQueryBuilder()
+          .delete()
+          .from(InAppNotification)
+          .where('userId = :userId', { userId })
+          .andWhere('classroomId = :classroomId', { classroomId })
+          .execute();
 
-        successorMembership.role = UserRole.OWNER;
-        await memberRepo.save(successorMembership);
-      }
-
-      await notificationRepo
-        .createQueryBuilder()
-        .delete()
-        .from(InAppNotification)
-        .where('userId = :userId', { userId })
-        .andWhere('classroomId = :classroomId', { classroomId })
-        .execute();
-
-      await memberRepo
-        .createQueryBuilder()
-        .delete()
-        .from(ClassroomMember)
-        .where('id = :membershipId', { membershipId: membership.id })
-        .execute();
-    });
+        await memberRepo
+          .createQueryBuilder()
+          .delete()
+          .from(ClassroomMember)
+          .where('id = :membershipId', { membershipId: membership.id })
+          .execute();
+      },
+    );
   }
 
   async getImageUploadSettings(
     userId: string,
     classroomId: string,
   ): Promise<UserImageUploadSettings> {
-    const member = await this.findMemberWithSensitiveFields(userId, classroomId);
+    const member = await this.findMemberWithSensitiveFields(
+      userId,
+      classroomId,
+    );
     if (!member) {
       throw new NotFoundException('User not found in this classroom');
     }
@@ -305,13 +318,18 @@ export class UsersService {
     classroomId: string,
     dto: UpdateImageUploadSettingsDto,
   ): Promise<UserImageUploadSettings> {
-    const member = await this.findMemberWithSensitiveFields(userId, classroomId);
+    const member = await this.findMemberWithSensitiveFields(
+      userId,
+      classroomId,
+    );
     if (!member) {
       throw new NotFoundException('User not found in this classroom');
     }
 
     const requestedUsePersonal =
-      dto.usePersonalApiKey === undefined ? member.usePersonalImgBbApiKey : dto.usePersonalApiKey;
+      dto.usePersonalApiKey === undefined
+        ? member.usePersonalImgBbApiKey
+        : dto.usePersonalApiKey;
     const normalizedApiKey = (dto.apiKey || '').trim();
     const shouldStoreNewApiKey = normalizedApiKey.length > 0;
     const shouldClearApiKey = Boolean(dto.clearApiKey);
@@ -339,12 +357,19 @@ export class UsersService {
     return this.toImageUploadSettings(member);
   }
 
-  async resolveImgbbApiKeyForUser(userId: string, classroomId: string): Promise<{
+  async resolveImgbbApiKeyForUser(
+    userId: string,
+    classroomId: string,
+  ): Promise<{
     usePersonalApiKey: boolean;
     personalApiKey: string | null;
   }> {
-    const member = await this.findMemberWithSensitiveFields(userId, classroomId);
-    if (!member) throw new NotFoundException('User not found in this classroom');
+    const member = await this.findMemberWithSensitiveFields(
+      userId,
+      classroomId,
+    );
+    if (!member)
+      throw new NotFoundException('User not found in this classroom');
 
     if (!member.usePersonalImgBbApiKey) {
       return { usePersonalApiKey: false, personalApiKey: null };
@@ -396,9 +421,9 @@ export class UsersService {
 
   private deriveByokEncryptionKey(): Buffer {
     const secretSeed = (
-      this.configService.get<string>('BYOK_ENCRYPTION_KEY')
-      || this.configService.get<string>('JWT_SECRET')
-      || ''
+      this.configService.get<string>('BYOK_ENCRYPTION_KEY') ||
+      this.configService.get<string>('JWT_SECRET') ||
+      ''
     ).trim();
 
     if (!secretSeed) {
@@ -412,8 +437,15 @@ export class UsersService {
 
   private encryptSecret(plain: string): string {
     const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', this.byokEncryptionKey, iv);
-    const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+    const cipher = crypto.createCipheriv(
+      'aes-256-gcm',
+      this.byokEncryptionKey,
+      iv,
+    );
+    const encrypted = Buffer.concat([
+      cipher.update(plain, 'utf8'),
+      cipher.final(),
+    ]);
     const tag = cipher.getAuthTag();
     return `${iv.toString('base64')}.${tag.toString('base64')}.${encrypted.toString('base64')}`;
   }
@@ -421,19 +453,30 @@ export class UsersService {
   private decryptSecret(payload: string): string {
     const parts = payload.split('.');
     if (parts.length !== 3) {
-      throw new InternalServerErrorException('Stored encrypted API key format is invalid.');
+      throw new InternalServerErrorException(
+        'Stored encrypted API key format is invalid.',
+      );
     }
 
     try {
       const iv = Buffer.from(parts[0], 'base64');
       const authTag = Buffer.from(parts[1], 'base64');
       const ciphertext = Buffer.from(parts[2], 'base64');
-      const decipher = crypto.createDecipheriv('aes-256-gcm', this.byokEncryptionKey, iv);
+      const decipher = crypto.createDecipheriv(
+        'aes-256-gcm',
+        this.byokEncryptionKey,
+        iv,
+      );
       decipher.setAuthTag(authTag);
-      const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+      const decrypted = Buffer.concat([
+        decipher.update(ciphertext),
+        decipher.final(),
+      ]);
       return decrypted.toString('utf8');
     } catch {
-      throw new InternalServerErrorException('Unable to decrypt stored API key.');
+      throw new InternalServerErrorException(
+        'Unable to decrypt stored API key.',
+      );
     }
   }
 

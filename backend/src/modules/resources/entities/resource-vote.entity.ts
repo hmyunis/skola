@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+} from 'typeorm';
 import { Resource } from './resource.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -13,7 +20,9 @@ export class ResourceVote {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Resource, resource => resource.votes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Resource, (resource) => resource.votes, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'resourceId' })
   resource: Resource;
 

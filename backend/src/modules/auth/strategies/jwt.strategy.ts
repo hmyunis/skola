@@ -14,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!jwtSecret) {
       throw new Error('JWT_SECRET environment variable is not set');
     }
-    
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -30,6 +30,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     // Attach user object to the Request (req.user)
-    return user; 
+    return user;
   }
 }

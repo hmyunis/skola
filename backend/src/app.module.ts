@@ -20,7 +20,7 @@ import { SearchModule } from './modules/search/search.module';
 import { enforceMysqlUtcSession } from './database/mysql-utc-session';
 
 @Module({
-  imports:[
+  imports: [
     // 1. Global Configuration
     ConfigModule.forRoot({
       isGlobal: true,
@@ -48,9 +48,7 @@ import { enforceMysqlUtcSession } from './database/mysql-utc-session';
           throw new Error('TypeORM options were not provided.');
         }
 
-        const dataSource = await new DataSource(
-          options as DataSourceOptions,
-        ).initialize();
+        const dataSource = await new DataSource(options).initialize();
 
         await enforceMysqlUtcSession(dataSource, {
           log: (message) => console.log(`[DB UTC] ${message}`),
@@ -66,7 +64,7 @@ import { enforceMysqlUtcSession } from './database/mysql-utc-session';
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) =>[
+      useFactory: (config: ConfigService) => [
         {
           ttl: config.get<number>('THROTTLE_TTL', 60000), // Default 1 min
           limit: config.get<number>('THROTTLE_LIMIT', 100), // Default 100 req/min
@@ -91,7 +89,7 @@ import { enforceMysqlUtcSession } from './database/mysql-utc-session';
     SearchModule,
   ],
   controllers: [AppController],
-  providers:[
+  providers: [
     AppService,
     {
       provide: APP_GUARD,

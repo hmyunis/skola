@@ -36,7 +36,14 @@ import { FeatureGuard } from "@/components/FeatureGuard";
 
 import { useEffect } from "react";
 import { useThemeStore } from "@/stores/themeStore";
+import { useAuthStore } from "@/stores/authStore";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+
+function LaunchRedirect() {
+  const { user, accessToken } = useAuthStore();
+  const isAuthenticated = Boolean(user && accessToken);
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+}
 
 const App = () => {
   useEffect(() => {
@@ -53,6 +60,7 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
+            <Route path="/launch" element={<LaunchRedirect />} />
             <Route path="/get-started" element={<Onboarding />} />
             <Route path="/login" element={<Login />} />
             <Route path="/join/:code" element={<JoinPage />} />

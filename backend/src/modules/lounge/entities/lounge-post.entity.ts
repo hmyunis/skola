@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Classroom } from '../../classrooms/entities/classroom.entity';
 
@@ -7,7 +15,9 @@ export class LoungePost {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Classroom, (classroom) => classroom.loungePosts, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Classroom, (classroom) => classroom.loungePosts, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'classroomId' })
   classroom: Classroom;
 
@@ -37,14 +47,17 @@ export class LoungePost {
   course: string | null; // e.g., "CS301" — optional course reference
 
   // Self-referencing relationship for threaded replies
-  @ManyToOne(() => LoungePost, post => post.replies, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => LoungePost, (post) => post.replies, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'parentId' })
   parent: LoungePost;
 
   @Column({ nullable: true })
   parentId: string;
 
-  @OneToMany(() => LoungePost, post => post.parent)
+  @OneToMany(() => LoungePost, (post) => post.parent)
   replies: LoungePost[];
 
   // JSON column to store emoji reactions: {"💀": 5, "🤡": 2}

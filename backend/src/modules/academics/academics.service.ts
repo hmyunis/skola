@@ -7,7 +7,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, DeepPartial } from 'typeorm';
 import { Semester } from './entities/semester.entity';
 import { Course } from './entities/course.entity';
-import { ScheduleItem, ScheduleType } from './entities/schedule-item.entity';
+import {
+  ScheduleFireMode,
+  ScheduleItem,
+  ScheduleType,
+} from './entities/schedule-item.entity';
 import {
   AssessmentConfidenceVote,
   AssessmentRating,
@@ -23,7 +27,10 @@ import {
   CourseQueryDto,
 } from './dto/course.dto';
 import { CreateSemesterDto, UpdateSemesterDto } from './dto/semester.dto';
-import { CreateScheduleItemDto, UpdateScheduleItemDto } from './dto/schedule.dto';
+import {
+  CreateScheduleItemDto,
+  UpdateScheduleItemDto,
+} from './dto/schedule.dto';
 import {
   AssessmentQueryDto,
   CreateAssessmentDto,
@@ -69,9 +76,16 @@ export class AcademicsService {
     // If this is set to active, deactivate all others in this classroom
     const isActive = data.status === 'active';
     if (isActive) {
-      await this.semesterRepo.update({ classroomId }, { isActive: false, status: 'archived' });
+      await this.semesterRepo.update(
+        { classroomId },
+        { isActive: false, status: 'archived' },
+      );
     }
-    const semester = this.semesterRepo.create({ ...data, classroomId, isActive });
+    const semester = this.semesterRepo.create({
+      ...data,
+      classroomId,
+      isActive,
+    });
     return this.semesterRepo.save(semester);
   }
 
@@ -91,13 +105,23 @@ export class AcademicsService {
     });
   }
 
-  async updateSemester(classroomId: string, semesterId: string, data: UpdateSemesterDto) {
-    const semester = await this.semesterRepo.findOne({ where: { id: semesterId, classroomId } });
+  async updateSemester(
+    classroomId: string,
+    semesterId: string,
+    data: UpdateSemesterDto,
+  ) {
+    const semester = await this.semesterRepo.findOne({
+      where: { id: semesterId, classroomId },
+    });
     if (!semester) throw new NotFoundException('Semester not found');
 
-    const becomingActive = data.status === 'active' && semester.status !== 'active';
+    const becomingActive =
+      data.status === 'active' && semester.status !== 'active';
     if (becomingActive) {
-      await this.semesterRepo.update({ classroomId }, { isActive: false, status: 'archived' });
+      await this.semesterRepo.update(
+        { classroomId },
+        { isActive: false, status: 'archived' },
+      );
       semester.isActive = true;
     } else if (data.status && data.status !== 'active') {
       semester.isActive = false;
@@ -108,13 +132,17 @@ export class AcademicsService {
   }
 
   async deleteSemester(classroomId: string, semesterId: string) {
-    const semester = await this.semesterRepo.findOne({ where: { id: semesterId, classroomId } });
+    const semester = await this.semesterRepo.findOne({
+      where: { id: semesterId, classroomId },
+    });
     if (!semester) throw new NotFoundException('Semester not found');
-    
+
     // Check if it has courses
     const courseCount = await this.courseRepo.count({ where: { semesterId } });
     if (courseCount > 0) {
-      throw new BadRequestException('Cannot delete semester with existing courses');
+      throw new BadRequestException(
+        'Cannot delete semester with existing courses',
+      );
     }
 
     await this.semesterRepo.remove(semester);
@@ -272,7 +300,13 @@ export class AcademicsService {
     }
 
     this.validateTimeRange(dto.startTime, dto.endTime);
-    await this.ensureNoTimeConflict(classroomId, activeSemester.id, dto.dayOfWeek, dto.startTime, dto.endTime);
+    await this.ensureNoTimeConflict(
+      classroomId,
+      activeSemester.id,
+      dto.dayOfWeek,
+      dto.startTime,
+      dto.endTime,
+    );
 
     const item = this.scheduleRepo.create({
       courseId: dto.courseId,
@@ -283,13 +317,19 @@ export class AcademicsService {
       location: dto.location || null,
       isOnline: dto.isOnline ?? false,
       isDraft: dto.isDraft ?? true,
+      fireMode:
+        (dto.fireMode as ScheduleFireMode | undefined) ?? ScheduleFireMode.AUTO,
     } as DeepPartial<ScheduleItem>);
 
     const saved = await this.scheduleRepo.save(item);
     return this.getScheduleItemById(classroomId, saved.id);
   }
 
-  async updateScheduleItem(classroomId: string, itemId: string, dto: UpdateScheduleItemDto) {
+  async updateScheduleItem(
+    classroomId: string,
+    itemId: string,
+    dto: UpdateScheduleItemDto,
+  ) {
     const activeSemester = await this.getActiveSemester(classroomId);
     const existing = await this.getScheduleItemById(classroomId, itemId);
 
@@ -304,8 +344,12 @@ export class AcademicsService {
       targetCourseId = dto.courseId;
     }
 
-    const nextStart = dto.startTime ? this.normalizeTime(dto.startTime) : existing.startTime;
-    const nextEnd = dto.endTime ? this.normalizeTime(dto.endTime) : existing.endTime;
+    const nextStart = dto.startTime
+      ? this.normalizeTime(dto.startTime)
+      : existing.startTime;
+    const nextEnd = dto.endTime
+      ? this.normalizeTime(dto.endTime)
+      : existing.endTime;
     const nextDay = dto.dayOfWeek ?? existing.dayOfWeek;
 
     this.validateTimeRange(nextStart, nextEnd);
@@ -327,6 +371,10 @@ export class AcademicsService {
       ...(dto.location !== undefined && { location: dto.location || null }),
       ...(dto.isOnline !== undefined && { isOnline: dto.isOnline }),
       ...(dto.isDraft !== undefined && { isDraft: dto.isDraft }),
+      ...(dto.isDraft === true && { confirmedAt: null, confirmedById: null }),
+      ...(dto.fireMode !== undefined && {
+        fireMode: dto.fireMode as ScheduleFireMode,
+      }),
     });
 
     const saved = await this.scheduleRepo.save(existing);
@@ -345,16 +393,44 @@ export class AcademicsService {
       .createQueryBuilder('schedule')
       .innerJoin('schedule.course', 'course')
       .where('course.classroomId = :classroomId', { classroomId })
-      .andWhere('course.semesterId = :semesterId', { semesterId: activeSemester.id })
+      .andWhere('course.semesterId = :semesterId', {
+        semesterId: activeSemester.id,
+      })
       .andWhere('schedule.isDraft = :isDraft', { isDraft: true })
       .select('schedule.id', 'id')
-      .getRawMany();
+      .getRawMany<{ id: string }>();
 
-    const ids = draftIdsRaw.map((row) => row.id as string);
+    const ids = draftIdsRaw.map((row) => row.id);
     if (!ids.length) return { updated: 0 };
 
     await this.scheduleRepo.update({ id: In(ids) }, { isDraft: false });
     return { updated: ids.length };
+  }
+
+  async confirmScheduleItem(
+    classroomId: string,
+    itemId: string,
+    userId: string,
+  ) {
+    const existing = await this.getScheduleItemById(classroomId, itemId);
+    if (existing.isDraft) {
+      throw new BadRequestException('Draft schedule item cannot be confirmed');
+    }
+
+    existing.confirmedAt = new Date();
+    existing.confirmedById = userId;
+
+    const saved = await this.scheduleRepo.save(existing);
+    return this.getScheduleItemById(classroomId, saved.id);
+  }
+
+  async unconfirmScheduleItem(classroomId: string, itemId: string) {
+    const existing = await this.getScheduleItemById(classroomId, itemId);
+    existing.confirmedAt = null;
+    existing.confirmedById = null;
+
+    const saved = await this.scheduleRepo.save(existing);
+    return this.getScheduleItemById(classroomId, saved.id);
   }
 
   async getWeeklySchedule(classroomId: string) {
@@ -386,7 +462,9 @@ export class AcademicsService {
     );
   }
 
-  async getDashboardQuickStats(classroomId: string): Promise<DashboardQuickStats> {
+  async getDashboardQuickStats(
+    classroomId: string,
+  ): Promise<DashboardQuickStats> {
     const activeSemester = await this.semesterRepo.findOne({
       where: { classroomId, isActive: true },
       select: ['id'],
@@ -404,7 +482,9 @@ export class AcademicsService {
       .createQueryBuilder('schedule')
       .innerJoin('schedule.course', 'course')
       .where('course.classroomId = :classroomId', { classroomId })
-      .andWhere('course.semesterId = :semesterId', { semesterId: activeSemester.id })
+      .andWhere('course.semesterId = :semesterId', {
+        semesterId: activeSemester.id,
+      })
       .andWhere('schedule.isDraft = :isDraft', { isDraft: false })
       .orderBy('schedule.dayOfWeek', 'ASC')
       .addOrderBy('schedule.startTime', 'ASC')
@@ -420,7 +500,10 @@ export class AcademicsService {
       return this.timeToMinutes(item.endTime) > nowMinutes;
     }).length;
 
-    const upcomingExams = this.countExamOccurrencesForRestOfMonth(scheduleItems, now);
+    const upcomingExams = this.countExamOccurrencesForRestOfMonth(
+      scheduleItems,
+      now,
+    );
 
     const pendingAssignments = await this.assessmentRepo.count({
       where: {
@@ -438,17 +521,28 @@ export class AcademicsService {
   }
 
   // ================= ASSESSMENTS =================
-  async getAssessments(classroomId: string, query: AssessmentQueryDto, userId: string) {
-    const targetSemesterId = await this.resolveAssessmentSemesterId(classroomId, query.semesterId);
+  async getAssessments(
+    classroomId: string,
+    query: AssessmentQueryDto,
+    userId: string,
+  ) {
+    const targetSemesterId = await this.resolveAssessmentSemesterId(
+      classroomId,
+      query.semesterId,
+    );
     if (!targetSemesterId) return [];
 
     const qb = this.assessmentRepo
       .createQueryBuilder('assessment')
       .where('assessment.classroomId = :classroomId', { classroomId })
-      .andWhere('assessment.semesterId = :semesterId', { semesterId: targetSemesterId });
+      .andWhere('assessment.semesterId = :semesterId', {
+        semesterId: targetSemesterId,
+      });
 
     if (query.courseCode) {
-      qb.andWhere('assessment.courseCode = :courseCode', { courseCode: query.courseCode });
+      qb.andWhere('assessment.courseCode = :courseCode', {
+        courseCode: query.courseCode,
+      });
     }
 
     if (query.type) {
@@ -470,13 +564,15 @@ export class AcademicsService {
       );
     }
 
-    qb
-      .orderBy('assessment.dueDate IS NULL', 'ASC')
+    qb.orderBy('assessment.dueDate IS NULL', 'ASC')
       .addOrderBy('assessment.dueDate', 'ASC')
       .addOrderBy('assessment.createdAt', 'DESC');
 
     const items = await qb.getMany();
-    const confidenceMeta = await this.getConfidenceMeta(items.map((item) => item.id), userId);
+    const confidenceMeta = await this.getConfidenceMeta(
+      items.map((item) => item.id),
+      userId,
+    );
 
     return items.map((assessment) =>
       this.toAssessmentResponse(
@@ -488,7 +584,10 @@ export class AcademicsService {
   }
 
   async getAssessmentStats(classroomId: string, query: AssessmentQueryDto) {
-    const targetSemesterId = await this.resolveAssessmentSemesterId(classroomId, query.semesterId);
+    const targetSemesterId = await this.resolveAssessmentSemesterId(
+      classroomId,
+      query.semesterId,
+    );
     if (!targetSemesterId) {
       return { total: 0, pending: 0, submitted: 0, overdue: 0 };
     }
@@ -496,10 +595,14 @@ export class AcademicsService {
     const baseQb = this.assessmentRepo
       .createQueryBuilder('assessment')
       .where('assessment.classroomId = :classroomId', { classroomId })
-      .andWhere('assessment.semesterId = :semesterId', { semesterId: targetSemesterId });
+      .andWhere('assessment.semesterId = :semesterId', {
+        semesterId: targetSemesterId,
+      });
 
     if (query.courseCode) {
-      baseQb.andWhere('assessment.courseCode = :courseCode', { courseCode: query.courseCode });
+      baseQb.andWhere('assessment.courseCode = :courseCode', {
+        courseCode: query.courseCode,
+      });
     }
 
     if (query.type) {
@@ -527,17 +630,24 @@ export class AcademicsService {
       baseQb.clone().getCount(),
       baseQb
         .clone()
-        .andWhere('assessment.status = :pendingStatus', { pendingStatus: AssessmentStatus.PENDING })
-        .getCount(),
-      baseQb
-        .clone()
-        .andWhere('assessment.status IN (:...submittedStatuses)', {
-          submittedStatuses: [AssessmentStatus.SUBMITTED, AssessmentStatus.GRADED],
+        .andWhere('assessment.status = :pendingStatus', {
+          pendingStatus: AssessmentStatus.PENDING,
         })
         .getCount(),
       baseQb
         .clone()
-        .andWhere('assessment.status = :pendingStatus', { pendingStatus: AssessmentStatus.PENDING })
+        .andWhere('assessment.status IN (:...submittedStatuses)', {
+          submittedStatuses: [
+            AssessmentStatus.SUBMITTED,
+            AssessmentStatus.GRADED,
+          ],
+        })
+        .getCount(),
+      baseQb
+        .clone()
+        .andWhere('assessment.status = :pendingStatus', {
+          pendingStatus: AssessmentStatus.PENDING,
+        })
         .andWhere('assessment.dueDate < :today', { today })
         .getCount(),
     ]);
@@ -545,7 +655,11 @@ export class AcademicsService {
     return { total, pending, submitted, overdue };
   }
 
-  async createAssessment(classroomId: string, authorId: string, dto: CreateAssessmentDto) {
+  async createAssessment(
+    classroomId: string,
+    authorId: string,
+    dto: CreateAssessmentDto,
+  ) {
     const semester = await this.semesterRepo.findOne({
       where: { id: dto.semesterId, classroomId },
       select: ['id'],
@@ -600,7 +714,9 @@ export class AcademicsService {
       ...(dto.type !== undefined && { type: dto.type }),
       ...(dto.courseCode !== undefined && { courseCode: dto.courseCode }),
       ...(dto.dueDate !== undefined && { dueDate: dto.dueDate }),
-      ...(dto.description !== undefined && { description: dto.description?.trim() || null }),
+      ...(dto.description !== undefined && {
+        description: dto.description?.trim() || null,
+      }),
       ...(dto.maxScore !== undefined && { maxScore: dto.maxScore }),
       ...(dto.weight !== undefined && { weight: dto.weight }),
       ...(dto.status !== undefined && { status: dto.status }),
@@ -652,7 +768,11 @@ export class AcademicsService {
     return { saved: true };
   }
 
-  async clearAssessmentRating(classroomId: string, assessmentId: string, userId: string) {
+  async clearAssessmentRating(
+    classroomId: string,
+    assessmentId: string,
+    userId: string,
+  ) {
     await this.assertAssessmentExists(classroomId, assessmentId);
 
     const existing = await this.assessmentRatingRepo.findOne({
@@ -720,7 +840,9 @@ export class AcademicsService {
     });
 
     if (hasOverlap) {
-      throw new BadRequestException('Schedule item overlaps with an existing class');
+      throw new BadRequestException(
+        'Schedule item overlaps with an existing class',
+      );
     }
   }
 
@@ -736,26 +858,27 @@ export class AcademicsService {
     return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
   }
 
-  private countExamOccurrencesForRestOfMonth(scheduleItems: ScheduleItem[], now: Date): number {
-    const exams = scheduleItems.filter((item) => item.type === ScheduleType.EXAM);
+  private countExamOccurrencesForRestOfMonth(
+    scheduleItems: ScheduleItem[],
+    now: Date,
+  ): number {
+    const exams = scheduleItems.filter(
+      (item) => item.type === ScheduleType.EXAM,
+    );
     if (exams.length === 0) return 0;
 
     const endOfMonth = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999,
-      ),
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999),
     );
 
     let total = 0;
 
     for (const exam of exams) {
-      const firstOccurrence = this.getNextOccurrence(exam.dayOfWeek, exam.startTime, now);
+      const firstOccurrence = this.getNextOccurrence(
+        exam.dayOfWeek,
+        exam.startTime,
+        now,
+      );
       if (!firstOccurrence) continue;
 
       const cursor = new Date(firstOccurrence);
@@ -778,15 +901,21 @@ export class AcademicsService {
     },
     userConfidence?: AssessmentConfidenceVote | null,
   ) {
-    const counts = distribution || { confident: 0, neutral: 0, struggling: 0, total: 0 };
+    const counts = distribution || {
+      confident: 0,
+      neutral: 0,
+      struggling: 0,
+      total: 0,
+    };
     const total = counts.total;
-    const percentages = total > 0
-      ? {
-          confident: Math.round((counts.confident / total) * 100),
-          neutral: Math.round((counts.neutral / total) * 100),
-          struggling: Math.round((counts.struggling / total) * 100),
-        }
-      : { confident: 0, neutral: 0, struggling: 0 };
+    const percentages =
+      total > 0
+        ? {
+            confident: Math.round((counts.confident / total) * 100),
+            neutral: Math.round((counts.neutral / total) * 100),
+            struggling: Math.round((counts.struggling / total) * 100),
+          }
+        : { confident: 0, neutral: 0, struggling: 0 };
 
     return {
       id: assessment.id,
@@ -808,7 +937,10 @@ export class AcademicsService {
     };
   }
 
-  private async assertAssessmentExists(classroomId: string, assessmentId: string) {
+  private async assertAssessmentExists(
+    classroomId: string,
+    assessmentId: string,
+  ) {
     const assessment = await this.assessmentRepo.findOne({
       where: { id: assessmentId, classroomId },
       select: ['id'],
@@ -837,7 +969,11 @@ export class AcademicsService {
       .where('rating.assessmentId IN (:...assessmentIds)', { assessmentIds })
       .groupBy('rating.assessmentId')
       .addGroupBy('rating.vote')
-      .getRawMany<{ assessmentId: string; vote: AssessmentConfidenceVote; count: string }>();
+      .getRawMany<{
+        assessmentId: string;
+        vote: AssessmentConfidenceVote;
+        count: string;
+      }>();
 
     for (const row of rows) {
       const current = countsByAssessmentId.get(row.assessmentId) || {
@@ -847,9 +983,12 @@ export class AcademicsService {
         total: 0,
       };
       const value = Number(row.count);
-      if (row.vote === AssessmentConfidenceVote.CONFIDENT) current.confident = value;
-      if (row.vote === AssessmentConfidenceVote.NEUTRAL) current.neutral = value;
-      if (row.vote === AssessmentConfidenceVote.STRUGGLING) current.struggling = value;
+      if (row.vote === AssessmentConfidenceVote.CONFIDENT)
+        current.confident = value;
+      if (row.vote === AssessmentConfidenceVote.NEUTRAL)
+        current.neutral = value;
+      if (row.vote === AssessmentConfidenceVote.STRUGGLING)
+        current.struggling = value;
       current.total = current.confident + current.neutral + current.struggling;
       countsByAssessmentId.set(row.assessmentId, current);
     }
@@ -866,7 +1005,10 @@ export class AcademicsService {
     return { countsByAssessmentId, userVoteByAssessmentId };
   }
 
-  private async resolveAssessmentSemesterId(classroomId: string, semesterId?: string) {
+  private async resolveAssessmentSemesterId(
+    classroomId: string,
+    semesterId?: string,
+  ) {
     if (semesterId) {
       const semester = await this.semesterRepo.findOne({
         where: { id: semesterId, classroomId },
@@ -886,10 +1028,15 @@ export class AcademicsService {
     return activeSemester?.id || null;
   }
 
-  private getNextOccurrence(dayOfWeek: number, startTime: string, from: Date): Date | null {
+  private getNextOccurrence(
+    dayOfWeek: number,
+    startTime: string,
+    from: Date,
+  ): Date | null {
     if (dayOfWeek < 0 || dayOfWeek > 6) return null;
 
-    const [hourRaw = '0', minuteRaw = '0', secondRaw = '0'] = startTime.split(':');
+    const [hourRaw = '0', minuteRaw = '0', secondRaw = '0'] =
+      startTime.split(':');
     const hours = Number(hourRaw);
     const minutes = Number(minuteRaw);
     const seconds = Number(secondRaw);

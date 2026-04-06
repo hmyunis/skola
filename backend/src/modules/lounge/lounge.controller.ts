@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, UseGuards, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  UseGuards,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { LoungeService } from './lounge.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentClassroom } from '../../core/decorators/current-classroom.decorator';
@@ -33,7 +43,12 @@ export class LoungeController {
     @Query() query: LoungeFeedQueryDto,
   ) {
     const { search, tag, course, sort, ...pagination } = query;
-    return this.loungeService.getFeed(classroomId, pagination, { search, tag, course, sort }, user.id);
+    return this.loungeService.getFeed(
+      classroomId,
+      pagination,
+      { search, tag, course, sort },
+      user.id,
+    );
   }
 
   @Get('mentions/users')
@@ -49,7 +64,7 @@ export class LoungeController {
     @Param('id') id: string,
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body() dto: { content?: string; tags?: string[]; course?: string }
+    @Body() dto: { content?: string; tags?: string[]; course?: string },
   ) {
     return this.loungeService.editPost(id, classroomId, user.id, dto);
   }
@@ -86,7 +101,7 @@ export class LoungeController {
     @Param('id') id: string,
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body() dto: { content: string; isAnonymous?: boolean }
+    @Body() dto: { content: string; isAnonymous?: boolean },
   ) {
     return this.loungeService.addReply(id, classroomId, user.id, dto);
   }
@@ -106,7 +121,13 @@ export class LoungeController {
   async reportContent(
     @CurrentClassroom() classroomId: string,
     @CurrentUser() user: User,
-    @Body() dto: { contentType: 'post' | 'reply'; contentId: string; reason: string; details?: string },
+    @Body()
+    dto: {
+      contentType: 'post' | 'reply';
+      contentId: string;
+      reason: string;
+      details?: string;
+    },
   ) {
     return this.loungeService.reportContent(classroomId, user.id, dto);
   }
@@ -118,7 +139,11 @@ export class LoungeController {
     @CurrentClassroom() classroomId: string,
     @Query() query: LoungeReportQueryDto,
   ) {
-    return this.loungeService.listReports(classroomId, query.status, query.type);
+    return this.loungeService.listReports(
+      classroomId,
+      query.status,
+      query.type,
+    );
   }
 
   @Post('reports/:id/review')

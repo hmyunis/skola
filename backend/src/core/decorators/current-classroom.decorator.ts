@@ -1,4 +1,8 @@
-import { createParamDecorator, ExecutionContext, BadRequestException } from '@nestjs/common';
+import {
+  createParamDecorator,
+  ExecutionContext,
+  BadRequestException,
+} from '@nestjs/common';
 
 export const CurrentClassroom = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): string => {
@@ -8,7 +12,11 @@ export const CurrentClassroom = createParamDecorator(
       ? rawClassroomId.find((item) => typeof item === 'string' && item.trim())
       : rawClassroomId;
 
-    if (!classroomId || typeof classroomId !== 'string' || !classroomId.trim()) {
+    if (
+      !classroomId ||
+      typeof classroomId !== 'string' ||
+      !classroomId.trim()
+    ) {
       throw new BadRequestException('X-Classroom-Id header is missing');
     }
     return classroomId.trim();

@@ -91,11 +91,12 @@ export class NotificationsService {
   private readonly vapidSubject: string | null;
   private readonly telegramBotToken: string | null;
 
-  private static readonly DEFAULT_PREFERENCES: NotificationPreferenceResponse = {
-    inAppAnnouncements: true,
-    browserPushAnnouncements: false,
-    botDmAnnouncements: false,
-  };
+  private static readonly DEFAULT_PREFERENCES: NotificationPreferenceResponse =
+    {
+      inAppAnnouncements: true,
+      browserPushAnnouncements: false,
+      botDmAnnouncements: false,
+    };
 
   constructor(
     @InjectRepository(ClassroomMember)
@@ -140,7 +141,8 @@ export class NotificationsService {
     const member = await this.membersRepository.findOne({
       where: { classroom: { id: classroomId }, user: { id: userId } },
     });
-    if (!member) throw new NotFoundException('User not found in this classroom');
+    if (!member)
+      throw new NotFoundException('User not found in this classroom');
     return this.normalizePreferences(member.notificationPreferences);
   }
 
@@ -152,7 +154,8 @@ export class NotificationsService {
     const member = await this.membersRepository.findOne({
       where: { classroom: { id: classroomId }, user: { id: userId } },
     });
-    if (!member) throw new NotFoundException('User not found in this classroom');
+    if (!member)
+      throw new NotFoundException('User not found in this classroom');
 
     const current = this.normalizePreferences(member.notificationPreferences);
     const next: NotificationPreferenceResponse = {
@@ -196,7 +199,9 @@ export class NotificationsService {
       throw new NotFoundException('User not found in this classroom');
     }
 
-    const preferences = this.normalizePreferences(member?.notificationPreferences);
+    const preferences = this.normalizePreferences(
+      member?.notificationPreferences,
+    );
     const targetClassroomId = classroomId;
 
     const now = Date.now();
@@ -305,9 +310,10 @@ export class NotificationsService {
       throw new BadRequestException('Invalid push subscription payload.');
     }
 
-    const existingByEndpoint = await this.webPushSubscriptionsRepository.findOne({
-      where: { endpoint },
-    });
+    const existingByEndpoint =
+      await this.webPushSubscriptionsRepository.findOne({
+        where: { endpoint },
+      });
 
     if (existingByEndpoint) {
       existingByEndpoint.userId = userId;
@@ -432,7 +438,9 @@ export class NotificationsService {
     return { success: true };
   }
 
-  async dispatchAnnouncementNotifications(options: DispatchAnnouncementOptions): Promise<void> {
+  async dispatchAnnouncementNotifications(
+    options: DispatchAnnouncementOptions,
+  ): Promise<void> {
     const { classroomId, announcement, actorUserId } = options;
 
     const members = await this.membersRepository.find({
@@ -456,9 +464,10 @@ export class NotificationsService {
     }
 
     const inAppRows = recipients
-      .filter((member) =>
-        this.normalizePreferences(member.notificationPreferences)
-          .inAppAnnouncements,
+      .filter(
+        (member) =>
+          this.normalizePreferences(member.notificationPreferences)
+            .inAppAnnouncements,
       )
       .map((member) =>
         this.inAppNotificationsRepository.create({
@@ -495,22 +504,23 @@ export class NotificationsService {
     };
 
     const pushUserIds = recipients
-      .filter((member) =>
-        this.normalizePreferences(member.notificationPreferences)
-          .browserPushAnnouncements,
+      .filter(
+        (member) =>
+          this.normalizePreferences(member.notificationPreferences)
+            .browserPushAnnouncements,
       )
       .map((member) => member.user.id);
 
     const priorityLabel = announcement.priority.toUpperCase();
     const link = this.buildFrontendLink('/announcements');
-    const announcementDmText =
-      `New announcement (${priorityLabel})\n\n${announcement.title}\n\n${announcement.content}${
-        link ? `\n\nOpen: ${link}` : ''
-      }`;
+    const announcementDmText = `New announcement (${priorityLabel})\n\n${announcement.title}\n\n${announcement.content}${
+      link ? `\n\nOpen: ${link}` : ''
+    }`;
     const botRecipients = recipients
       .filter((member) => {
-        const wantsDm = this.normalizePreferences(member.notificationPreferences)
-          .botDmAnnouncements;
+        const wantsDm = this.normalizePreferences(
+          member.notificationPreferences,
+        ).botDmAnnouncements;
         return wantsDm && Boolean(member.user.telegramId);
       })
       .map((member) => member.user);
@@ -561,14 +571,13 @@ export class NotificationsService {
       ? 'A new Lounge post tagged @everyone.'
       : 'A Lounge post mentioned you.';
     const body =
-      normalizedBody.length > 0
-        ? normalizedBody.slice(0, 240)
-        : fallbackBody;
+      normalizedBody.length > 0 ? normalizedBody.slice(0, 240) : fallbackBody;
 
     const inAppRows = recipientMembers
-      .filter((member) =>
-        this.normalizePreferences(member.notificationPreferences)
-          .inAppAnnouncements,
+      .filter(
+        (member) =>
+          this.normalizePreferences(member.notificationPreferences)
+            .inAppAnnouncements,
       )
       .map((member) =>
         this.inAppNotificationsRepository.create({
@@ -607,19 +616,20 @@ export class NotificationsService {
       },
     };
     const pushUserIds = recipientMembers
-      .filter((member) =>
-        this.normalizePreferences(member.notificationPreferences)
-          .browserPushAnnouncements,
+      .filter(
+        (member) =>
+          this.normalizePreferences(member.notificationPreferences)
+            .browserPushAnnouncements,
       )
       .map((member) => member.user.id);
 
     const link = this.buildFrontendLink('/lounge');
-    const mentionText =
-      `${title}\n\n${body}${link ? `\n\nOpen: ${link}` : ''}`;
+    const mentionText = `${title}\n\n${body}${link ? `\n\nOpen: ${link}` : ''}`;
     const botRecipients = recipientMembers
       .filter((member) => {
-        const wantsDm = this.normalizePreferences(member.notificationPreferences)
-          .botDmAnnouncements;
+        const wantsDm = this.normalizePreferences(
+          member.notificationPreferences,
+        ).botDmAnnouncements;
         return wantsDm && Boolean(member.user.telegramId);
       })
       .map((member) => member.user);
@@ -669,7 +679,9 @@ export class NotificationsService {
         } catch (error: any) {
           const statusCode = Number(error?.statusCode || error?.status || 0);
           if (statusCode === 404 || statusCode === 410) {
-            await this.webPushSubscriptionsRepository.delete({ id: subscription.id });
+            await this.webPushSubscriptionsRepository.delete({
+              id: subscription.id,
+            });
             return false;
           }
 
@@ -716,7 +728,10 @@ export class NotificationsService {
     return results.filter(Boolean).length;
   }
 
-  private async sendTelegramPrivateMessage(telegramId: number, text: string): Promise<void> {
+  private async sendTelegramPrivateMessage(
+    telegramId: number,
+    text: string,
+  ): Promise<void> {
     if (!this.telegramBotToken) {
       return;
     }
@@ -736,7 +751,8 @@ export class NotificationsService {
     audience: AnnouncementTargetAudience,
   ): boolean {
     if (audience === AnnouncementTargetAudience.ALL) return true;
-    if (audience === AnnouncementTargetAudience.STUDENTS) return role === UserRole.STUDENT;
+    if (audience === AnnouncementTargetAudience.STUDENTS)
+      return role === UserRole.STUDENT;
     return role === UserRole.ADMIN || role === UserRole.OWNER;
   }
 
@@ -795,6 +811,8 @@ export class NotificationsService {
   }
 
   private isWebPushConfigured() {
-    return Boolean(this.vapidPublicKey && this.vapidPrivateKey && this.vapidSubject);
+    return Boolean(
+      this.vapidPublicKey && this.vapidPrivateKey && this.vapidSubject,
+    );
   }
 }

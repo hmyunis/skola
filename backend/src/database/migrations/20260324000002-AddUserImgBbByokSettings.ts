@@ -4,21 +4,30 @@ export class AddUserImgBbByokSettings20260324000002 implements MigrationInterfac
   name = 'AddUserImgBbByokSettings20260324000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasUsePersonalColumn = await queryRunner.hasColumn('users', 'usePersonalImgBbApiKey');
+    const hasUsePersonalColumn = await queryRunner.hasColumn(
+      'users',
+      'usePersonalImgBbApiKey',
+    );
     if (!hasUsePersonalColumn) {
       await queryRunner.query(
         'ALTER TABLE `users` ADD COLUMN `usePersonalImgBbApiKey` tinyint(1) NOT NULL DEFAULT 0 AFTER `themeSettings`',
       );
     }
 
-    const hasCipherColumn = await queryRunner.hasColumn('users', 'imgbbApiKeyCiphertext');
+    const hasCipherColumn = await queryRunner.hasColumn(
+      'users',
+      'imgbbApiKeyCiphertext',
+    );
     if (!hasCipherColumn) {
       await queryRunner.query(
         'ALTER TABLE `users` ADD COLUMN `imgbbApiKeyCiphertext` text NULL AFTER `usePersonalImgBbApiKey`',
       );
     }
 
-    const hasHintColumn = await queryRunner.hasColumn('users', 'imgbbApiKeyHint');
+    const hasHintColumn = await queryRunner.hasColumn(
+      'users',
+      'imgbbApiKeyHint',
+    );
     if (!hasHintColumn) {
       await queryRunner.query(
         'ALTER TABLE `users` ADD COLUMN `imgbbApiKeyHint` varchar(8) NULL AFTER `imgbbApiKeyCiphertext`',
@@ -27,19 +36,34 @@ export class AddUserImgBbByokSettings20260324000002 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const hasHintColumn = await queryRunner.hasColumn('users', 'imgbbApiKeyHint');
+    const hasHintColumn = await queryRunner.hasColumn(
+      'users',
+      'imgbbApiKeyHint',
+    );
     if (hasHintColumn) {
-      await queryRunner.query('ALTER TABLE `users` DROP COLUMN `imgbbApiKeyHint`');
+      await queryRunner.query(
+        'ALTER TABLE `users` DROP COLUMN `imgbbApiKeyHint`',
+      );
     }
 
-    const hasCipherColumn = await queryRunner.hasColumn('users', 'imgbbApiKeyCiphertext');
+    const hasCipherColumn = await queryRunner.hasColumn(
+      'users',
+      'imgbbApiKeyCiphertext',
+    );
     if (hasCipherColumn) {
-      await queryRunner.query('ALTER TABLE `users` DROP COLUMN `imgbbApiKeyCiphertext`');
+      await queryRunner.query(
+        'ALTER TABLE `users` DROP COLUMN `imgbbApiKeyCiphertext`',
+      );
     }
 
-    const hasUsePersonalColumn = await queryRunner.hasColumn('users', 'usePersonalImgBbApiKey');
+    const hasUsePersonalColumn = await queryRunner.hasColumn(
+      'users',
+      'usePersonalImgBbApiKey',
+    );
     if (hasUsePersonalColumn) {
-      await queryRunner.query('ALTER TABLE `users` DROP COLUMN `usePersonalImgBbApiKey`');
+      await queryRunner.query(
+        'ALTER TABLE `users` DROP COLUMN `usePersonalImgBbApiKey`',
+      );
     }
   }
 }

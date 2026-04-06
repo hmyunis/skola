@@ -18,7 +18,10 @@ import {
   CourseQueryDto,
 } from './dto/course.dto';
 import { CreateSemesterDto, UpdateSemesterDto } from './dto/semester.dto';
-import { CreateScheduleItemDto, UpdateScheduleItemDto } from './dto/schedule.dto';
+import {
+  CreateScheduleItemDto,
+  UpdateScheduleItemDto,
+} from './dto/schedule.dto';
 import {
   AssessmentQueryDto,
   CreateAssessmentDto,
@@ -149,7 +152,12 @@ export class AcademicsController {
     @Param('id') id: string,
     @Body() dto: RateAssessmentDto,
   ) {
-    return this.academicsService.rateAssessment(classroomId, id, user.id, dto.vote);
+    return this.academicsService.rateAssessment(
+      classroomId,
+      id,
+      user.id,
+      dto.vote,
+    );
   }
 
   @Delete('assessments/:id/rating')
@@ -160,7 +168,11 @@ export class AcademicsController {
     @CurrentUser() user: User,
     @Param('id') id: string,
   ) {
-    return this.academicsService.clearAssessmentRating(classroomId, id, user.id);
+    return this.academicsService.clearAssessmentRating(
+      classroomId,
+      id,
+      user.id,
+    );
   }
 
   // ================= COURSES =================
@@ -263,5 +275,26 @@ export class AcademicsController {
   @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
   async publishScheduleDrafts(@CurrentClassroom() classroomId: string) {
     return this.academicsService.publishScheduleDrafts(classroomId);
+  }
+
+  @Post('schedule/:id/confirm')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async confirmScheduleItem(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.confirmScheduleItem(classroomId, id, user.id);
+  }
+
+  @Post('schedule/:id/unconfirm')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.ADMIN, UserRole.OWNER)
+  async unconfirmScheduleItem(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.unconfirmScheduleItem(classroomId, id);
   }
 }

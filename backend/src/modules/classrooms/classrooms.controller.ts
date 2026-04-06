@@ -23,7 +23,10 @@ import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
 export class ClassroomsController {
   constructor(private readonly classroomsService: ClassroomsService) {}
 
-  private assertClassroomScope(routeClassroomId: string, headerClassroomId: string) {
+  private assertClassroomScope(
+    routeClassroomId: string,
+    headerClassroomId: string,
+  ) {
     if (routeClassroomId !== headerClassroomId) {
       throw new ForbiddenException('Classroom scope mismatch');
     }
@@ -155,7 +158,11 @@ export class ClassroomsController {
     @Body()
     dto: { status: 'active' | 'suspended' | 'banned'; suspendedUntil?: Date },
   ) {
-    return this.classroomsService.updateMemberStatus(classroomId, memberId, dto);
+    return this.classroomsService.updateMemberStatus(
+      classroomId,
+      memberId,
+      dto,
+    );
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)

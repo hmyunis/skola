@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 import { Classroom } from '../../classrooms/entities/classroom.entity';
 import { Course } from '../../academics/entities/course.entity';
 import { User } from '../../users/entities/user.entity';
@@ -11,14 +19,19 @@ export class Quiz {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Classroom, (classroom) => classroom.quizzes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Classroom, (classroom) => classroom.quizzes, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'classroomId' })
   classroom: Classroom;
 
   @Column()
   classroomId: string;
 
-  @ManyToOne(() => Course, (course) => course.quizzes, { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => Course, (course) => course.quizzes, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
   @JoinColumn({ name: 'courseId' })
   course: Course;
 

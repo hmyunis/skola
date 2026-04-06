@@ -11,7 +11,13 @@ import { ClassroomsModule } from '../classrooms/classrooms.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Semester, Course, ScheduleItem, Assessment, AssessmentRating]),
+    TypeOrmModule.forFeature([
+      Semester,
+      Course,
+      ScheduleItem,
+      Assessment,
+      AssessmentRating,
+    ]),
     ClassroomsModule,
   ],
   controllers: [AcademicsController],

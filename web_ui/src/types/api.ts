@@ -19,6 +19,9 @@ export interface ClassSlot {
   startTime: Date;
   endTime: Date;
   draft?: boolean;
+  confirmedAt?: Date | null;
+  confirmedById?: string | null;
+  fireMode?: "auto" | "on" | "off";
 }
 
 export interface Assignment {

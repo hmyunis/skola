@@ -22,7 +22,7 @@ async function bootstrap() {
   app.use(urlencoded({ limit: '12mb', extended: true }));
 
   app.enableCors({
-    origin: frontendUrl || '*', // Restrict this in production!
+    origin: frontendUrl || '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });

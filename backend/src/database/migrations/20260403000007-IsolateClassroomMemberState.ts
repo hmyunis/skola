@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class IsolateClassroomMemberState20260403000007
-  implements MigrationInterface
-{
+export class IsolateClassroomMemberState20260403000007 implements MigrationInterface {
   name = 'IsolateClassroomMemberState20260403000007';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

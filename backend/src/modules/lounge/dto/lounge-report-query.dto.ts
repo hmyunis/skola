@@ -1,5 +1,8 @@
 import { IsEnum, IsOptional } from 'class-validator';
-import { LoungeReportContentType, LoungeReportStatus } from '../entities/lounge-report.entity';
+import {
+  LoungeReportContentType,
+  LoungeReportStatus,
+} from '../entities/lounge-report.entity';
 
 export class LoungeReportQueryDto {
   @IsOptional()

@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Classroom } from '../../classrooms/entities/classroom.entity';
 import { Course } from '../../academics/entities/course.entity';
@@ -18,14 +27,18 @@ export class Resource {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Classroom, (classroom) => classroom.resources, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Classroom, (classroom) => classroom.resources, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'classroomId' })
   classroom: Classroom;
 
   @Column()
   classroomId: string;
 
-  @ManyToOne(() => Course, (course) => course.resources, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Course, (course) => course.resources, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'courseId' })
   course: Course;
 

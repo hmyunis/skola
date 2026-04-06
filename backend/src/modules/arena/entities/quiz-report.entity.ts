@@ -21,7 +21,10 @@ export class QuizReport {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Quiz, (quiz) => quiz.reports, { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => Quiz, (quiz) => quiz.reports, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
   @JoinColumn({ name: 'quizId' })
   quiz: Quiz;
 
@@ -51,7 +54,11 @@ export class QuizReport {
   @Column({ type: 'text', nullable: true })
   details: string;
 
-  @Column({ type: 'enum', enum: QuizReportStatus, default: QuizReportStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: QuizReportStatus,
+    default: QuizReportStatus.PENDING,
+  })
   status: QuizReportStatus;
 
   @Column({ type: 'timestamp', nullable: true })

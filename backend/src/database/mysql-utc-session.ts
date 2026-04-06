@@ -17,7 +17,9 @@ function noOp(_message: string) {
 }
 
 function queryConnection(
-  connection: { query: (sql: string, callback: (error: unknown) => void) => void },
+  connection: {
+    query: (sql: string, callback: (error: unknown) => void) => void;
+  },
   sql: string,
 ) {
   return new Promise<void>((resolve, reject) => {
@@ -43,7 +45,9 @@ export async function enforceMysqlUtcSession(
     | {
         on?: (
           event: string,
-          listener: (connection: { query: (sql: string, callback: (err: unknown) => void) => void }) => void,
+          listener: (connection: {
+            query: (sql: string, callback: (err: unknown) => void) => void;
+          }) => void,
         ) => void;
         _allConnections?: Array<{
           query: (sql: string, callback: (err: unknown) => void) => void;
@@ -51,9 +55,9 @@ export async function enforceMysqlUtcSession(
       }
     | undefined;
 
-  const applyUtcToConnection = async (
-    connection: { query: (sql: string, callback: (err: unknown) => void) => void },
-  ) => {
+  const applyUtcToConnection = async (connection: {
+    query: (sql: string, callback: (err: unknown) => void) => void;
+  }) => {
     try {
       await queryConnection(connection, MYSQL_SET_UTC_SESSION_SQL);
     } catch (err: any) {
@@ -79,14 +83,14 @@ export async function enforceMysqlUtcSession(
     const existingConnections = Array.isArray(pool._allConnections)
       ? pool._allConnections
       : [];
-    await Promise.all(existingConnections.map((connection) => applyUtcToConnection(connection)));
+    await Promise.all(
+      existingConnections.map((connection) => applyUtcToConnection(connection)),
+    );
   }
 
   try {
     await dataSource.query(MYSQL_SET_UTC_SESSION_SQL);
-    const rows = (await dataSource.query(
-      MYSQL_VERIFY_SESSION_TIMEZONE_SQL,
-    )) as Array<{ sessionTimeZone?: string }>;
+    const rows = await dataSource.query(MYSQL_VERIFY_SESSION_TIMEZONE_SQL);
     const sessionTimeZone = rows?.[0]?.sessionTimeZone;
     if (sessionTimeZone === '+00:00' || sessionTimeZone === 'UTC') {
       log(`MySQL session timezone verified as ${sessionTimeZone}.`);
@@ -105,4 +109,3 @@ export async function enforceMysqlUtcSession(
     );
   }
 }
-

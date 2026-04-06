@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,7 +24,9 @@ export class ClassroomRoleGuard implements CanActivate {
 
   private normalizeClassroomId(value: unknown): string | null {
     if (Array.isArray(value)) {
-      const first = value.find((item) => typeof item === 'string' && item.trim());
+      const first = value.find(
+        (item) => typeof item === 'string' && item.trim(),
+      );
       return typeof first === 'string' ? first.trim() : null;
     }
     if (typeof value === 'string' && value.trim()) {
@@ -29,10 +36,10 @@ export class ClassroomRoleGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     const request = context.switchToHttp().getRequest();
     const user = request.user; // From JwtAuthGuard
@@ -54,9 +61,7 @@ export class ClassroomRoleGuard implements CanActivate {
     }
 
     if (member.status === ClassroomMemberStatus.BANNED) {
-      throw new ForbiddenException(
-        'Your access to this classroom is banned.',
-      );
+      throw new ForbiddenException('Your access to this classroom is banned.');
     }
 
     if (member.status === ClassroomMemberStatus.SUSPENDED) {
@@ -79,12 +84,17 @@ export class ClassroomRoleGuard implements CanActivate {
     }
 
     // Owner implicitly has all Admin rights
-    if (member.role === UserRole.OWNER && requiredRoles.includes(UserRole.ADMIN)) {
+    if (
+      member.role === UserRole.OWNER &&
+      requiredRoles.includes(UserRole.ADMIN)
+    ) {
       return true;
     }
 
     if (!requiredRoles.includes(member.role)) {
-      throw new ForbiddenException(`Require one of these roles: ${requiredRoles.join(', ')}`);
+      throw new ForbiddenException(
+        `Require one of these roles: ${requiredRoles.join(', ')}`,
+      );
     }
 
     return true;

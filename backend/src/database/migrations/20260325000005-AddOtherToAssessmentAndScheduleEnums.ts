@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddOtherToAssessmentAndScheduleEnums20260325000005
-  implements MigrationInterface
-{
+export class AddOtherToAssessmentAndScheduleEnums20260325000005 implements MigrationInterface {
   name = 'AddOtherToAssessmentAndScheduleEnums20260325000005';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -39,4 +37,3 @@ export class AddOtherToAssessmentAndScheduleEnums20260325000005
     );
   }
 }
-

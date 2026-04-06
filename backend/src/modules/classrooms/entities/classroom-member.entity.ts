@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  Unique,
+} from 'typeorm';
 import { Classroom } from './classroom.entity';
 import {
   User,
@@ -24,7 +31,9 @@ export class ClassroomMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Classroom, classroom => classroom.members, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Classroom, (classroom) => classroom.members, {
+    onDelete: 'CASCADE',
+  })
   classroom: Classroom;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })

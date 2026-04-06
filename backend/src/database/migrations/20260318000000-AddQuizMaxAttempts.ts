@@ -19,7 +19,9 @@ export class AddQuizMaxAttempts20260318000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     const hasColumn = await queryRunner.hasColumn('quizzes', 'maxAttempts');
     if (hasColumn) {
-      await queryRunner.query('ALTER TABLE `quizzes` DROP COLUMN `maxAttempts`');
+      await queryRunner.query(
+        'ALTER TABLE `quizzes` DROP COLUMN `maxAttempts`',
+      );
     }
   }
 }

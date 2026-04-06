@@ -35,14 +35,20 @@ export class ArenaService {
   constructor(
     @InjectRepository(Quiz) private quizRepo: Repository<Quiz>,
     @InjectRepository(QuizAttempt) private attemptRepo: Repository<QuizAttempt>,
-    @InjectRepository(QuizQuestion) private questionRepo: Repository<QuizQuestion>,
+    @InjectRepository(QuizQuestion)
+    private questionRepo: Repository<QuizQuestion>,
     @InjectRepository(QuizReport) private reportRepo: Repository<QuizReport>,
-    @InjectRepository(ClassroomMember) private memberRepo: Repository<ClassroomMember>,
+    @InjectRepository(ClassroomMember)
+    private memberRepo: Repository<ClassroomMember>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     private classroomService: ClassroomsService,
   ) {}
 
-  async getQuizzes(classroomId: string, userId: string, query: ArenaQuizQueryDto) {
+  async getQuizzes(
+    classroomId: string,
+    userId: string,
+    query: ArenaQuizQueryDto,
+  ) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const search = query.search?.trim();
@@ -135,7 +141,9 @@ export class ArenaService {
       attemptsUsed,
       attemptsRemaining,
       canAttempt: attemptsRemaining > 0,
-      questions: quiz.questions.map((question) => this.toQuestionResponse(question, quiz.courseCode)),
+      questions: quiz.questions.map((question) =>
+        this.toQuestionResponse(question, quiz.courseCode),
+      ),
     };
   }
 
@@ -146,13 +154,19 @@ export class ArenaService {
 
     if (!title) throw new BadRequestException('Quiz title is required');
     if (!courseCode) throw new BadRequestException('Course is required');
-    if (!data.questions?.length) throw new BadRequestException('At least one question is required');
+    if (!data.questions?.length)
+      throw new BadRequestException('At least one question is required');
 
     if (data.isAnonymous) {
-      const classroom = await this.classroomService.getClassroomById(classroomId);
-      const feature = (classroom.featureToggles as any[])?.find((f) => f.id === 'ft-anon-posting');
+      const classroom =
+        await this.classroomService.getClassroomById(classroomId);
+      const feature = (classroom.featureToggles as any[])?.find(
+        (f) => f.id === 'ft-anon-posting',
+      );
       if (feature && !feature.enabled) {
-        throw new BadRequestException('Anonymous posting is disabled in this classroom');
+        throw new BadRequestException(
+          'Anonymous posting is disabled in this classroom',
+        );
       }
     }
 
@@ -171,10 +185,14 @@ export class ArenaService {
         throw new BadRequestException(`Question ${index + 1} text is required`);
       }
       if (options.some((option) => !option)) {
-        throw new BadRequestException(`Question ${index + 1} has empty options`);
+        throw new BadRequestException(
+          `Question ${index + 1} has empty options`,
+        );
       }
       if (correctOptionIndex < 0 || correctOptionIndex >= options.length) {
-        throw new BadRequestException(`Question ${index + 1} has an invalid correct option`);
+        throw new BadRequestException(
+          `Question ${index + 1} has an invalid correct option`,
+        );
       }
 
       return this.questionRepo.create({
@@ -212,7 +230,9 @@ export class ArenaService {
 
     const role = await this.getClassroomRole(classroomId, userId);
     const canDelete =
-      quiz.authorId === userId || role === UserRole.ADMIN || role === UserRole.OWNER;
+      quiz.authorId === userId ||
+      role === UserRole.ADMIN ||
+      role === UserRole.OWNER;
 
     if (!canDelete) {
       throw new ForbiddenException('You can only delete your own quizzes');
@@ -240,7 +260,9 @@ export class ArenaService {
     if (!quiz) throw new NotFoundException('Quiz not found');
 
     const maxAttempts = this.resolveMaxAttempts(quiz.maxAttempts);
-    const attemptsUsed = await this.attemptRepo.count({ where: { quizId, userId } });
+    const attemptsUsed = await this.attemptRepo.count({
+      where: { quizId, userId },
+    });
     if (attemptsUsed >= maxAttempts) {
       throw new BadRequestException(
         `Attempt limit reached (${maxAttempts} max attempts for this quiz).`,
@@ -259,7 +281,8 @@ export class ArenaService {
       const selected = answers[index];
       if (selected === question.correctOptionIndex) {
         correctAnswers += 1;
-        score += this.difficultyXp[question.difficulty] || this.difficultyXp.medium;
+        score +=
+          this.difficultyXp[question.difficulty] || this.difficultyXp.medium;
       }
     });
 
@@ -305,8 +328,14 @@ export class ArenaService {
     const xp = attempts.reduce((sum, item) => sum + Number(item.score || 0), 0);
     const wins = attempts.reduce((sum, item) => sum + (item.won ? 1 : 0), 0);
     const totalPlayed = attempts.length;
-    const correctAnswers = attempts.reduce((sum, item) => sum + Number(item.correctAnswers || 0), 0);
-    const totalAnswers = attempts.reduce((sum, item) => sum + Number(item.totalQuestions || 0), 0);
+    const correctAnswers = attempts.reduce(
+      (sum, item) => sum + Number(item.correctAnswers || 0),
+      0,
+    );
+    const totalAnswers = attempts.reduce(
+      (sum, item) => sum + Number(item.totalQuestions || 0),
+      0,
+    );
 
     let bestStreak = 0;
     let runningStreak = 0;
@@ -333,7 +362,10 @@ export class ArenaService {
       bestStreak,
       correctAnswers,
       totalAnswers,
-      accuracy: totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0,
+      accuracy:
+        totalAnswers > 0
+          ? Math.round((correctAnswers / totalAnswers) * 100)
+          : 0,
       title: this.getArenaTitle(xp),
     };
   }
@@ -350,9 +382,12 @@ export class ArenaService {
       .where('quiz.classroomId = :classroomId', { classroomId });
 
     if (search) {
-      aggregateQb.andWhere('(user.name LIKE :search OR user.anonymousId LIKE :search)', {
-        search: `%${search}%`,
-      });
+      aggregateQb.andWhere(
+        '(user.name LIKE :search OR user.anonymousId LIKE :search)',
+        {
+          search: `%${search}%`,
+        },
+      );
     }
 
     const countResult = await aggregateQb
@@ -390,7 +425,9 @@ export class ArenaService {
       const totalAnswers = Number(row.totalAnswers || 0);
       const correctAnswers = Number(row.correctAnswers || 0);
       const accuracy =
-        totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+        totalAnswers > 0
+          ? Math.round((correctAnswers / totalAnswers) * 100)
+          : 0;
 
       return {
         rank: (page - 1) * limit + index + 1,
@@ -442,7 +479,9 @@ export class ArenaService {
       },
     });
     if (existing) {
-      throw new BadRequestException('You already submitted a pending report for this quiz');
+      throw new BadRequestException(
+        'You already submitted a pending report for this quiz',
+      );
     }
 
     const report = this.reportRepo.create({
@@ -497,7 +536,9 @@ export class ArenaService {
     }
 
     report.status =
-      data.status === 'resolved' ? QuizReportStatus.RESOLVED : QuizReportStatus.DISMISSED;
+      data.status === 'resolved'
+        ? QuizReportStatus.RESOLVED
+        : QuizReportStatus.DISMISSED;
     report.reviewedById = reviewerId;
     report.reviewedAt = new Date();
     await this.reportRepo.save(report);
@@ -535,7 +576,11 @@ export class ArenaService {
 
   private getAuthorDisplayName(
     quiz: Partial<Quiz> & {
-      author?: { name?: string | null; anonymousId?: string | null; deletedAt?: Date | null };
+      author?: {
+        name?: string | null;
+        anonymousId?: string | null;
+        deletedAt?: Date | null;
+      };
     },
   ) {
     if (quiz.author?.deletedAt) {
@@ -555,7 +600,10 @@ export class ArenaService {
     return 'Rookie';
   }
 
-  private async getClassroomRole(classroomId: string, userId: string): Promise<UserRole | null> {
+  private async getClassroomRole(
+    classroomId: string,
+    userId: string,
+  ): Promise<UserRole | null> {
     const member = await this.memberRepo.findOne({
       where: {
         classroom: { id: classroomId },
@@ -572,7 +620,10 @@ export class ArenaService {
     return normalized >= 1 ? normalized : 2;
   }
 
-  private async getAttemptCountMap(quizIds: string[], userId: string): Promise<Map<string, number>> {
+  private async getAttemptCountMap(
+    quizIds: string[],
+    userId: string,
+  ): Promise<Map<string, number>> {
     const map = new Map<string, number>();
     if (!quizIds.length) return map;
 

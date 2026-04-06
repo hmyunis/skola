@@ -9,7 +9,7 @@ import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
-  imports:[
+  imports: [
     UsersModule,
     PassportModule,
     HttpModule,
@@ -21,18 +21,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
         if (!jwtSecret) {
           throw new Error('JWT_SECRET environment variable is not set');
         }
-        
+
         return {
           secret: jwtSecret,
-          signOptions: { 
-            expiresIn: configService.get<string>('JWT_EXPIRATION', '7d') as any
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRATION', '7d') as any,
           },
         };
       },
     }),
   ],
   controllers: [AuthController],
-  providers:[AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}
