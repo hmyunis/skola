@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchTodaySchedule, type ClassSlot } from "@/services/api";
 import { useSemesterStore } from "@/stores/semesterStore";
-import { useAuth } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +56,6 @@ function computeState(schedule: ClassSlot[]): LiveState {
 }
 
 export function LiveStatusCard() {
-  const { isAdmin } = useAuth();
   const semId = useSemesterStore((s) => s.activeSemester?.id);
   const activeClassroomId = useClassroomStore((s) => s.activeClassroom?.id);
   const {
@@ -77,11 +75,11 @@ export function LiveStatusCard() {
   const [state, setState] = useState<LiveState>({ status: "free" });
 
   useEffect(() => {
-    const visibleSchedule = isAdmin ? schedule : schedule.filter((slot) => !slot.draft);
+    const visibleSchedule = schedule.filter((slot) => !slot.draft);
     setState(computeState(visibleSchedule));
     const interval = setInterval(() => setState(computeState(visibleSchedule)), 10000);
     return () => clearInterval(interval);
-  }, [scheduleData, isAdmin]);
+  }, [schedule]);
 
   if (isLoading) {
     return (

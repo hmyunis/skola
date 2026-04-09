@@ -5,7 +5,6 @@ import {
   createScheduleItem,
   updateScheduleItem,
   deleteScheduleItem,
-  publishScheduleDrafts,
   confirmScheduleItem,
   unconfirmScheduleItem,
   type ClassSlot,
@@ -38,7 +37,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Pencil, Check, ChevronLeft, ChevronRight, GripVertical, Trash2, Plus, Loader2, ArrowLeft } from "lucide-react";
+import { Pencil, ChevronLeft, ChevronRight, GripVertical, Trash2, Plus, Loader2, ArrowLeft } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1078,25 +1077,6 @@ const Schedule = () => {
     },
   });
 
-  const publishMutation = useMutation({
-    mutationFn: publishScheduleDrafts,
-    onSuccess: async (result) => {
-      await refreshScheduleQueries();
-      setEditMode(false);
-      toast({
-        title: "Schedule Published",
-        description: result.updated > 0 ? `${result.updated} draft item(s) are now live.` : "No drafts to publish.",
-      });
-    },
-    onError: (error: unknown) => {
-      toast({
-        title: "Publish failed",
-        description: getErrorMessage(error, "Could not publish schedule drafts."),
-        variant: "destructive",
-      });
-    },
-  });
-
   const confirmMutation = useMutation({
     mutationFn: (id: string) => confirmScheduleItem(id),
     onSuccess: async () => {
@@ -1228,7 +1208,6 @@ const Schedule = () => {
     createMutation.isPending ||
     updateMutation.isPending ||
     deleteMutation.isPending ||
-    publishMutation.isPending ||
     confirmMutation.isPending ||
     unconfirmMutation.isPending ||
     fireModeMutation.isPending ||
@@ -1321,19 +1300,15 @@ const Schedule = () => {
     fireModeMutation.mutate({ id: slot.id, fireMode });
   };
 
-  const hasDraft = useMemo(
-    () => Object.values(localSchedule).some((slots) => slots.some((slot) => slot.draft)),
-    [localSchedule],
-  );
-  const showDraft = isAdmin && (editMode || hasDraft);
+  const showDraft = isAdmin && editMode;
   const scheduleForView = useMemo(() => {
-    if (isAdmin) return localSchedule;
+    if (showDraft) return localSchedule;
     const filtered: Record<string, ClassSlot[]> = {};
     for (const [day, slots] of Object.entries(localSchedule)) {
       filtered[day] = slots.filter((slot) => !slot.draft);
     }
     return filtered;
-  }, [isAdmin, localSchedule]);
+  }, [showDraft, localSchedule]);
 
   const publishedSchedule = useMemo(() => {
     const result: Record<string, ClassSlot[]> = {};
@@ -1401,10 +1376,6 @@ const Schedule = () => {
                 <Button variant="outline" size="sm" className="max-w-full" onClick={cancelEditMode} disabled={isMutating}>
                   <ArrowLeft className="h-3 w-3" />
                   Back to View Mode
-                </Button>
-                <Button size="sm" className="max-w-full" onClick={() => publishMutation.mutate()} disabled={isMutating}>
-                  {publishMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                  Publish All
                 </Button>
               </>
             ) : (
