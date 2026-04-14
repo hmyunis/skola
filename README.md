@@ -17,6 +17,8 @@ SKOLA is a full-stack university batch management platform with a NestJS backend
 - Quiz arena and leaderboard
 - Announcements and admin/owner controls
 - In-app and web push notifications
+- AI Classroom Assistant (Gemini 2.5, BYOK-only per user/classroom)
+- Maintenance mode route override with a dedicated responsive maintenance page
 
 ## Prerequisites
 
@@ -34,6 +36,7 @@ SKOLA is a full-stack university batch management platform with a NestJS backend
    cp .env.example .env
    ```
 2. Update `.env` values for your machine (DB credentials, JWT secret, Telegram bot token, optional VAPID/IMGBB keys).
+3. For BYOK encryption at rest, set `BYOK_ENCRYPTION_KEY` (recommended in all environments).
 
 ### Frontend
 
@@ -42,9 +45,21 @@ Create `web_ui/.env.development` with:
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api
 VITE_TELEGRAM_BOT_NAME=your_telegram_bot_name
+VITE_MAINTENANCE_MODE=false
 ```
 
 Note: `web_ui/vite.config.ts` uses port `5174` for local dev.
+
+For production, set `web_ui/.env.production` similarly:
+
+```env
+VITE_API_BASE_URL=https://your-domain/api
+VITE_TELEGRAM_BOT_NAME=your_telegram_bot_name
+VITE_MAINTENANCE_MODE=false
+```
+
+`VITE_MAINTENANCE_MODE` accepts truthy values (`true`, `1`, `yes`, `on`).  
+When enabled, the frontend redirects all routes to the maintenance page.
 
 ## Install Dependencies
 
@@ -110,3 +125,16 @@ Frontend URL: `http://localhost:5174`
 - Set strong secrets for `JWT_SECRET` and `BYOK_ENCRYPTION_KEY`.
 - Configure proper VAPID keys for push notifications.
 - Use a production MySQL instance and run migrations before starting the API.
+- AI assistant is BYOK-only (no shared server AI key). Users must save a personal Gemini API key in Settings > BYOK.
+- Gemini quota/rate-limit exhaustion returns a clear limit message to the client (HTTP 429) with retry guidance when available.
+
+## Assistant Notes
+
+- Assistant context is classroom-scoped and does not pull data from other classrooms.
+- Context sources currently include courses, assessments, schedules, resources, announcements, members, and quizzes.
+- Lounge content is intentionally excluded from assistant context.
+- Assistant UI supports:
+  - mobile bottom-sheet mode
+  - collapsed quick prompts by default
+  - per-message source toggle
+  - `New` action to start a fresh chat (previous thread cleared)
