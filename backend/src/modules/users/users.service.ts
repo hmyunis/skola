@@ -14,12 +14,22 @@ import {
   ClassroomThemeSettings,
 } from '../classrooms/entities/classroom-member.entity';
 import { UpdateImageUploadSettingsDto } from './dto/update-image-upload-settings.dto';
+import { UpdateAssistantSettingsDto } from './dto/update-assistant-settings.dto';
 import { InAppNotification } from '../notifications/entities/in-app-notification.entity';
 
 export interface UserImageUploadSettings {
   usePersonalApiKey: boolean;
   hasPersonalApiKey: boolean;
   keyHint: string | null;
+}
+
+export interface UserAssistantSettings {
+  usePersonalApiKey: boolean;
+  hasPersonalApiKey: boolean;
+  keyHint: string | null;
+  provider: 'gemini';
+  model: string;
+  resetPolicy: string;
 }
 
 interface AccountDeletionAdminCandidate {
@@ -39,6 +49,7 @@ export interface AccountDeletionContext {
 @Injectable()
 export class UsersService {
   private readonly byokEncryptionKey: Buffer;
+  private readonly assistantModel = 'gemini-2.5-flash-lite';
 
   private toScopedProfilePayload(
     member: ClassroomMember,
@@ -357,6 +368,89 @@ export class UsersService {
     return this.toImageUploadSettings(member);
   }
 
+  async getAssistantSettings(
+    userId: string,
+    classroomId: string,
+  ): Promise<UserAssistantSettings> {
+    const member = await this.findMemberWithSensitiveFields(
+      userId,
+      classroomId,
+    );
+    if (!member) {
+      throw new NotFoundException('User not found in this classroom');
+    }
+    return this.toAssistantSettings(member);
+  }
+
+  async updateAssistantSettings(
+    userId: string,
+    classroomId: string,
+    dto: UpdateAssistantSettingsDto,
+  ): Promise<UserAssistantSettings> {
+    const member = await this.findMemberWithSensitiveFields(
+      userId,
+      classroomId,
+    );
+    if (!member) {
+      throw new NotFoundException('User not found in this classroom');
+    }
+
+    const requestedUsePersonal = true;
+    const normalizedApiKey = (dto.apiKey || '').trim();
+    const shouldStoreNewApiKey = normalizedApiKey.length > 0;
+    const shouldClearApiKey = Boolean(dto.clearApiKey);
+
+    if (shouldStoreNewApiKey) {
+      this.validateOpenAIApiKey(normalizedApiKey);
+      member.openAIApiKeyCiphertext = this.encryptSecret(normalizedApiKey);
+      member.openAIApiKeyHint = this.maskKeyHint(normalizedApiKey);
+    }
+
+    if (shouldClearApiKey) {
+      member.openAIApiKeyCiphertext = null;
+      member.openAIApiKeyHint = null;
+    }
+
+    member.usePersonalOpenAIApiKey = requestedUsePersonal;
+
+    if (
+      member.usePersonalOpenAIApiKey &&
+      !member.openAIApiKeyCiphertext &&
+      !shouldClearApiKey
+    ) {
+      throw new BadRequestException(
+        'Assistant BYOK mode is enabled, but no Gemini API key is saved.',
+      );
+    }
+
+    await this.classroomMembersRepository.save(member);
+    return this.toAssistantSettings(member);
+  }
+
+  async resolveAssistantApiKeyForUser(
+    userId: string,
+    classroomId: string,
+  ): Promise<{
+    usePersonalApiKey: boolean;
+    personalApiKey: string | null;
+  }> {
+    const member = await this.findMemberWithSensitiveFields(
+      userId,
+      classroomId,
+    );
+    if (!member)
+      throw new NotFoundException('User not found in this classroom');
+
+    if (!member.openAIApiKeyCiphertext) {
+      return { usePersonalApiKey: true, personalApiKey: null };
+    }
+
+    return {
+      usePersonalApiKey: true,
+      personalApiKey: this.decryptSecret(member.openAIApiKeyCiphertext),
+    };
+  }
+
   async resolveImgbbApiKeyForUser(
     userId: string,
     classroomId: string,
@@ -397,11 +491,41 @@ export class UsersService {
     };
   }
 
+  private toAssistantSettings(
+    member: Pick<
+      ClassroomMember,
+      | 'usePersonalOpenAIApiKey'
+      | 'openAIApiKeyCiphertext'
+      | 'openAIApiKeyHint'
+    >,
+  ): UserAssistantSettings {
+    return {
+      usePersonalApiKey: true,
+      hasPersonalApiKey: Boolean(member.openAIApiKeyCiphertext),
+      keyHint: member.openAIApiKeyHint || null,
+      provider: 'gemini',
+      model: this.assistantModel,
+      resetPolicy: 'Daily request quotas reset at midnight Pacific time.',
+    };
+  }
+
   private validateImgbbApiKey(apiKey: string) {
     if (apiKey.length < 16 || apiKey.length > 128) {
       throw new BadRequestException('Invalid API key length.');
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(apiKey)) {
+      throw new BadRequestException('API key contains invalid characters.');
+    }
+  }
+
+  private validateOpenAIApiKey(apiKey: string) {
+    if (apiKey.length < 20 || apiKey.length > 256) {
+      throw new BadRequestException('Invalid API key length.');
+    }
+    if (/\s/.test(apiKey)) {
+      throw new BadRequestException('API key contains invalid whitespace.');
+    }
+    if (!/^[!-~]+$/.test(apiKey)) {
       throw new BadRequestException('API key contains invalid characters.');
     }
   }
@@ -488,6 +612,7 @@ export class UsersService {
       .createQueryBuilder('member')
       .innerJoin('member.user', 'user')
       .addSelect('member.imgbbApiKeyCiphertext')
+      .addSelect('member.openAIApiKeyCiphertext')
       .where('user.id = :userId', { userId })
       .andWhere('member.classroomId = :classroomId', { classroomId })
       .getOne();

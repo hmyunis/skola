@@ -99,6 +99,95 @@
       hsl(0 0% 10%) 20px
     );
   }
+
+  .maintenance-gradient-wave {
+    background-size: 220% 220%;
+    animation: maintenance-gradient-drift 18s ease-in-out infinite alternate;
+    opacity: 0.95;
+  }
+
+  .maintenance-gradient-wave-light {
+    background-image: linear-gradient(
+      130deg,
+      hsl(45 100% 80% / 0.55),
+      hsl(190 100% 86% / 0.45),
+      hsl(222 52% 93% / 0.6),
+      hsl(20 100% 92% / 0.45)
+    );
+  }
+
+  .maintenance-gradient-wave-dark {
+    background-image: linear-gradient(
+      130deg,
+      hsl(232 44% 17% / 0.92),
+      hsl(201 65% 15% / 0.86),
+      hsl(272 48% 14% / 0.88),
+      hsl(224 42% 12% / 0.9)
+    );
+  }
+
+  .maintenance-blob-a {
+    animation: maintenance-blob-a-float 16s ease-in-out infinite alternate;
+  }
+
+  .maintenance-blob-b {
+    animation: maintenance-blob-b-float 19s ease-in-out infinite alternate;
+  }
+
+  .maintenance-blob-c {
+    animation: maintenance-blob-c-float 22s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes maintenance-gradient-drift {
+  0% {
+    transform: translate3d(-5%, -4%, 0) scale(1.05);
+    background-position: 0% 50%;
+  }
+  50% {
+    transform: translate3d(3%, 5%, 0) scale(1.1);
+    background-position: 60% 45%;
+  }
+  100% {
+    transform: translate3d(6%, -2%, 0) scale(1.07);
+    background-position: 100% 55%;
+  }
+}
+
+@keyframes maintenance-blob-a-float {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(34px, 20px, 0);
+  }
+  100% {
+    transform: translate3d(10px, 46px, 0);
+  }
+}
+
+@keyframes maintenance-blob-b-float {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-36px, -12px, 0);
+  }
+  100% {
+    transform: translate3d(-10px, 34px, 0);
+  }
+}
+
+@keyframes maintenance-blob-c-float {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  50% {
+    transform: translate3d(calc(-50% + 22px), -20px, 0);
+  }
+  100% {
+    transform: translate3d(calc(-50% - 18px), 16px, 0);
+  }
 }
 
 /* Custom thin sharp scrollbar */

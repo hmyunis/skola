@@ -7,9 +7,11 @@ import { useAuthStore } from "@/stores/authStore";
 import { userAccents } from "@/lib/themes";
 import { useUpdateUserTheme } from "@/hooks/use-theme";
 import {
+  fetchAssistantSettings,
   deleteMyAccount,
   fetchAccountDeletionContext,
   fetchImageUploadSettings,
+  saveAssistantSettings,
   saveImageUploadSettings,
   type AccountDeletionContext,
   type ImageUploadSettings,
@@ -288,6 +290,7 @@ const SettingsPage = () => {
 
   const [usePersonalApiKey, setUsePersonalApiKey] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [assistantApiKey, setAssistantApiKey] = useState("");
   const [initialByokSettingsLoaded, setInitialByokSettingsLoaded] = useState(false);
 
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(
@@ -303,10 +306,17 @@ const SettingsPage = () => {
   const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false);
   const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
   const [successorMemberId, setSuccessorMemberId] = useState("");
+  const geminiApiGuideVideoSrc = `${import.meta.env.BASE_URL}video/How_to_get_Gemini_API_Key.mp4`;
 
   const imageSettingsQuery = useQuery({
     queryKey: ["imageUploadSettings", activeClassroomId],
     queryFn: fetchImageUploadSettings,
+    enabled: !!activeClassroomId,
+  });
+
+  const assistantSettingsQuery = useQuery({
+    queryKey: ["assistantSettings", activeClassroomId],
+    queryFn: fetchAssistantSettings,
     enabled: !!activeClassroomId,
   });
 
@@ -395,6 +405,22 @@ const SettingsPage = () => {
         error instanceof Error && error.message
           ? error.message
           : "Could not update image upload settings.";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    },
+  });
+
+  const assistantSettingsMutation = useMutation({
+    mutationFn: saveAssistantSettings,
+    onSuccess: () => {
+      setAssistantApiKey("");
+      assistantSettingsQuery.refetch();
+      toast({ title: "Saved", description: "Assistant BYOK settings updated." });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not update assistant BYOK settings.";
       toast({ title: "Error", description: message, variant: "destructive" });
     },
   });
@@ -501,6 +527,20 @@ const SettingsPage = () => {
   const clearSavedByokKey = () => {
     imageSettingsMutation.mutate({
       usePersonalApiKey: false,
+      clearApiKey: true,
+    });
+  };
+
+  const saveAssistantByokSettings = () => {
+    assistantSettingsMutation.mutate({
+      usePersonalApiKey: true,
+      apiKey: assistantApiKey.trim() || undefined,
+    });
+  };
+
+  const clearSavedAssistantByokKey = () => {
+    assistantSettingsMutation.mutate({
+      usePersonalApiKey: true,
       clearApiKey: true,
     });
   };
@@ -672,7 +712,12 @@ const SettingsPage = () => {
   };
 
   const currentByokSettings = imageSettingsQuery.data;
-  const isByokBusy = imageSettingsQuery.isLoading || imageSettingsMutation.isPending;
+  const currentAssistantByokSettings = assistantSettingsQuery.data;
+  const isByokBusy =
+    imageSettingsQuery.isLoading ||
+    imageSettingsMutation.isPending ||
+    assistantSettingsQuery.isLoading ||
+    assistantSettingsMutation.isPending;
   const isNotificationsBusy =
     notificationSettingsQuery.isLoading || notificationSettingsMutation.isPending;
   const unreadCount = inAppNotificationsQuery.data?.unreadCount || 0;
@@ -909,6 +954,104 @@ const SettingsPage = () => {
                 </Button>
                 <Button onClick={saveByokSettings} disabled={isByokBusy}>
                   Save BYOK Settings
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xs flex items-center gap-2">
+                <KeyRound className="h-3.5 w-3.5" />
+                AI Assistant (BYOK)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                SKOLA assistant now runs in BYOK-only mode with Gemini 2.5. Add your personal
+                Gemini API key from Google AI Studio to enable answers.
+              </p>
+
+              <div className="border border-border p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Setup walkthrough
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Watch this short guide to generate your Gemini API key.
+                </p>
+                <a
+                  href="https://aistudio.google.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex text-[11px] underline text-primary hover:text-primary/80"
+                >
+                  aistudio.google.com
+                </a>
+                <video
+                  src={geminiApiGuideVideoSrc}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="w-full rounded-sm border border-border bg-black/90"
+                >
+                  Your browser does not support embedded video.
+                </video>
+                <a
+                  href={geminiApiGuideVideoSrc}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex text-[11px] underline text-primary hover:text-primary/80"
+                >
+                  Open video in new tab
+                </a>
+              </div>
+
+              <div className="border border-border p-3 space-y-1.5">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Assistant runtime
+                </p>
+                <p className="text-xs">
+                  Provider: <span className="font-semibold">{currentAssistantByokSettings?.provider || "gemini"}</span>
+                </p>
+                <p className="text-xs">
+                  Model: <span className="font-semibold">{currentAssistantByokSettings?.model || "gemini-2.5-flash-lite"}</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {currentAssistantByokSettings?.hasPersonalApiKey
+                    ? `Saved key: ${currentAssistantByokSettings.keyHint || "hidden"}`
+                    : "No Gemini key saved yet"}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Gemini API Key</Label>
+                <Input
+                  type="password"
+                  value={assistantApiKey}
+                  onChange={(event) => setAssistantApiKey(event.target.value)}
+                  placeholder={
+                    currentAssistantByokSettings?.hasPersonalApiKey
+                      ? "Leave empty to keep saved key"
+                      : "Paste Gemini API key (usually starts with AIza...)"
+                  }
+                  className="h-9 text-sm"
+                  disabled={isByokBusy}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Your key is encrypted at rest. Server-side assistant keys are not used anymore.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={clearSavedAssistantByokKey}
+                  disabled={isByokBusy || !currentAssistantByokSettings?.hasPersonalApiKey}
+                >
+                  Clear Saved Key
+                </Button>
+                <Button onClick={saveAssistantByokSettings} disabled={isByokBusy}>
+                  Save Assistant BYOK
                 </Button>
               </div>
             </CardContent>

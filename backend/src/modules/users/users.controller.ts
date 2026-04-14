@@ -6,6 +6,7 @@ import { User } from './entities/user.entity';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
 import { CurrentClassroom } from '../../core/decorators/current-classroom.decorator';
 import { UpdateImageUploadSettingsDto } from './dto/update-image-upload-settings.dto';
+import { UpdateAssistantSettingsDto } from './dto/update-assistant-settings.dto';
 import { DeleteMyAccountDto } from './dto/delete-my-account.dto';
 
 @Controller('users')
@@ -56,6 +57,25 @@ export class UsersController {
       classroomId,
       dto,
     );
+  }
+
+  @Get('me/assistant-settings')
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  getAssistantSettings(
+    @CurrentUser() user: User,
+    @CurrentClassroom() classroomId: string,
+  ) {
+    return this.usersService.getAssistantSettings(user.id, classroomId);
+  }
+
+  @Put('me/assistant-settings')
+  @UseGuards(JwtAuthGuard, ClassroomRoleGuard)
+  updateAssistantSettings(
+    @CurrentUser() user: User,
+    @CurrentClassroom() classroomId: string,
+    @Body() dto: UpdateAssistantSettingsDto,
+  ) {
+    return this.usersService.updateAssistantSettings(user.id, classroomId, dto);
   }
 
   @Get('me/account-deletion-context')

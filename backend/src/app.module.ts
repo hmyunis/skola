@@ -17,6 +17,7 @@ import { LoungeModule } from './modules/lounge/lounge.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SearchModule } from './modules/search/search.module';
+import { AssistantModule } from './modules/assistant/assistant.module';
 import { enforceMysqlUtcSession } from './database/mysql-utc-session';
 
 @Module({
@@ -87,6 +88,7 @@ import { enforceMysqlUtcSession } from './database/mysql-utc-session';
     ArenaModule,
     AdminModule,
     SearchModule,
+    AssistantModule,
   ],
   controllers: [AppController],
   providers: [

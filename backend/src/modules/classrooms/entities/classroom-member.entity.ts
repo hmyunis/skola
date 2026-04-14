@@ -67,6 +67,15 @@ export class ClassroomMember {
   @Column({ type: 'varchar', length: 8, nullable: true })
   imgbbApiKeyHint: string | null;
 
+  @Column({ type: 'boolean', default: false })
+  usePersonalOpenAIApiKey: boolean;
+
+  @Column({ type: 'text', nullable: true, select: false })
+  openAIApiKeyCiphertext: string | null;
+
+  @Column({ type: 'varchar', length: 8, nullable: true })
+  openAIApiKeyHint: string | null;
+
   @CreateDateColumn()
   joinedAt: Date;
 }

@@ -51,6 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AssistantChatFab } from "@/components/AssistantChatFab";
 
 const roleLabels = { owner: "Owner", admin: "Admin", student: "Student" };
 
@@ -647,6 +648,7 @@ export function AppLayout() {
             </main>
           </div>
 
+          <AssistantChatFab />
           <BottomNav />
         </div>
       </TooltipProvider>

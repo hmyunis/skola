@@ -17,6 +17,15 @@ export interface ImageUploadSettings {
   keyHint: string | null;
 }
 
+export interface AssistantSettings {
+  usePersonalApiKey: boolean;
+  hasPersonalApiKey: boolean;
+  keyHint: string | null;
+  provider: "gemini";
+  model: string;
+  resetPolicy: string;
+}
+
 export interface AccountDeletionContext {
   classroomId: string;
   classroomName: string;
@@ -80,6 +89,21 @@ export async function saveImageUploadSettings(data: {
   clearApiKey?: boolean;
 }): Promise<ImageUploadSettings> {
   return apiFetch("/users/me/image-upload-settings", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchAssistantSettings(): Promise<AssistantSettings> {
+  return apiFetch("/users/me/assistant-settings");
+}
+
+export async function saveAssistantSettings(data: {
+  usePersonalApiKey?: boolean;
+  apiKey?: string;
+  clearApiKey?: boolean;
+}): Promise<AssistantSettings> {
+  return apiFetch("/users/me/assistant-settings", {
     method: "PUT",
     body: JSON.stringify(data),
   });
