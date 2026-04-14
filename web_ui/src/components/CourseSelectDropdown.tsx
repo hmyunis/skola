@@ -62,6 +62,11 @@ export function CourseSelectDropdown({
 
     // Find selected course
     const selectedCourse = courses.find((c) => c.id === value || c.code === value);
+    const selectedCourseLabel = selectedCourse
+        ? selectedCourse.code
+            ? `${selectedCourse.code} - ${selectedCourse.name}`
+            : selectedCourse.name
+        : selectedLabel;
 
     // Infinite scroll observer
     const lastElementRef = useCallback(
@@ -98,12 +103,8 @@ export function CourseSelectDropdown({
                 >
                     {value === 'all' ? (
                         <span className="truncate">All Courses</span>
-                    ) : selectedCourse ? (
-                        <span className="truncate">
-                            {selectedCourse.code || selectedCourse.name}
-                        </span>
-                    ) : selectedLabel ? (
-                        <span className="truncate">{selectedLabel}</span>
+                    ) : selectedCourseLabel ? (
+                        <span className="truncate">{selectedCourseLabel}</span>
                     ) : (
                         <span className="text-muted-foreground truncate">{placeholder}</span>
                     )}

@@ -57,6 +57,12 @@ export class Announcement {
   @Column({ type: 'timestamp', nullable: true })
   expiresAt: Date | null;
 
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  telegramChatId: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  telegramMessageId: number | null;
+
   @ManyToOne(() => User, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'authorId' })
   author: User;

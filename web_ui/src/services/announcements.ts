@@ -10,6 +10,17 @@ type AnnouncementPayload = Omit<Announcement, "id" | "createdAt" | "createdBy"> 
   sendTelegram?: boolean;
 };
 
+export interface DeleteAnnouncementResult {
+  success: true;
+  telegram: {
+    requested: boolean;
+    attempted: boolean;
+    deleted: boolean;
+    skippedReason?: "not_requested" | "no_linked_telegram_post";
+    error?: string;
+  };
+}
+
 export async function fetchAnnouncements(): Promise<Announcement[]> {
   return apiFetch("/admin/announcements");
 }
@@ -28,8 +39,16 @@ export async function updateAnnouncement(id: string, payload: AnnouncementPayloa
   });
 }
 
-export async function deleteAnnouncement(id: string): Promise<void> {
-  await apiFetch(`/admin/announcements/${id}`, {
+export async function deleteAnnouncement(
+  id: string,
+  options?: { deleteTelegramPost?: boolean },
+): Promise<DeleteAnnouncementResult> {
+  const params = new URLSearchParams();
+  if (options?.deleteTelegramPost) {
+    params.set("deleteTelegramPost", "true");
+  }
+  const qs = params.toString();
+  return apiFetch(`/admin/announcements/${id}${qs ? `?${qs}` : ""}`, {
     method: "DELETE",
   });
 }

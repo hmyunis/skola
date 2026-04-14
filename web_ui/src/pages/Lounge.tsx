@@ -129,7 +129,7 @@ function isContentEdited(createdAt: string, editedAt?: string | null): boolean {
     return editedMs > createdMs + 1000;
 }
 
-function renderMentionHighlightedText(text: string): ReactNode[] {
+function renderMentionHighlightedText(text: string, keyPrefix = ''): ReactNode[] {
     if (!text) return [''];
 
     const nodes: ReactNode[] = [];
@@ -152,7 +152,7 @@ function renderMentionHighlightedText(text: string): ReactNode[] {
         }
 
         nodes.push(
-            <span key={`mention-${matchIndex}`} className="text-primary font-semibold">
+            <span key={`${keyPrefix}mention-${matchIndex}`} className="text-primary font-semibold">
                 {mentionText}
             </span>,
         );
@@ -161,6 +161,71 @@ function renderMentionHighlightedText(text: string): ReactNode[] {
 
     if (lastIndex < text.length) {
         nodes.push(text.slice(lastIndex));
+    }
+
+    return nodes.length ? nodes : [text];
+}
+
+function normalizeExternalUrl(rawUrl: string): string {
+    return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+}
+
+function splitTrailingUrlPunctuation(rawUrl: string): { url: string; trailing: string } {
+    let url = rawUrl;
+    let trailing = '';
+    while (url && /[),.!?;:]/.test(url[url.length - 1])) {
+        trailing = `${url[url.length - 1]}${trailing}`;
+        url = url.slice(0, -1);
+    }
+    return { url: url || rawUrl, trailing };
+}
+
+function renderTextWithMentionsAndLinks(text: string): ReactNode[] {
+    if (!text) return [''];
+
+    const nodes: ReactNode[] = [];
+    const urlRegex = /\b((?:https?:\/\/|www\.)[^\s<]+)/gi;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = urlRegex.exec(text)) !== null) {
+        const matchIndex = match.index;
+        const rawUrl = match[0];
+        const { url, trailing } = splitTrailingUrlPunctuation(rawUrl);
+        const href = normalizeExternalUrl(url);
+
+        if (matchIndex > lastIndex) {
+            nodes.push(
+                ...renderMentionHighlightedText(
+                    text.slice(lastIndex, matchIndex),
+                    `seg-${lastIndex}-`,
+                ),
+            );
+        }
+
+        nodes.push(
+            <a
+                key={`link-${matchIndex}`}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-[2px] bg-primary/10 px-0.5 font-semibold text-primary underline decoration-primary/70 underline-offset-2 transition-colors hover:bg-primary/20"
+            >
+                {url}
+            </a>,
+        );
+
+        if (trailing) nodes.push(trailing);
+        lastIndex = matchIndex + rawUrl.length;
+    }
+
+    if (lastIndex < text.length) {
+        nodes.push(
+            ...renderMentionHighlightedText(
+                text.slice(lastIndex),
+                `tail-${lastIndex}-`,
+            ),
+        );
     }
 
     return nodes.length ? nodes : [text];
@@ -288,7 +353,7 @@ function ReplyItem({
                         </Tooltip>
                     )}
                 </div>
-                <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">{renderMentionHighlightedText(reply.content)}</p>
+                <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">{renderTextWithMentionsAndLinks(reply.content)}</p>
             </div>
         </div>
     );
@@ -959,7 +1024,7 @@ function PostCard({
             {/* Content */}
             {post.content && (
                 <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                    {renderMentionHighlightedText(post.content)}
+                    {renderTextWithMentionsAndLinks(post.content)}
                 </p>
             )}
             {post.imageUrl && !isImageBroken && (

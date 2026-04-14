@@ -27,6 +27,7 @@ export interface ClassSlot {
 export interface Assignment {
   id: string;
   title: string;
+  description?: string;
   course: string;
   dueDate: string | null;
   source: "classroom" | "direct" | "notice" | "other";
