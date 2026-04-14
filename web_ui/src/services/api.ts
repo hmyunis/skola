@@ -156,6 +156,7 @@ interface ScheduleItemApi {
 interface AssessmentApi {
   id: string;
   title: string;
+  description?: string | null;
   courseCode: string;
   dueDate: string | null;
   createdAt?: string;
@@ -381,6 +382,7 @@ export async function fetchAssignments(filters?: AssignmentFilters): Promise<Ass
     return (assessments as AssessmentApi[]).map((item) => ({
       id: item.id,
       title: item.title,
+      description: item.description ?? "",
       course: item.courseCode,
       dueDate: item.dueDate ?? null,
       createdAt: item.createdAt,

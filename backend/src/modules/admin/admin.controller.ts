@@ -100,8 +100,13 @@ export class AdminController {
   async deleteAnnouncement(
     @CurrentClassroom() classroomId: string,
     @Param('id') id: string,
+    @Query('deleteTelegramPost') deleteTelegramPost?: string,
   ) {
-    return this.adminService.deleteAnnouncement(classroomId, id);
+    const shouldDeleteTelegramPost =
+      deleteTelegramPost === 'true' || deleteTelegramPost === '1';
+    return this.adminService.deleteAnnouncement(classroomId, id, {
+      deleteTelegramPost: shouldDeleteTelegramPost,
+    });
   }
 
   @UseGuards(JwtAuthGuard, ClassroomRoleGuard)

@@ -708,6 +708,14 @@ function AssignmentDetailDialog({
               )}
             </p>
           </div>
+          {assignment.description?.trim() && (
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Description</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                {assignment.description.trim()}
+              </p>
+            </div>
+          )}
           <div className="border border-border p-3 space-y-3">
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Confidence Check</p>
             <div className="flex flex-wrap gap-2">
@@ -1109,6 +1117,10 @@ const Academics = () => {
     [courses],
   );
   const getCourseName = (code: string) => courseNameByCode.get(code) || code;
+  const getCourseLabel = (code: string) => {
+    const name = getCourseName(code);
+    return name !== code ? `${code} - ${name}` : code;
+  };
 
   // Admin assessments
   const [assessFormOpen, setAssessFormOpen] = useState(false);
@@ -1303,12 +1315,6 @@ const Academics = () => {
     confidenceMutation.mutate({ assignment, vote });
   };
 
-  const coursesInData = useMemo(() => {
-    if (courses.length > 0) return courses.map((c) => c.code).sort();
-    if (!assignments) return [];
-    return [...new Set(assignments.map((a) => a.course))].sort();
-  }, [assignments, courses]);
-
   const filtered = assignments || [];
 
   useEffect(() => {
@@ -1382,13 +1388,21 @@ const Academics = () => {
               <span className="text-[10px] uppercase tracking-widest font-bold">Filters</span>
             </div>
             <div className="w-full sm:w-auto">
-              <Select value={filterCourse} onValueChange={setFilterCourse}>
-                <SelectTrigger className="h-8 w-full text-xs sm:w-[140px]"><SelectValue placeholder="Course" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Courses</SelectItem>
-                  {coursesInData.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <CourseSelectDropdown
+                value={filterCourse}
+                onChange={(value, selectedCourse) => {
+                  if (value === "all") {
+                    setFilterCourse("all");
+                    return;
+                  }
+                  const nextCode = selectedCourse?.code?.trim() || value.trim();
+                  setFilterCourse(nextCode || "all");
+                }}
+                placeholder="All courses"
+                allowAll
+                className="w-full sm:w-[220px]"
+                selectedLabel={filterCourse !== "all" ? getCourseLabel(filterCourse) : undefined}
+              />
             </div>
             <div className="w-full sm:w-auto">
               <Select value={filterStatus} onValueChange={setFilterStatus}>

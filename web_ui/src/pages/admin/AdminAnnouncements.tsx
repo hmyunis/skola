@@ -222,6 +222,7 @@ const AdminAnnouncements = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTelegramPost, setDeleteTelegramPost] = useState(true);
 
   const { data, isLoading } = useQuery<Announcement[]>({
     queryKey: ["announcements", activeClassroom?.id],
@@ -248,10 +249,15 @@ const AdminAnnouncements = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteAnnouncement,
+    mutationFn: ({
+      id,
+      deleteTelegramPost,
+    }: {
+      id: string;
+      deleteTelegramPost: boolean;
+    }) => deleteAnnouncement(id, { deleteTelegramPost }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["announcements", activeClassroom?.id] });
-      toast({ title: "Deleted", description: "Announcement removed." });
     },
   });
 
@@ -276,8 +282,32 @@ const AdminAnnouncements = () => {
   const handleDelete = async () => {
     if (!deletingId) return;
     try {
-      await deleteMutation.mutateAsync(deletingId);
+      const result = await deleteMutation.mutateAsync({
+        id: deletingId,
+        deleteTelegramPost,
+      });
       setDeletingId(null);
+      setDeleteTelegramPost(true);
+      if (result.telegram.requested && result.telegram.error) {
+        toast({
+          variant: "destructive",
+          title: "Announcement deleted",
+          description: "Telegram post could not be deleted. Check bot permissions and logs.",
+        });
+        return;
+      }
+      if (result.telegram.requested && result.telegram.deleted) {
+        toast({ title: "Deleted", description: "Announcement and Telegram post removed." });
+        return;
+      }
+      if (
+        result.telegram.requested &&
+        result.telegram.skippedReason === "no_linked_telegram_post"
+      ) {
+        toast({ title: "Deleted", description: "Announcement removed. No linked Telegram post was found." });
+        return;
+      }
+      toast({ title: "Deleted", description: "Announcement removed." });
     } catch {
       toast({
         variant: "destructive",
@@ -347,7 +377,15 @@ const AdminAnnouncements = () => {
                   <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setEditing(a); setFormOpen(true); }}>
                     <Pencil className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => setDeletingId(a.id)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      setDeletingId(a.id);
+                      setDeleteTelegramPost(true);
+                    }}
+                  >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
@@ -362,9 +400,31 @@ const AdminAnnouncements = () => {
 
       <AnnouncementFormDialog open={formOpen} onOpenChange={(o) => { setFormOpen(o); if (!o) setEditing(null); }} initial={editing} onSave={handleSave} />
 
-      <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
+      <AlertDialog
+        open={!!deletingId}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDeletingId(null);
+            setDeleteTelegramPost(true);
+          }
+        }}
+      >
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Delete Announcement</AlertDialogTitle><AlertDialogDescription>This announcement will be permanently removed.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Announcement</AlertDialogTitle>
+            <AlertDialogDescription>
+              This announcement will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex items-start gap-2 border border-border px-3 py-2 text-xs">
+            <input
+              type="checkbox"
+              checked={deleteTelegramPost}
+              onChange={(event) => setDeleteTelegramPost(event.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-primary"
+            />
+            <span>Also delete Telegram group post.</span>
+          </label>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>

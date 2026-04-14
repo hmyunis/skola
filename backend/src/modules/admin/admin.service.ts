@@ -49,6 +49,26 @@ interface UpsertAnnouncementDto {
   sendTelegram?: boolean;
 }
 
+interface TelegramPostReference {
+  chatId: string;
+  messageId: number;
+}
+
+export interface DeleteAnnouncementOptions {
+  deleteTelegramPost?: boolean;
+}
+
+export interface DeleteAnnouncementResult {
+  success: true;
+  telegram: {
+    requested: boolean;
+    attempted: boolean;
+    deleted: boolean;
+    skippedReason?: 'not_requested' | 'no_linked_telegram_post';
+    error?: string;
+  };
+}
+
 const DELETED_USER_NAME = 'Deleted User';
 
 export interface OwnerAnalyticsResponse {
@@ -277,7 +297,18 @@ export class AdminService {
     }
 
     if (data.sendTelegram) {
-      await this.sendAnnouncementToTelegram(classroomId, withAuthor);
+      const telegramPost = await this.sendAnnouncementToTelegram(
+        classroomId,
+        withAuthor,
+      );
+      if (telegramPost) {
+        await this.announcementRepo.update(withAuthor.id, {
+          telegramChatId: telegramPost.chatId,
+          telegramMessageId: telegramPost.messageId,
+        });
+        withAuthor.telegramChatId = telegramPost.chatId;
+        withAuthor.telegramMessageId = telegramPost.messageId;
+      }
     }
 
     try {
@@ -381,10 +412,22 @@ export class AdminService {
     return { success: true, stopped: activeAlarms.length };
   }
 
+  private getTelegramBotToken(): string {
+    let botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
+    if (!botToken) {
+      throw new BadRequestException('Telegram bot token is not configured.');
+    }
+    botToken = botToken.trim().replace(/^["']|["']$/g, '');
+    if (!botToken) {
+      throw new BadRequestException('Telegram bot token is not configured.');
+    }
+    return botToken;
+  }
+
   private async sendAnnouncementToTelegram(
     classroomId: string,
     announcement: Announcement,
-  ): Promise<void> {
+  ): Promise<TelegramPostReference | null> {
     const classroom = await this.classroomRepo.findOne({
       where: { id: classroomId },
     });
@@ -394,11 +437,7 @@ export class AdminService {
       );
     }
 
-    let botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
-    if (!botToken) {
-      throw new BadRequestException('Telegram bot token is not configured.');
-    }
-    botToken = botToken.trim().replace(/^["']|["']$/g, '');
+    const botToken = this.getTelegramBotToken();
 
     const icon =
       announcement.priority === PriorityLevel.URGENT
@@ -441,7 +480,7 @@ export class AdminService {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
     try {
-      await firstValueFrom(
+      const response = await firstValueFrom(
         this.httpService.post(url, {
           chat_id: classroom.telegramGroupId,
           text,
@@ -449,6 +488,22 @@ export class AdminService {
           disable_web_page_preview: true,
         }),
       );
+      const messageIdRaw = response?.data?.result?.message_id;
+      const messageId =
+        typeof messageIdRaw === 'number'
+          ? messageIdRaw
+          : Number(messageIdRaw);
+      if (!Number.isFinite(messageId)) {
+        this.logger.warn(
+          `Telegram sendMessage did not return a valid message_id for announcement ${announcement.id}.`,
+        );
+        return null;
+      }
+
+      return {
+        chatId: String(classroom.telegramGroupId),
+        messageId: Math.trunc(messageId),
+      };
     } catch (error: any) {
       this.logger.error(
         `Failed to send Telegram announcement for classroom ${classroomId}`,
@@ -457,6 +512,26 @@ export class AdminService {
       throw new BadRequestException(
         'Failed to send announcement to Telegram. Ensure bot is in the group with posting permissions.',
       );
+    }
+  }
+
+  private async deleteAnnouncementFromTelegram(
+    chatId: string,
+    messageId: number,
+  ): Promise<void> {
+    const botToken = this.getTelegramBotToken();
+    const url = `https://api.telegram.org/bot${botToken}/deleteMessage`;
+    const response = await firstValueFrom(
+      this.httpService.post(url, {
+        chat_id: chatId,
+        message_id: messageId,
+      }),
+    );
+
+    if (!response?.data?.ok) {
+      const description =
+        response?.data?.description || 'Telegram rejected deleteMessage call.';
+      throw new Error(String(description));
     }
   }
 
@@ -501,7 +576,11 @@ export class AdminService {
     return this.toAnnouncementResponse(withAuthor);
   }
 
-  async deleteAnnouncement(classroomId: string, announcementId: string) {
+  async deleteAnnouncement(
+    classroomId: string,
+    announcementId: string,
+    options: DeleteAnnouncementOptions = {},
+  ): Promise<DeleteAnnouncementResult> {
     const announcement = await this.announcementRepo.findOne({
       where: { id: announcementId, classroomId },
     });
@@ -511,7 +590,46 @@ export class AdminService {
     }
 
     await this.announcementRepo.remove(announcement);
-    return { success: true };
+
+    const requested = Boolean(options.deleteTelegramPost);
+    const hasTelegramPost =
+      Boolean(announcement.telegramChatId) &&
+      announcement.telegramMessageId !== null &&
+      announcement.telegramMessageId !== undefined;
+
+    const telegramResult: DeleteAnnouncementResult['telegram'] = {
+      requested,
+      attempted: false,
+      deleted: false,
+      skippedReason: requested ? undefined : 'not_requested',
+    };
+
+    if (requested) {
+      if (!hasTelegramPost) {
+        telegramResult.skippedReason = 'no_linked_telegram_post';
+      } else {
+        telegramResult.attempted = true;
+        try {
+          await this.deleteAnnouncementFromTelegram(
+            String(announcement.telegramChatId),
+            Number(announcement.telegramMessageId),
+          );
+          telegramResult.deleted = true;
+        } catch (error: any) {
+          const errorMessage =
+            error instanceof Error && error.message
+              ? error.message
+              : String(error);
+          telegramResult.error = errorMessage;
+          this.logger.error(
+            `Failed to delete Telegram post for announcement ${announcementId} in classroom ${classroomId}`,
+            errorMessage,
+          );
+        }
+      }
+    }
+
+    return { success: true, telegram: telegramResult };
   }
 
   async generateInviteCode(
