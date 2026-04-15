@@ -40,6 +40,11 @@ export class AssistantController {
       classroomId,
       dto.message,
       dto.history || [],
+      {
+        timeZone: dto.clientTimeZone,
+        locale: dto.clientLocale,
+        nowIso: dto.clientNowIso,
+      },
     );
   }
 }

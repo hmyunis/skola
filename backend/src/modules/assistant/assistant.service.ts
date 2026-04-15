@@ -26,6 +26,20 @@ interface AssistantHistoryMessage {
   content: string;
 }
 
+interface AssistantClientTimeContext {
+  timeZone?: string;
+  locale?: string;
+  nowIso?: string;
+}
+
+interface AssistantResolvedTimeContext {
+  now: Date;
+  timeZone: string;
+  locale: string;
+  localNowLabel: string;
+  localDateKey: string;
+}
+
 interface CachedAnswer {
   answer: string;
   model: string;
@@ -250,6 +264,7 @@ export class AssistantService {
     classroomId: string,
     message: string,
     history: AssistantHistoryMessage[] = [],
+    clientTimeContext: AssistantClientTimeContext = {},
   ): Promise<{
     answer: string;
     model: string;
@@ -257,11 +272,30 @@ export class AssistantService {
     sources: string[];
     suggestions: string[];
   }> {
+    const timeContext = this.resolveTimeContext(clientTimeContext);
     const normalizedQuestion = this.normalizeQuestion(message);
+    const cacheQuestionKey = this.buildCacheQuestionKey(
+      normalizedQuestion,
+      timeContext,
+    );
     const sanitizedHistory = this.sanitizeHistory(history);
+    const directTemporalAnswer = this.buildDirectTemporalAnswer(
+      normalizedQuestion,
+      timeContext,
+    );
+
+    if (directTemporalAnswer) {
+      return {
+        answer: directTemporalAnswer,
+        model: 'local-time-engine',
+        cached: false,
+        sources: [`Local clock (${timeContext.timeZone})`],
+        suggestions: this.baseSuggestions.slice(0, 6),
+      };
+    }
 
     if (!sanitizedHistory.length) {
-      const cached = this.readCache(classroomId, normalizedQuestion);
+      const cached = this.readCache(classroomId, cacheQuestionKey);
       if (cached) {
         return {
           answer: cached.answer,
@@ -274,7 +308,7 @@ export class AssistantService {
     }
 
     const apiKey = await this.resolveAssistantApiKey(userId, classroomId);
-    const context = await this.buildContext(classroomId, message);
+    const context = await this.buildContext(classroomId, message, timeContext);
     const reasoningEffort = this.selectReasoningEffort(message);
 
     const messages = [
@@ -282,6 +316,10 @@ export class AssistantService {
         role: 'system',
         content:
           'You are the SKOLA classroom assistant. Be very polite, respectful, and supportive in tone. Use only provided classroom context as facts. Never reference or infer information from other classrooms. Keep responses user-friendly for students, concise, and actionable. Use plain language, short sections, and bullets when helpful. Preserve clean markdown formatting when useful, including line breaks and indentation for lists/code snippets. Always provide complete answers and do not end abruptly after an intro line or heading. When mentioning dates/times, always format them in natural locale style (for example: Apr 14, 2026 at 3:30 PM) and include relative context when helpful (for example: tomorrow or in 2 days). Do not start with meta phrases like "Based on the provided context", "According to the context", or similar. Start directly with the helpful answer. If context is missing, say exactly what is missing and where to find it in SKOLA.',
+      },
+      {
+        role: 'system',
+        content: this.buildTimeContextSystemMessage(timeContext),
       },
       {
         role: 'system',
@@ -313,7 +351,7 @@ export class AssistantService {
       'I could not generate a reliable answer from the current classroom context.';
 
     if (!sanitizedHistory.length) {
-      this.writeCache(classroomId, normalizedQuestion, {
+      this.writeCache(classroomId, cacheQuestionKey, {
         answer: safeAnswer,
         model: this.modelName,
         sources: context.sources,
@@ -350,6 +388,7 @@ export class AssistantService {
   private async buildContext(
     classroomId: string,
     question: string,
+    timeContext: AssistantResolvedTimeContext,
   ): Promise<ContextBuildResult> {
     const keywords = this.extractKeywords(question);
     const plan = this.buildContextPlan(question, keywords);
@@ -368,7 +407,7 @@ export class AssistantService {
         this.fetchAssessments(classroomId, plan),
         this.fetchSchedules(classroomId, plan),
         this.fetchResources(classroomId, plan),
-        this.fetchAnnouncements(classroomId, plan),
+        this.fetchAnnouncements(classroomId, plan, timeContext),
         this.fetchMembers(classroomId, plan),
         this.fetchQuizzes(classroomId, plan),
       ]);
@@ -392,7 +431,7 @@ export class AssistantService {
     }
 
     for (const row of assessments) {
-      const dueText = this.formatDateHuman(row.dueDate);
+      const dueText = this.formatDateHuman(row.dueDate, timeContext);
       const text = this.compressText(
         `Assessment: ${row.title} (${row.courseCode}) due ${dueText}. ${row.description || ''}`,
         220,
@@ -407,8 +446,8 @@ export class AssistantService {
 
     for (const row of schedules) {
       const dayLabel = this.getDayName(row.dayOfWeek);
-      const start = this.formatScheduleTime(row.startTime);
-      const end = this.formatScheduleTime(row.endTime);
+      const start = this.formatScheduleTime(row.startTime, timeContext);
+      const end = this.formatScheduleTime(row.endTime, timeContext);
       const courseLabel = row.courseCode
         ? `${row.courseCode} - ${row.courseName || 'Untitled Course'}`
         : row.courseName || 'Untitled Course';
@@ -440,7 +479,7 @@ export class AssistantService {
     }
 
     for (const row of announcements) {
-      const publishedAt = this.formatDateTimeHuman(row.createdAt);
+      const publishedAt = this.formatDateTimeHuman(row.createdAt, timeContext);
       const text = this.compressText(
         `Announcement (${String(row.priority).toUpperCase()}): ${row.title}. Published ${publishedAt}. ${row.content}`,
         260,
@@ -457,13 +496,13 @@ export class AssistantService {
       .filter((row) => this.isRecent(row.createdAt, 14))
       .slice(0, 3)
       .map((row) => {
-        const createdAt = this.formatDateTimeHuman(row.createdAt);
+        const createdAt = this.formatDateTimeHuman(row.createdAt, timeContext);
         const course = row.courseCode || 'General';
         return `${row.title} (${course}, added ${createdAt})`;
       });
 
     for (const row of quizzes) {
-      const addedAt = this.formatDateTimeHuman(row.createdAt);
+      const addedAt = this.formatDateTimeHuman(row.createdAt, timeContext);
       const course = row.courseCode || 'General';
       const questionCountValue = Number(row.questionCount || 0);
       const questionCount =
@@ -656,7 +695,11 @@ export class AssistantService {
       .getRawMany<ResourceRow>();
   }
 
-  private fetchAnnouncements(classroomId: string, plan: ContextFetchPlan) {
+  private fetchAnnouncements(
+    classroomId: string,
+    plan: ContextFetchPlan,
+    timeContext: AssistantResolvedTimeContext,
+  ) {
     if (!plan.includeAnnouncements)
       return Promise.resolve([] as AnnouncementRow[]);
 
@@ -669,7 +712,7 @@ export class AssistantService {
       .where('announcement.classroomId = :classroomId', { classroomId })
       .andWhere(
         '(announcement.expiresAt IS NULL OR announcement.expiresAt > :now)',
-        { now: new Date() },
+        { now: timeContext.now },
       )
       .orderBy('announcement.pinned', 'DESC')
       .addOrderBy('announcement.createdAt', 'DESC')
@@ -1097,19 +1140,23 @@ export class AssistantService {
     return names[numeric] || 'Unknown day';
   }
 
-  private formatScheduleTime(timeValue: string): string {
+  private formatScheduleTime(
+    timeValue: string,
+    timeContext: AssistantResolvedTimeContext,
+  ): string {
     const match = String(timeValue || '').match(/^(\d{1,2}):(\d{2})/);
     if (!match) return String(timeValue || 'TBA');
 
     const hours = Number(match[1]);
     const minutes = Number(match[2]);
     if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 'TBA';
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return 'TBA';
 
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date.toLocaleTimeString(undefined, {
+    const utcAnchor = new Date(Date.UTC(1970, 0, 1, hours, minutes, 0, 0));
+    return utcAnchor.toLocaleTimeString(timeContext.locale, {
       hour: 'numeric',
       minute: '2-digit',
+      timeZone: 'UTC',
     });
   }
 
@@ -1346,6 +1393,86 @@ export class AssistantService {
     }
   }
 
+  private resolveTimeContext(
+    input: AssistantClientTimeContext,
+  ): AssistantResolvedTimeContext {
+    const timeZone = this.normalizeTimeZone(input?.timeZone) || 'UTC';
+    const locale = this.normalizeLocale(input?.locale) || 'en-US';
+    const now = this.parseIsoDateTime(input?.nowIso) || new Date();
+    const localDateKey = this.toTimeZoneDateKey(now, timeZone);
+    const localNowLabel = now.toLocaleString(locale, {
+      timeZone,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+    return {
+      now,
+      timeZone,
+      locale,
+      localNowLabel,
+      localDateKey,
+    };
+  }
+
+  private buildTimeContextSystemMessage(
+    timeContext: AssistantResolvedTimeContext,
+  ): string {
+    return `Current user local time: ${timeContext.localNowLabel} (${timeContext.timeZone}). Local date: ${timeContext.localDateKey}. Interpret relative dates (today, tomorrow, this week, next week) using this local time. If the user asks for the current time or date, answer using this clock reference and never claim you lack real-time access.`;
+  }
+
+  private buildCacheQuestionKey(
+    normalizedQuestion: string,
+    timeContext: AssistantResolvedTimeContext,
+  ): string {
+    if (!normalizedQuestion) return normalizedQuestion;
+    return `${normalizedQuestion}::${timeContext.timeZone}::${timeContext.localDateKey}`;
+  }
+
+  private parseIsoDateTime(value: string | undefined): Date | null {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }
+
+  private normalizeTimeZone(value: string | undefined): string | null {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: raw,
+      }).resolvedOptions().timeZone;
+    } catch {
+      return null;
+    }
+  }
+
+  private normalizeLocale(value: string | undefined): string | null {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    try {
+      const canonical = Intl.getCanonicalLocales(raw)[0];
+      return canonical || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private toTimeZoneDateKey(date: Date, timeZone: string): string {
+    const parts = this.getTimeZoneDateParts(date, timeZone);
+    const year = String(parts.year).padStart(4, '0');
+    const month = String(parts.month).padStart(2, '0');
+    const day = String(parts.day).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   private getNextPacificMidnightIso(now: Date = new Date()): string {
     const pacificParts = this.getTimeZoneDateParts(now, 'America/Los_Angeles');
     const nextDayUtcAnchor = Date.UTC(
@@ -1427,6 +1554,51 @@ export class AssistantService {
       .trim();
   }
 
+  private buildDirectTemporalAnswer(
+    normalizedQuestion: string,
+    timeContext: AssistantResolvedTimeContext,
+  ): string | null {
+    const question = String(normalizedQuestion || '');
+    if (!question) return null;
+
+    const asksCurrentTime =
+      /\bwhat time is it\b/.test(question) ||
+      /\bcurrent time\b/.test(question) ||
+      /\btime now\b/.test(question) ||
+      /\blocal time\b/.test(question) ||
+      /\btime right now\b/.test(question) ||
+      /\btell me (the )?time\b/.test(question);
+
+    const asksCurrentDate =
+      /\bcurrent date\b/.test(question) ||
+      /\btoday'?s date\b/.test(question) ||
+      /\bwhat day is it\b/.test(question) ||
+      /\bwhat is today'?s date\b/.test(question);
+
+    if (!asksCurrentTime && !asksCurrentDate) return null;
+
+    const dateLabel = timeContext.now.toLocaleDateString(timeContext.locale, {
+      timeZone: timeContext.timeZone,
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const timeLabel = timeContext.now.toLocaleTimeString(timeContext.locale, {
+      timeZone: timeContext.timeZone,
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+    if (asksCurrentTime && asksCurrentDate) {
+      return `Current local date and time: ${dateLabel} at ${timeLabel} (${timeContext.timeZone}).`;
+    }
+    if (asksCurrentTime) {
+      return `Current local time: ${timeLabel} (${timeContext.timeZone}).`;
+    }
+    return `Today's local date: ${dateLabel} (${timeContext.timeZone}).`;
+  }
+
   private truncatePreservingFormatting(value: string, limit: number): string {
     const normalized = String(value || '').replace(/\r\n/g, '\n').trim();
     if (normalized.length <= limit) return normalized;
@@ -1443,34 +1615,53 @@ export class AssistantService {
     return `${compact.slice(0, limit - 3)}...`;
   }
 
-  private formatDateHuman(value: string | Date | null | undefined): string {
+  private formatDateHuman(
+    value: string | Date | null | undefined,
+    timeContext: AssistantResolvedTimeContext,
+  ): string {
     if (!value) return 'TBA';
-    const parsed =
-      value instanceof Date
-        ? value
-        : new Date(
-            String(value).includes('T')
-              ? String(value)
-              : `${String(value)}T12:00:00`,
-          );
-    if (Number.isNaN(parsed.getTime())) return 'TBA';
-    return parsed.toLocaleDateString(undefined, {
+
+    const raw = String(value).trim();
+    const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const parsed = value instanceof Date ? value : new Date(raw);
+    const dateToFormat = dateOnly
+      ? new Date(
+          Date.UTC(
+            Number(dateOnly[1]),
+            Number(dateOnly[2]) - 1,
+            Number(dateOnly[3]),
+            12,
+            0,
+            0,
+            0,
+          ),
+        )
+      : parsed;
+
+    if (Number.isNaN(dateToFormat.getTime())) return 'TBA';
+
+    return dateToFormat.toLocaleDateString(timeContext.locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: dateOnly ? 'UTC' : timeContext.timeZone,
     });
   }
 
-  private formatDateTimeHuman(value: string | Date | null | undefined): string {
+  private formatDateTimeHuman(
+    value: string | Date | null | undefined,
+    timeContext: AssistantResolvedTimeContext,
+  ): string {
     if (!value) return 'unknown time';
     const parsed = value instanceof Date ? value : new Date(String(value));
     if (Number.isNaN(parsed.getTime())) return 'unknown time';
-    return parsed.toLocaleString(undefined, {
+    return parsed.toLocaleString(timeContext.locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
+      timeZone: timeContext.timeZone,
     });
   }
 

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsIn,
+  IsISO8601,
   IsOptional,
   IsString,
   MaxLength,
@@ -30,4 +31,18 @@ export class AssistantChatRequestDto {
   @ValidateNested({ each: true })
   @Type(() => AssistantChatHistoryMessageDto)
   history?: AssistantChatHistoryMessageDto[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  clientTimeZone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  clientLocale?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  clientNowIso?: string;
 }

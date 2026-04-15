@@ -46,6 +46,9 @@ export async function fetchAssistantUsage(): Promise<AssistantUsageResponse> {
 export async function sendAssistantMessage(payload: {
   message: string;
   history?: AssistantHistoryMessage[];
+  clientTimeZone?: string;
+  clientLocale?: string;
+  clientNowIso?: string;
 }): Promise<AssistantChatResponse> {
   return apiFetch("/assistant/chat", {
     method: "POST",

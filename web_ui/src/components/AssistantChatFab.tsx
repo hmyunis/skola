@@ -92,6 +92,27 @@ function formatMessageTimestamp(timestamp: number) {
   });
 }
 
+function buildClientTimeContext() {
+  let clientTimeZone: string | undefined;
+  let clientLocale: string | undefined;
+
+  try {
+    const options = Intl.DateTimeFormat().resolvedOptions();
+    clientTimeZone = options.timeZone || undefined;
+    clientLocale =
+      options.locale ||
+      (typeof navigator !== "undefined" ? navigator.language : undefined);
+  } catch {
+    clientLocale = typeof navigator !== "undefined" ? navigator.language : undefined;
+  }
+
+  return {
+    clientTimeZone,
+    clientLocale,
+    clientNowIso: new Date().toISOString(),
+  };
+}
+
 function buildInitials(name: string | null | undefined) {
   const parts = String(name || "")
     .trim()
@@ -414,8 +435,18 @@ export function AssistantChatFab() {
     mutationFn: (payload: {
       message: string;
       history?: AssistantHistoryMessage[];
+      clientTimeZone?: string;
+      clientLocale?: string;
+      clientNowIso?: string;
       clientSessionId: number;
-    }) => sendAssistantMessage({ message: payload.message, history: payload.history }),
+    }) =>
+      sendAssistantMessage({
+        message: payload.message,
+        history: payload.history,
+        clientTimeZone: payload.clientTimeZone,
+        clientLocale: payload.clientLocale,
+        clientNowIso: payload.clientNowIso,
+      }),
     onSuccess: (data, variables) => {
       if (variables.clientSessionId !== chatSessionRef.current) return;
       setMessages((prev) => [
@@ -489,9 +520,13 @@ export function AssistantChatFab() {
     const nextMessages = [...messages, userMessage];
     setMessages(nextMessages);
     setInput("");
+    const timeContext = buildClientTimeContext();
     chatMutation.mutate({
       message: nextValue,
       history: toHistory(nextMessages),
+      clientTimeZone: timeContext.clientTimeZone,
+      clientLocale: timeContext.clientLocale,
+      clientNowIso: timeContext.clientNowIso,
       clientSessionId: chatSessionRef.current,
     });
   };
