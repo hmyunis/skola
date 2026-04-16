@@ -15,7 +15,8 @@ export interface ImportedQuizPayload {
   questions: ImportedQuizQuestion[];
 }
 
-const MAX_QUESTIONS = 20;
+export const MAX_QUIZ_QUESTIONS = 100;
+const MAX_QUESTIONS = MAX_QUIZ_QUESTIONS;
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
 
@@ -35,7 +36,7 @@ export const QUIZ_IMPORT_PROMPT_TEMPLATE = [
   "  ]",
   "}",
   "Rules:",
-  "- 1 to 20 questions",
+  `- 1 to ${MAX_QUESTIONS} questions`,
   "- 2 to 6 options per question",
   "- correctOptionIndex must be 0-based",
   "- durationSeconds must be >= 5",

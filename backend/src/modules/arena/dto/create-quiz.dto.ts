@@ -13,6 +13,8 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
+const MAX_QUIZ_QUESTIONS = 100;
+
 class CreateQuizQuestionDto {
   @IsString()
   @MaxLength(1000)
@@ -60,7 +62,7 @@ export class CreateQuizDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(20)
+  @ArrayMaxSize(MAX_QUIZ_QUESTIONS)
   @ValidateNested({ each: true })
   @Type(() => CreateQuizQuestionDto)
   questions: CreateQuizQuestionDto[];

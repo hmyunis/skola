@@ -490,9 +490,7 @@ export class AdminService {
       );
       const messageIdRaw = response?.data?.result?.message_id;
       const messageId =
-        typeof messageIdRaw === 'number'
-          ? messageIdRaw
-          : Number(messageIdRaw);
+        typeof messageIdRaw === 'number' ? messageIdRaw : Number(messageIdRaw);
       if (!Number.isFinite(messageId)) {
         this.logger.warn(
           `Telegram sendMessage did not return a valid message_id for announcement ${announcement.id}.`,

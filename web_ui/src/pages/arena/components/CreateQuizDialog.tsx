@@ -26,7 +26,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useFeatureEnabled } from "@/services/features";
 import { useAuth } from "@/stores/authStore";
-import { parseQuizUpload, QUIZ_IMPORT_PROMPT_TEMPLATE } from "../quizImport";
+import { MAX_QUIZ_QUESTIONS, parseQuizUpload, QUIZ_IMPORT_PROMPT_TEMPLATE } from "../quizImport";
 import { getArenaCourseLabel, getErrorMessage, toArenaCourseCode } from "../utils";
 
 interface DraftQuestion {
@@ -130,7 +130,7 @@ export function CreateQuizDialog({
   };
 
   const addQuestion = () => {
-    if (questions.length >= 20) return;
+    if (questions.length >= MAX_QUIZ_QUESTIONS) return;
     setQuestions((prev) => [...prev, emptyDraftQuestion()]);
     setCurrentQ(questions.length);
   };
@@ -168,7 +168,7 @@ export function CreateQuizDialog({
     if (!title.trim()) return false;
     if (!course.trim()) return false;
     if (!Number.isFinite(maxAttempts) || maxAttempts < 1) return false;
-    if (questions.length < 1 || questions.length > 20) return false;
+    if (questions.length < 1 || questions.length > MAX_QUIZ_QUESTIONS) return false;
 
     return questions.every((question) => {
       if (!question.question.trim()) return false;
@@ -427,12 +427,12 @@ export function CreateQuizDialog({
                 Questions ({questions.length})
               </p>
               <div className="flex-1" />
-              <Button size="sm" variant="outline" onClick={addQuestion} disabled={questions.length >= 20} className="h-7 text-xs">
+              <Button size="sm" variant="outline" onClick={addQuestion} disabled={questions.length >= MAX_QUIZ_QUESTIONS} className="h-7 text-xs">
                 <Plus className="h-3 w-3" /> Add
               </Button>
             </div>
 
-            <div className="flex gap-1 overflow-x-auto pb-1">
+            <div className="flex flex-wrap gap-1 pb-1">
               {questions.map((draftQuestion, i) => {
                 const filled =
                   draftQuestion.question.trim() &&

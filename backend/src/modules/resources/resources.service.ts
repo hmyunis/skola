@@ -272,22 +272,22 @@ export class ResourcesService {
 
     const updateData: Partial<Resource> = { updatedAt: new Date() };
     if (data.title !== undefined) updateData.title = data.title;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.courseId !== undefined) updateData.courseId = data.courseId;
     if (data.type !== undefined) updateData.type = data.type;
     if (data.tags !== undefined) updateData.tags = data.tags;
-    if (data.externalUrl !== undefined) updateData.externalUrl = data.externalUrl;
+    if (data.externalUrl !== undefined)
+      updateData.externalUrl = data.externalUrl;
 
-    await this.resourceRepo.update(
-      { id: resourceId, classroomId },
-      updateData,
-    );
+    await this.resourceRepo.update({ id: resourceId, classroomId }, updateData);
 
     const updated = await this.resourceRepo.findOne({
       where: { id: resourceId, classroomId },
       relations: ['uploader', 'course'],
     });
-    if (!updated) throw new NotFoundException('Resource not found after update');
+    if (!updated)
+      throw new NotFoundException('Resource not found after update');
     return this.toResponse(updated);
   }
 
@@ -321,7 +321,8 @@ export class ResourcesService {
       updatedAt: new Date(),
     };
     if (data.title !== undefined) updateData.title = data.title;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.courseId !== undefined) updateData.courseId = data.courseId;
     if (data.type !== undefined) updateData.type = data.type;
     if (data.tags !== undefined) updateData.tags = data.tags;
@@ -338,7 +339,8 @@ export class ResourcesService {
       where: { id: resourceId, classroomId },
       relations: ['uploader', 'course'],
     });
-    if (!updated) throw new NotFoundException('Resource not found after update');
+    if (!updated)
+      throw new NotFoundException('Resource not found after update');
     return this.toResponse(updated);
   }
 

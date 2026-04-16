@@ -207,7 +207,9 @@ export class AssistantService {
     private readonly httpService: HttpService,
   ) {}
 
-  async getSuggestions(classroomId: string): Promise<{ suggestions: string[] }> {
+  async getSuggestions(
+    classroomId: string,
+  ): Promise<{ suggestions: string[] }> {
     const upcoming = await this.assessmentRepo
       .createQueryBuilder('assessment')
       .select('assessment.title', 'title')
@@ -401,16 +403,15 @@ export class AssistantService {
       announcements,
       members,
       quizzes,
-    ] =
-      await Promise.all([
-        this.fetchCourses(classroomId, plan),
-        this.fetchAssessments(classroomId, plan),
-        this.fetchSchedules(classroomId, plan),
-        this.fetchResources(classroomId, plan),
-        this.fetchAnnouncements(classroomId, plan, timeContext),
-        this.fetchMembers(classroomId, plan),
-        this.fetchQuizzes(classroomId, plan),
-      ]);
+    ] = await Promise.all([
+      this.fetchCourses(classroomId, plan),
+      this.fetchAssessments(classroomId, plan),
+      this.fetchSchedules(classroomId, plan),
+      this.fetchResources(classroomId, plan),
+      this.fetchAnnouncements(classroomId, plan, timeContext),
+      this.fetchMembers(classroomId, plan),
+      this.fetchQuizzes(classroomId, plan),
+    ]);
 
     const snippets: ContextSnippet[] = [];
 
@@ -658,9 +659,12 @@ export class AssistantService {
       .andWhere('schedule.isDraft = :isDraft', { isDraft: false });
 
     if (plan.courseCodeHints.length > 0) {
-      query.andWhere("REPLACE(UPPER(course.code), '-', '') IN (:...courseCodeHints)", {
-        courseCodeHints: plan.courseCodeHints,
-      });
+      query.andWhere(
+        "REPLACE(UPPER(course.code), '-', '') IN (:...courseCodeHints)",
+        {
+          courseCodeHints: plan.courseCodeHints,
+        },
+      );
     }
 
     return query
@@ -684,9 +688,12 @@ export class AssistantService {
       .where('resource.classroomId = :classroomId', { classroomId });
 
     if (plan.courseCodeHints.length > 0) {
-      query.andWhere("REPLACE(UPPER(course.code), '-', '') IN (:...courseCodeHints)", {
-        courseCodeHints: plan.courseCodeHints,
-      });
+      query.andWhere(
+        "REPLACE(UPPER(course.code), '-', '') IN (:...courseCodeHints)",
+        {
+          courseCodeHints: plan.courseCodeHints,
+        },
+      );
     }
 
     return query
@@ -803,8 +810,9 @@ export class AssistantService {
         /(member|members|student|students|classmate|classmates|who is in|roster|people|participants)/.test(
           q,
         ),
-      quizzes:
-        /(quiz|quizzes|exam|exams|test|tests|practice quiz|mock)/.test(q),
+      quizzes: /(quiz|quizzes|exam|exams|test|tests|practice quiz|mock)/.test(
+        q,
+      ),
     };
 
     const hasExplicitIntent = Object.values(mentions).some(Boolean);
@@ -815,26 +823,21 @@ export class AssistantService {
         mentions.resources ||
         mentions.quizzes
       : true;
-    const includeAssessments = hasExplicitIntent
-      ? mentions.assessments
-      : true;
-    const includeResources = hasExplicitIntent
-      ? mentions.resources
-      : false;
+    const includeAssessments = hasExplicitIntent ? mentions.assessments : true;
+    const includeResources = hasExplicitIntent ? mentions.resources : false;
     const includeAnnouncements = hasExplicitIntent
       ? mentions.announcements
       : false;
     const includeSchedules = hasExplicitIntent
       ? mentions.schedules || mentions.courses
       : true;
-    const includeMembers = hasExplicitIntent
-      ? mentions.members
-      : false;
+    const includeMembers = hasExplicitIntent ? mentions.members : false;
     const includeQuizzes = hasExplicitIntent
       ? mentions.quizzes || mentions.assessments
       : false;
 
-    const complexityBoost = question.length > 180 || keywords.length > 8 ? 1 : 0;
+    const complexityBoost =
+      question.length > 180 || keywords.length > 8 ? 1 : 0;
 
     return {
       includeCourses,
@@ -1160,7 +1163,10 @@ export class AssistantService {
     });
   }
 
-  private isRecent(value: Date | string | null | undefined, days: number): boolean {
+  private isRecent(
+    value: Date | string | null | undefined,
+    days: number,
+  ): boolean {
     if (!value) return false;
     const date = value instanceof Date ? value : new Date(String(value));
     if (Number.isNaN(date.getTime())) return false;
@@ -1220,7 +1226,9 @@ export class AssistantService {
 
   private parseRetryDelaySeconds(value: string): number | null {
     if (!value) return null;
-    const match = String(value).trim().match(/^([\d.]+)\s*s$/i);
+    const match = String(value)
+      .trim()
+      .match(/^([\d.]+)\s*s$/i);
     if (!match) return null;
     const seconds = Math.ceil(Number(match[1]));
     if (!Number.isFinite(seconds) || seconds <= 0) return null;
@@ -1600,7 +1608,9 @@ export class AssistantService {
   }
 
   private truncatePreservingFormatting(value: string, limit: number): string {
-    const normalized = String(value || '').replace(/\r\n/g, '\n').trim();
+    const normalized = String(value || '')
+      .replace(/\r\n/g, '\n')
+      .trim();
     if (normalized.length <= limit) return normalized;
     if (limit <= 3) return normalized.slice(0, limit);
     return `${normalized.slice(0, limit - 3).trimEnd()}...`;

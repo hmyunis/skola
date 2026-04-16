@@ -494,9 +494,7 @@ export class UsersService {
   private toAssistantSettings(
     member: Pick<
       ClassroomMember,
-      | 'usePersonalOpenAIApiKey'
-      | 'openAIApiKeyCiphertext'
-      | 'openAIApiKeyHint'
+      'usePersonalOpenAIApiKey' | 'openAIApiKeyCiphertext' | 'openAIApiKeyHint'
     >,
   ): UserAssistantSettings {
     return {
