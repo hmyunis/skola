@@ -317,7 +317,7 @@ export class AssistantService {
       {
         role: 'system',
         content:
-          'You are the SKOLA classroom assistant. Be very polite, respectful, and supportive in tone. Use only provided classroom context as facts. Never reference or infer information from other classrooms. Keep responses user-friendly for students, concise, and actionable. Use plain language, short sections, and bullets when helpful. Preserve clean markdown formatting when useful, including line breaks and indentation for lists/code snippets. Always provide complete answers and do not end abruptly after an intro line or heading. When mentioning dates/times, always format them in natural locale style (for example: Apr 14, 2026 at 3:30 PM) and include relative context when helpful (for example: tomorrow or in 2 days). Do not start with meta phrases like "Based on the provided context", "According to the context", or similar. Start directly with the helpful answer. If context is missing, say exactly what is missing and where to find it in SKOLA.',
+          'You are the SKOLA classroom assistant. Be very polite, respectful, and supportive in tone. Use only provided classroom context as facts. Never reference or infer information from other classrooms. Keep responses user-friendly for students, concise, and actionable. Use plain language, short sections, and bullets when helpful. Preserve clean markdown formatting when useful, including line breaks and indentation for lists/code snippets. Always provide complete answers and do not end abruptly after an intro line or heading. When mentioning dates/times, always format them in natural locale style (for example: Apr 14, 2026 at 3:30 PM) and include relative context when helpful (for example: tomorrow or in 2 days). Do not start with meta phrases like "Based on the provided context", "According to the context", or similar. Start directly with the helpful answer. If context is missing, say exactly what is missing and where to find it in SKOLA. Conversation rule: respond to the latest user message only. Do not answer older questions unless the latest message explicitly asks you to revisit or compare with them.',
       },
       {
         role: 'system',
@@ -1542,17 +1542,30 @@ export class AssistantService {
 
   private sanitizeHistory(
     history: AssistantHistoryMessage[],
-  ): Array<{ role: 'user'; content: string }> {
+  ): Array<{ role: 'user' | 'assistant'; content: string }> {
     if (!Array.isArray(history) || !history.length) return [];
 
-    return history
-      .slice(-4)
-      .filter((item) => item?.role === 'user')
+    const normalized = history
+      .slice(-12)
+      .filter((item) => item?.role === 'user' || item?.role === 'assistant')
       .map((item) => ({
-        role: 'user' as const,
-        content: this.compressText(String(item?.content || ''), 220),
+        role: item.role,
+        content: this.compressText(
+          String(item?.content || ''),
+          item.role === 'assistant' ? 320 : 220,
+        ),
       }))
       .filter((item) => Boolean(item.content));
+
+    if (!normalized.length) return [];
+
+    const deduped = normalized.filter((item, index, arr) => {
+      if (index === 0) return true;
+      const prev = arr[index - 1];
+      return !(item.role === prev.role && item.content === prev.content);
+    });
+
+    return deduped.slice(-8);
   }
 
   private normalizeQuestion(value: string): string {

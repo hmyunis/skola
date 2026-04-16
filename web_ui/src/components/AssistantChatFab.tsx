@@ -523,7 +523,7 @@ export function AssistantChatFab() {
     const timeContext = buildClientTimeContext();
     chatMutation.mutate({
       message: nextValue,
-      history: toHistory(nextMessages),
+      history: toHistory(messages),
       clientTimeZone: timeContext.clientTimeZone,
       clientLocale: timeContext.clientLocale,
       clientNowIso: timeContext.clientNowIso,

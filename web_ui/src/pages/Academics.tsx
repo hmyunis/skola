@@ -912,7 +912,7 @@ function AssessmentCalendarView({
                   {dayAssignments.length > 0 && (
                     <span
                       className={cn(
-                        "px-1.5 py-0.5 border text-[9px] font-bold tabular-nums",
+                        "hidden px-1.5 py-0.5 border text-[9px] font-bold tabular-nums sm:inline-flex",
                         urgentCount > 0
                           ? "bg-destructive/10 text-destructive border-destructive/30"
                           : "bg-primary/10 text-primary border-primary/30",

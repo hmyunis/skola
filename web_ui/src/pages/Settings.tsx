@@ -767,11 +767,19 @@ const SettingsPage = () => {
         }}
         className="space-y-6"
       >
-        <TabsList>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="byok">BYOK</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+          <TabsTrigger value="appearance" className="w-full whitespace-normal text-xs sm:text-sm">
+            Appearance
+          </TabsTrigger>
+          <TabsTrigger value="byok" className="w-full whitespace-normal text-xs sm:text-sm">
+            BYOK
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="w-full whitespace-normal text-xs sm:text-sm">
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="account" className="w-full whitespace-normal text-xs sm:text-sm">
+            Account
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="appearance" className="space-y-6">

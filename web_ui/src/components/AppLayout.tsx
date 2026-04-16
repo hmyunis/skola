@@ -448,7 +448,7 @@ export function AppLayout() {
 
           <div className="flex-1 flex flex-col min-w-0">
             <header
-              className="h-12 flex items-center border-b border-border px-4 gap-3 shrink-0"
+              className="h-12 flex items-center border-b border-border px-2.5 sm:px-4 gap-2 sm:gap-3 shrink-0"
               style={{
                 backgroundColor: `hsl(${batchTheme.headerBg})`,
                 color: `hsl(${batchTheme.headerFg})`,
@@ -456,152 +456,157 @@ export function AppLayout() {
             >
               <SidebarTrigger className="hidden md:flex text-inherit hover:bg-white/10" />
               <div className="h-5 w-px bg-current opacity-20 hidden md:block" />
-              <span className="text-xs font-bold uppercase tracking-[0.2em]">SKOLA</span>
-              {activeSemester && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/10 text-[10px] uppercase tracking-wider font-bold cursor-default">
-                      <CalendarDays className="h-2.5 w-2.5" />
-                      {activeSemester.name}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <span>Active semester: {activeSemester.name}</span>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {memberships.length > 1 && (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="opacity-70 hidden sm:inline text-[10px] uppercase tracking-wider font-bold">
-                    Class
-                  </span>
-                  <Select value={selectedClassroomId} onValueChange={handleClassroomSwitchSelect}>
-                    <SelectTrigger
-                      aria-label="Switch classroom"
-                      className="h-8 w-[8.75rem] sm:w-auto sm:min-w-[10rem] max-w-[10.5rem] sm:max-w-[15rem] border-white/25 bg-white/10 text-inherit text-[11px] font-semibold focus:ring-white/40 focus:ring-offset-0 hover:bg-white/15 [&>span]:max-w-[6.75rem] sm:[&>span]:max-w-[11.5rem] [&>span]:truncate"
-                    >
-                      <SelectValue placeholder="Switch classroom" />
-                    </SelectTrigger>
-                    <SelectContent align="start" className="max-w-[20rem]">
-                      {classroomSwitchOptions.map((option) => (
-                        <SelectItem key={option.classroomId} value={option.classroomId} className="py-2">
-                          {option.primaryLabel}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <CommandPalette />
-              <div className="flex-1" />
-
-              <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    className="relative h-8 w-8 flex items-center justify-center hover:bg-white/10 transition-colors"
-                    aria-label="Open notifications"
-                  >
-                    <Bell className="h-4 w-4" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-[9px] leading-4 text-destructive-foreground font-bold">
-                        {unreadCount > 9 ? "9+" : unreadCount}
+              <div className="min-w-0 flex flex-1 items-center gap-2 sm:gap-3">
+                <span className="shrink-0 text-xs font-bold uppercase tracking-[0.2em]">SKOLA</span>
+                {activeSemester && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/10 text-[10px] uppercase tracking-wider font-bold cursor-default">
+                        <CalendarDays className="h-2.5 w-2.5" />
+                        {activeSemester.name}
                       </span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="end"
-                  className="w-[min(92vw,24rem)] p-0 border border-border bg-card text-card-foreground"
-                >
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
-                    <p className="text-[11px] font-bold uppercase tracking-wider">
-                      Notifications ({unreadCount} unread)
-                    </p>
-                    <button
-                      onClick={() => {
-                        setNotificationOpen(false);
-                        navigate("/settings?tab=notifications");
-                      }}
-                      className="text-[10px] font-semibold uppercase tracking-wider text-primary hover:opacity-80"
-                    >
-                      View all
-                    </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <span>Active semester: {activeSemester.name}</span>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {memberships.length > 1 && (
+                  <div className="min-w-0 flex-1 sm:flex-none sm:w-auto">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="opacity-70 hidden sm:inline text-[10px] uppercase tracking-wider font-bold">
+                        Class
+                      </span>
+                      <Select value={selectedClassroomId} onValueChange={handleClassroomSwitchSelect}>
+                        <SelectTrigger
+                          aria-label="Switch classroom"
+                          className="h-8 w-full min-w-0 sm:w-auto sm:min-w-[10rem] sm:max-w-[15rem] border-white/25 bg-white/10 text-inherit text-[10px] sm:text-[11px] font-semibold focus:ring-white/40 focus:ring-offset-0 hover:bg-white/15 [&>span]:truncate"
+                        >
+                          <SelectValue placeholder="Switch classroom" />
+                        </SelectTrigger>
+                        <SelectContent align="start" className="max-w-[20rem]">
+                          {classroomSwitchOptions.map((option) => (
+                            <SelectItem key={option.classroomId} value={option.classroomId} className="py-2">
+                              {option.primaryLabel}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                )}
+                <CommandPalette />
+              </div>
 
-                  <div className="max-h-80 overflow-y-auto">
-                    {!notificationItems.length && (
-                      <p className="px-3 py-4 text-xs text-muted-foreground">
-                        No notifications yet.
+              <div className="ml-1 sm:ml-0 shrink-0 flex items-center gap-0.5 sm:gap-1">
+                <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="relative h-8 w-8 flex items-center justify-center hover:bg-white/10 transition-colors"
+                      aria-label="Open notifications"
+                    >
+                      <Bell className="h-4 w-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-[9px] leading-4 text-destructive-foreground font-bold">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="end"
+                    className="w-[min(92vw,24rem)] p-0 border border-border bg-card text-card-foreground"
+                  >
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
+                      <p className="text-[11px] font-bold uppercase tracking-wider">
+                        Notifications ({unreadCount} unread)
                       </p>
-                    )}
-
-                    {notificationItems.map((item: InAppNotificationItem) => (
-                      <div
-                        key={item.id}
-                        className="px-3 py-2 border-b border-border/70 last:border-b-0"
+                      <button
+                        onClick={() => {
+                          setNotificationOpen(false);
+                          navigate("/settings?tab=notifications");
+                        }}
+                        className="text-[10px] font-semibold uppercase tracking-wider text-primary hover:opacity-80"
                       >
-                        <div className="flex items-start gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold leading-snug">{item.title}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">
-                              {item.body}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                              {formatNotificationTime(item.createdAt)}
-                            </p>
-                          </div>
+                        View all
+                      </button>
+                    </div>
 
-                          <div className="flex items-center gap-1 pt-0.5">
-                            {!item.isRead && (
+                    <div className="max-h-80 overflow-y-auto">
+                      {!notificationItems.length && (
+                        <p className="px-3 py-4 text-xs text-muted-foreground">
+                          No notifications yet.
+                        </p>
+                      )}
+
+                      {notificationItems.map((item: InAppNotificationItem) => (
+                        <div
+                          key={item.id}
+                          className="px-3 py-2 border-b border-border/70 last:border-b-0"
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold leading-snug">{item.title}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">
+                                {item.body}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                {formatNotificationTime(item.createdAt)}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-1 pt-0.5">
+                              {!item.isRead && (
+                                <button
+                                  onClick={() => markNotificationReadMutation.mutate(item.id)}
+                                  disabled={
+                                    markNotificationReadMutation.isPending ||
+                                    dismissNotificationMutation.isPending
+                                  }
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Mark as read"
+                                  aria-label="Mark notification as read"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+
                               <button
-                                onClick={() => markNotificationReadMutation.mutate(item.id)}
+                                onClick={() => dismissNotificationMutation.mutate(item.id)}
                                 disabled={
                                   markNotificationReadMutation.isPending ||
                                   dismissNotificationMutation.isPending
                                 }
-                                className="h-6 w-6 inline-flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Mark as read"
-                                aria-label="Mark notification as read"
+                                className="h-6 w-6 inline-flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Dismiss"
+                                aria-label="Dismiss notification"
                               >
-                                <Check className="h-3.5 w-3.5" />
+                                <X className="h-3.5 w-3.5" />
                               </button>
-                            )}
-
-                            <button
-                              onClick={() => dismissNotificationMutation.mutate(item.id)}
-                              disabled={
-                                markNotificationReadMutation.isPending ||
-                                dismissNotificationMutation.isPending
-                              }
-                              className="h-6 w-6 inline-flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Dismiss"
-                              aria-label="Dismiss notification"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={toggleColorMode}
-                    className="h-8 w-8 flex items-center justify-center hover:bg-white/10 transition-colors"
-                  >
-                    {colorMode === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <span>{colorMode === "light" ? "Dark mode" : "Light mode"}</span>
-                </TooltipContent>
-              </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleColorMode}
+                      className="h-8 w-8 flex items-center justify-center hover:bg-white/10 transition-colors"
+                    >
+                      {colorMode === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <span>{colorMode === "light" ? "Dark mode" : "Light mode"}</span>
+                  </TooltipContent>
+                </Tooltip>
 
-              <UserMenu activeSemester={activeSemester} onLogout={handleLogout} />
+                <UserMenu activeSemester={activeSemester} onLogout={handleLogout} />
+              </div>
             </header>
 
             <AlertDialog
