@@ -37,6 +37,11 @@ export class CreateScheduleItemDto {
   location?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(180)
+  sessionName?: string;
+
+  @IsOptional()
   @IsBoolean()
   isOnline?: boolean;
 
@@ -77,6 +82,11 @@ export class UpdateScheduleItemDto {
   @IsString()
   @MaxLength(120)
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(180)
+  sessionName?: string;
 
   @IsOptional()
   @IsBoolean()

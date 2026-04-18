@@ -99,7 +99,10 @@ export function CourseSelectDropdown({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className={cn('h-8 w-full max-w-full min-w-0 justify-between gap-2 overflow-hidden text-xs', className)}
+                    className={cn(
+                        'h-8 w-full max-w-full min-w-0 justify-between gap-2 overflow-hidden text-left text-xs [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate',
+                        className,
+                    )}
                 >
                     {value === 'all' ? (
                         <span className="truncate">All Courses</span>

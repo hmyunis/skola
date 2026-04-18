@@ -141,6 +141,7 @@ interface ScheduleItemApi {
   endTime: string;
   type: "lecture" | "lab" | "exam" | "other";
   location?: string | null;
+  sessionName?: string | null;
   isOnline?: boolean;
   isDraft?: boolean;
   confirmedAt?: string | null;
@@ -200,10 +201,11 @@ function parseTimeToDate(date: Date, time: string): Date {
 }
 
 function mapScheduleItemToClassSlot(item: ScheduleItemApi, baseDate: Date): ClassSlot {
+  const resolvedName = item.sessionName?.trim() || item.course?.name || "Untitled Course";
   return {
     id: item.id,
     courseId: item.courseId,
-    name: item.course?.name || "Untitled Course",
+    name: resolvedName,
     code: item.course?.code || "N/A",
     room: item.location || (item.isOnline ? "Online" : "TBA"),
     type: item.type,
@@ -304,6 +306,7 @@ export async function createScheduleItem(data: {
   endTime: string;
   type: "lecture" | "lab" | "exam" | "other";
   location?: string;
+  sessionName?: string;
   isOnline?: boolean;
   isDraft?: boolean;
   fireMode?: "auto" | "on" | "off";
@@ -323,6 +326,7 @@ export async function updateScheduleItem(
     endTime: string;
     type: "lecture" | "lab" | "exam" | "other";
     location?: string;
+    sessionName?: string;
     isOnline?: boolean;
     isDraft?: boolean;
     fireMode?: "auto" | "on" | "off";

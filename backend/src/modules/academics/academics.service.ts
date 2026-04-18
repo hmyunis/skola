@@ -315,6 +315,7 @@ export class AcademicsService {
       endTime: this.normalizeTime(dto.endTime),
       type: dto.type as ScheduleType,
       location: dto.location || null,
+      sessionName: dto.sessionName?.trim() || course.name,
       isOnline: dto.isOnline ?? false,
       isDraft: dto.isDraft ?? true,
       fireMode:
@@ -369,6 +370,9 @@ export class AcademicsService {
       endTime: nextEnd,
       ...(dto.type !== undefined && { type: dto.type as ScheduleType }),
       ...(dto.location !== undefined && { location: dto.location || null }),
+      ...(dto.sessionName !== undefined && {
+        sessionName: dto.sessionName.trim() || null,
+      }),
       ...(dto.isOnline !== undefined && { isOnline: dto.isOnline }),
       ...(dto.isDraft !== undefined && { isDraft: dto.isDraft }),
       ...(dto.isDraft === true && { confirmedAt: null, confirmedById: null }),

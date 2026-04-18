@@ -66,8 +66,9 @@ const DAY_TO_INDEX: Record<DayOfWeek, number> = {
 };
 const START_HOUR = 8;
 const END_HOUR = 17;
-const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
 const HOUR_HEIGHT = 64;
+const BASE_PIXELS_PER_MINUTE = HOUR_HEIGHT / 60;
+const EMPTY_GAP_COMPRESSION = 0.35;
 const RECENT_CONFIRM_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -84,6 +85,132 @@ function toTimeInput(minutesFromMidnight: number): string {
 
 function parseTimeToMinutes(value: Date): number {
   return value.getHours() * 60 + value.getMinutes();
+}
+
+interface TimeScaleSegment {
+  start: number;
+  end: number;
+  pixelsPerMinute: number;
+}
+
+interface WeeklyTimeScale {
+  hourStarts: number[];
+  rowHeights: number[];
+  totalHeight: number;
+  toDisplayY: (minute: number) => number;
+}
+
+function clampMinutes(minutes: number, min: number, max: number): number {
+  return Math.min(Math.max(minutes, min), max);
+}
+
+function floorToHour(minutes: number): number {
+  return Math.floor(minutes / 60) * 60;
+}
+
+function ceilToHour(minutes: number): number {
+  return Math.ceil(minutes / 60) * 60;
+}
+
+function minuteToHourLabel(minutes: number): string {
+  const hour = Math.floor((((minutes / 60) % 24) + 24) % 24);
+  return hourTo12(hour);
+}
+
+function buildWeeklyTimeScale(schedule: Record<string, ClassSlot[]>): WeeklyTimeScale {
+  const intervals = Object.values(schedule)
+    .flatMap((slots) =>
+      slots.map((slot) => ({
+        start: parseTimeToMinutes(slot.startTime),
+        end: parseTimeToMinutes(slot.endTime),
+      })),
+    )
+    .filter((interval) => interval.end > interval.start)
+    .sort((a, b) => a.start - b.start);
+
+  const baselineStart = START_HOUR * 60;
+  const baselineEnd = END_HOUR * 60;
+  const minStart = intervals.length ? Math.min(...intervals.map((interval) => interval.start)) : baselineStart;
+  const maxEnd = intervals.length ? Math.max(...intervals.map((interval) => interval.end)) : baselineEnd;
+  const rangeStart = Math.min(baselineStart, floorToHour(minStart));
+  const rangeEnd = Math.max(baselineEnd, ceilToHour(maxEnd));
+
+  const mergedIntervals: Array<{ start: number; end: number }> = [];
+  for (const interval of intervals) {
+    const start = clampMinutes(interval.start, rangeStart, rangeEnd);
+    const end = clampMinutes(interval.end, rangeStart, rangeEnd);
+    if (end <= start) continue;
+
+    const previous = mergedIntervals[mergedIntervals.length - 1];
+    if (!previous || start > previous.end) {
+      mergedIntervals.push({ start, end });
+      continue;
+    }
+    previous.end = Math.max(previous.end, end);
+  }
+
+  const segments: TimeScaleSegment[] = [];
+  const pushGapSegment = (start: number, end: number) => {
+    if (end <= start) return;
+    const duration = end - start;
+    segments.push({
+      start,
+      end,
+      pixelsPerMinute: duration > 60 ? BASE_PIXELS_PER_MINUTE * EMPTY_GAP_COMPRESSION : BASE_PIXELS_PER_MINUTE,
+    });
+  };
+
+  let cursor = rangeStart;
+  for (const interval of mergedIntervals) {
+    pushGapSegment(cursor, interval.start);
+    segments.push({
+      start: interval.start,
+      end: interval.end,
+      pixelsPerMinute: BASE_PIXELS_PER_MINUTE,
+    });
+    cursor = interval.end;
+  }
+  pushGapSegment(cursor, rangeEnd);
+
+  if (!segments.length) {
+    segments.push({
+      start: rangeStart,
+      end: rangeEnd,
+      pixelsPerMinute: BASE_PIXELS_PER_MINUTE,
+    });
+  }
+
+  const segmentOffsets: number[] = [];
+  let totalHeight = 0;
+  for (const segment of segments) {
+    segmentOffsets.push(totalHeight);
+    totalHeight += (segment.end - segment.start) * segment.pixelsPerMinute;
+  }
+
+  const toDisplayY = (minute: number): number => {
+    const clamped = clampMinutes(minute, rangeStart, rangeEnd);
+    for (let i = 0; i < segments.length; i += 1) {
+      const segment = segments[i];
+      if (clamped <= segment.end || i === segments.length - 1) {
+        return segmentOffsets[i] + (clamped - segment.start) * segment.pixelsPerMinute;
+      }
+    }
+    return totalHeight;
+  };
+
+  const hourStarts: number[] = [];
+  for (let minute = rangeStart; minute < rangeEnd; minute += 60) {
+    hourStarts.push(minute);
+  }
+
+  const rowHeights = hourStarts.map((minute) => toDisplayY(minute + 60) - toDisplayY(minute));
+
+  return {
+    hourStarts,
+    rowHeights,
+    totalHeight,
+    toDisplayY,
+  };
 }
 
 function getTempTimeWindow(daySlots: ClassSlot[], excludeIds: string[]): { startTime: string; endTime: string } {
@@ -513,12 +640,12 @@ function ScheduleItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-full">
+      <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-full overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="uppercase tracking-wider text-sm">{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-5 sm:space-y-4 py-2 sm:py-2">
-          <div className="space-y-1.5">
+        <div className="min-w-0 space-y-5 sm:space-y-4 py-2 sm:py-2">
+          <div className="min-w-0 space-y-1.5">
             <Label className="text-[10px] uppercase tracking-widest">Course</Label>
             <CourseSelectDropdown
               value={courseId || undefined}
@@ -546,18 +673,22 @@ function ScheduleItemDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label className="text-[10px] uppercase tracking-widest">Session Name</Label>
-            <Input value={name} readOnly placeholder="Auto from selected course" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Prefilled from selected course"
+            />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label className="text-[10px] uppercase tracking-widest">Room</Label>
             <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. Lab 302" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label className="text-[10px] uppercase tracking-widest">Type</Label>
               <Select value={type} onValueChange={(v) => setType(v as "lecture" | "lab" | "exam" | "other")}>
                 <SelectTrigger>
@@ -571,7 +702,7 @@ function ScheduleItemDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label className="text-[10px] uppercase tracking-widest">Day</Label>
               <Select value={selectedDay} onValueChange={(v) => setSelectedDay(v as DayOfWeek)}>
                 <SelectTrigger>
@@ -587,11 +718,11 @@ function ScheduleItemDialog({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label className="text-[10px] uppercase tracking-widest">Start Time</Label>
               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label className="text-[10px] uppercase tracking-widest">End Time</Label>
               <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
@@ -712,17 +843,20 @@ function ClassBlock({
   slot,
   showDraft,
   clickable,
+  timeScale,
   onClick,
 }: {
   slot: ClassSlot;
   showDraft: boolean;
   clickable: boolean;
+  timeScale: WeeklyTimeScale;
   onClick?: () => void;
 }) {
-  const startMin = slot.startTime.getHours() * 60 + slot.startTime.getMinutes() - START_HOUR * 60;
-  const endMin = slot.endTime.getHours() * 60 + slot.endTime.getMinutes() - START_HOUR * 60;
-  const topPct = (startMin / TOTAL_MINUTES) * 100;
-  const heightPct = ((endMin - startMin) / TOTAL_MINUTES) * 100;
+  const startMin = parseTimeToMinutes(slot.startTime);
+  const endMin = parseTimeToMinutes(slot.endTime);
+  const topPx = timeScale.toDisplayY(startMin);
+  const bottomPx = timeScale.toDisplayY(endMin);
+  const heightPx = Math.max(bottomPx - topPx, 28);
   const colors = typeColors[slot.type] || typeColors.lecture;
   const isDraft = slot.draft && showDraft;
 
@@ -731,7 +865,7 @@ function ClassBlock({
       className={`absolute left-0.5 right-0.5 overflow-hidden border ${colors.bg} ${colors.border} ${
         isDraft ? "border-dashed border-2" : ""
       } p-1.5 transition-all hover:z-10 hover:shadow-md ${clickable ? "cursor-pointer" : ""}`}
-      style={{ top: `${topPct}%`, height: `${heightPct}%`, minHeight: "28px" }}
+      style={{ top: `${topPx}px`, height: `${heightPx}px` }}
       onClick={onClick}
     >
       <div className="flex items-start gap-1.5">
@@ -757,15 +891,13 @@ function ClassBlock({
 function WeeklyGrid({
   schedule,
   showDraft,
-  editMode,
   onClickSlot,
 }: {
   schedule: Record<string, ClassSlot[]>;
   showDraft: boolean;
-  editMode: boolean;
   onClickSlot: (slot: ClassSlot, day: DayOfWeek) => void;
 }) {
-  const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
+  const timeScale = useMemo(() => buildWeeklyTimeScale(schedule), [schedule]);
 
   return (
     <div className="border border-border overflow-auto">
@@ -784,28 +916,29 @@ function WeeklyGrid({
       {/* Grid body */}
       <div className="grid grid-cols-[64px_repeat(7,1fr)]">
         <div className="border-r border-border">
-          {hours.map((h) => (
+          {timeScale.hourStarts.map((hourStart, idx) => (
             <div
-              key={h}
+              key={hourStart}
               className="border-b border-border flex items-start justify-center pt-1 text-[10px] text-muted-foreground tabular-nums"
-              style={{ height: HOUR_HEIGHT }}
+              style={{ height: `${timeScale.rowHeights[idx]}px` }}
             >
-              {hourTo12(h)}
+              {minuteToHourLabel(hourStart)}
             </div>
           ))}
         </div>
         {DAYS.map((day) => (
           <div key={day} className="border-r border-border last:border-r-0 relative">
-            {hours.map((h) => (
-              <div key={h} className="border-b border-border" style={{ height: HOUR_HEIGHT }} />
+            {timeScale.hourStarts.map((hourStart, idx) => (
+              <div key={hourStart} className="border-b border-border" style={{ height: `${timeScale.rowHeights[idx]}px` }} />
             ))}
-            <div className="absolute inset-0">
+            <div className="absolute inset-0" style={{ height: `${timeScale.totalHeight}px` }}>
               {(schedule[day] || []).map((slot) => (
                 <ClassBlock
                   key={slot.id}
                   slot={slot}
                   showDraft={showDraft}
                   clickable={!!onClickSlot}
+                  timeScale={timeScale}
                   onClick={() => onClickSlot(slot, day)}
                 />
               ))}
@@ -820,13 +953,11 @@ function WeeklyGrid({
 // ─── Daily Agenda (Mobile) with Drag-and-Drop ───
 function DailyAgenda({
   schedule,
-  showDraft,
   editMode,
   onClickSlot,
   onReorder,
 }: {
   schedule: Record<string, ClassSlot[]>;
-  showDraft: boolean;
   editMode: boolean;
   onClickSlot: (slot: ClassSlot, day: DayOfWeek) => void;
   onReorder: (day: DayOfWeek, fromIndex: number, toIndex: number) => void;
@@ -840,7 +971,7 @@ function DailyAgenda({
   const dayStripRef = useRef<HTMLDivElement | null>(null);
 
   const day = DAYS[dayIndex];
-  const classes = (schedule[day] || []).filter((s) => showDraft || !s.draft);
+  const classes = schedule[day] || [];
 
   const handleDragStart = (idx: number) => {
     dragSrcIdx.current = idx;
@@ -968,6 +1099,54 @@ function DailyAgenda({
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DraftBucket({
+  drafts,
+  onClickDraft,
+  compact = false,
+}: {
+  drafts: Array<{ day: DayOfWeek; slot: ClassSlot }>;
+  onClickDraft: (slot: ClassSlot, day: DayOfWeek) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`border border-dashed border-border bg-card ${compact ? "p-3" : "p-4 lg:sticky lg:top-20"}`}>
+      <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Draft Bucket</p>
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{drafts.length} items</span>
+      </div>
+
+      {drafts.length === 0 ? (
+        <div className="mt-3 border border-dashed border-muted-foreground/30 p-4 text-center">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">No drafts</p>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">New drafts appear here while in edit mode.</p>
+        </div>
+      ) : (
+        <div className={`mt-3 space-y-2 ${compact ? "" : "max-h-[calc(100vh-16rem)] overflow-y-auto pr-1"}`}>
+          {drafts.map(({ slot, day }) => (
+            <button
+              key={slot.id}
+              type="button"
+              onClick={() => onClickDraft(slot, day)}
+              className="w-full border border-dashed border-muted-foreground/40 bg-muted/30 p-2.5 text-left transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">{slot.name}</p>
+                <span className="shrink-0 text-[9px] uppercase tracking-widest text-muted-foreground">
+                  {DAY_SHORT[DAYS.indexOf(day)]}
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] text-muted-foreground truncate">{slot.code} · {slot.room}</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                {formatTime12(slot.startTime)} – {formatTime12(slot.endTime)}
+              </p>
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -1163,8 +1342,9 @@ const Schedule = () => {
   const reorderMutation = useMutation({
     mutationFn: async ({ day, fromIdx, toIdx }: { day: DayOfWeek; fromIdx: number; toIdx: number }) => {
       const daySlots = localSchedule[day] || [];
-      const source = daySlots[fromIdx];
-      const target = daySlots[toIdx];
+      const publishedDaySlots = daySlots.filter((slot) => !slot.draft);
+      const source = publishedDaySlots[fromIdx];
+      const target = publishedDaySlots[toIdx];
       if (!source || !target) return;
 
       const sourceStart = dateToTimeInput(source.startTime);
@@ -1240,6 +1420,7 @@ const Schedule = () => {
       endTime: values.endTime,
       type: values.type,
       location: values.room.trim() || undefined,
+      sessionName: values.name.trim() || undefined,
       isDraft: values.isDraft,
     });
   };
@@ -1255,6 +1436,7 @@ const Schedule = () => {
         endTime: values.endTime,
         type: values.type,
         location: values.room.trim() || undefined,
+        sessionName: values.name.trim() || undefined,
         isDraft: values.isDraft,
       },
     });
@@ -1301,14 +1483,6 @@ const Schedule = () => {
   };
 
   const showDraft = isAdmin && editMode;
-  const scheduleForView = useMemo(() => {
-    if (showDraft) return localSchedule;
-    const filtered: Record<string, ClassSlot[]> = {};
-    for (const [day, slots] of Object.entries(localSchedule)) {
-      filtered[day] = slots.filter((slot) => !slot.draft);
-    }
-    return filtered;
-  }, [showDraft, localSchedule]);
 
   const publishedSchedule = useMemo(() => {
     const result: Record<string, ClassSlot[]> = {};
@@ -1316,6 +1490,22 @@ const Schedule = () => {
       result[day] = slots.filter((slot) => !slot.draft);
     }
     return result;
+  }, [localSchedule]);
+
+  const draftItems = useMemo(() => {
+    const items: Array<{ day: DayOfWeek; slot: ClassSlot }> = [];
+    for (const day of DAYS) {
+      const daySlots = localSchedule[day] || [];
+      for (const slot of daySlots) {
+        if (slot.draft) items.push({ day, slot });
+      }
+    }
+    items.sort((a, b) => {
+      const dayDiff = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return a.slot.startTime.getTime() - b.slot.startTime.getTime();
+    });
+    return items;
   }, [localSchedule]);
 
   const weeklySummary = useMemo(
@@ -1409,7 +1599,7 @@ const Schedule = () => {
         {showDraft && (
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 border-2 border-dashed border-muted-foreground/40" />
-            <span className="text-muted-foreground">Draft</span>
+            <span className="text-muted-foreground">Draft (bucket)</span>
           </div>
         )}
         {editMode && (
@@ -1439,18 +1629,34 @@ const Schedule = () => {
           </Button>
         </div>
       ) : isMobile ? (
-        <DailyAgenda
-          schedule={scheduleForView}
-          showDraft={showDraft}
-          editMode={editMode && isAdmin}
-          onClickSlot={onClickSlot}
-          onReorder={handleReorder}
-        />
+        <div className="space-y-4">
+          <DailyAgenda
+            schedule={publishedSchedule}
+            editMode={editMode && isAdmin}
+            onClickSlot={onClickSlot}
+            onReorder={handleReorder}
+          />
+          {showDraft && (
+            <DraftBucket
+              drafts={draftItems}
+              onClickDraft={onClickSlot}
+              compact
+            />
+          )}
+        </div>
+      ) : showDraft ? (
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start">
+          <WeeklyGrid
+            schedule={publishedSchedule}
+            showDraft={false}
+            onClickSlot={onClickSlot}
+          />
+          <DraftBucket drafts={draftItems} onClickDraft={onClickSlot} />
+        </div>
       ) : (
         <WeeklyGrid
-          schedule={scheduleForView}
-          showDraft={showDraft}
-          editMode={editMode && isAdmin}
+          schedule={publishedSchedule}
+          showDraft={false}
           onClickSlot={onClickSlot}
         />
       )}

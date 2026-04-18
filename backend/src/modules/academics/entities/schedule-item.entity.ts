@@ -49,6 +49,9 @@ export class ScheduleItem {
   @Column({ nullable: true })
   location: string;
 
+  @Column({ type: 'varchar', length: 180, nullable: true })
+  sessionName: string | null;
+
   @Column({ default: false })
   isOnline: boolean;
 
