@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePicker } from "@/components/DatePicker";
 import {
   Select,
@@ -45,6 +46,7 @@ import {
   Archive,
   Clock,
   Play,
+  Info,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -880,15 +882,20 @@ function SemesterManagement() {
 function SettingsTab() {
   const { activeClassroom, setActiveClassroom } = useClassroomStore();
   const [telegramGroupId, setTelegramGroupId] = useState(activeClassroom?.telegramGroupId || "");
+  const [telegramTopicId, setTelegramTopicId] = useState(
+    activeClassroom?.telegramTopicId ? String(activeClassroom.telegramTopicId) : "",
+  );
   const [savingTelegramGroupId, setSavingTelegramGroupId] = useState(false);
 
   useEffect(() => {
     setTelegramGroupId(activeClassroom?.telegramGroupId || "");
-  }, [activeClassroom?.telegramGroupId]);
+    setTelegramTopicId(activeClassroom?.telegramTopicId ? String(activeClassroom.telegramTopicId) : "");
+  }, [activeClassroom?.telegramGroupId, activeClassroom?.telegramTopicId]);
 
   const handleSaveTelegramGroupId = async () => {
     if (!activeClassroom) return;
     const trimmed = telegramGroupId.trim();
+    const topicTrimmed = telegramTopicId.trim();
     if (!trimmed) {
       toast({ title: "Missing Group ID", description: "Telegram group ID is required.", variant: "destructive" });
       return;
@@ -897,15 +904,32 @@ function SettingsTab() {
       toast({ title: "Invalid Format", description: "Telegram group IDs must be numbers (e.g. -100123456789).", variant: "destructive" });
       return;
     }
+    if (topicTrimmed && !/^\d+$/.test(topicTrimmed)) {
+      toast({ title: "Invalid Topic ID", description: "Topic ID must be a positive number (e.g. 25).", variant: "destructive" });
+      return;
+    }
+    const parsedTopicId = topicTrimmed ? Number(topicTrimmed) : null;
+    if (parsedTopicId !== null && (!Number.isSafeInteger(parsedTopicId) || parsedTopicId <= 0 || parsedTopicId > 4294967295)) {
+      toast({ title: "Invalid Topic ID", description: "Topic ID must be a positive whole number.", variant: "destructive" });
+      return;
+    }
 
     setSavingTelegramGroupId(true);
     try {
       const updated = await apiFetch(`/classrooms/${activeClassroom.id}/telegram-group`, {
         method: "PUT",
-        body: JSON.stringify({ telegramGroupId: trimmed }),
+        body: JSON.stringify({
+          telegramGroupId: trimmed,
+          telegramTopicId: parsedTopicId,
+        }),
       });
       setActiveClassroom(updated);
-      toast({ title: "Saved", description: "Telegram group ID updated successfully." });
+      toast({
+        title: "Saved",
+        description: parsedTopicId
+          ? "Telegram settings updated. Announcements will post to the configured topic."
+          : "Telegram settings updated. Announcements will post in the General topic by default.",
+      });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -923,18 +947,56 @@ function SettingsTab() {
          </div>
          <Card>
            <CardHeader>
-             <CardTitle className="text-xs">Telegram Group ID</CardTitle>
+             <CardTitle className="text-xs">Telegram Delivery</CardTitle>
              <CardDescription className="text-[10px]">
-               This is required for onboarding and can be updated any time here.
+               Set your group ID and optional topic ID. If topic ID is empty, posts go to General topic.
              </CardDescription>
            </CardHeader>
-           <CardContent className="space-y-3">
-             <Input
-               value={telegramGroupId}
-               onChange={(e) => setTelegramGroupId(e.target.value)}
-               placeholder="e.g. -100123456789"
-               className="font-mono text-sm"
-             />
+           <CardContent className="space-y-4">
+             <div className="space-y-2">
+               <p className="text-[10px] uppercase tracking-widest font-bold">Telegram Group ID</p>
+               <Input
+                 value={telegramGroupId}
+                 onChange={(e) => setTelegramGroupId(e.target.value)}
+                 placeholder="e.g. -100123456789"
+                 className="font-mono text-sm"
+               />
+             </div>
+             <div className="space-y-2">
+               <div className="flex items-center gap-2">
+                 <p className="text-[10px] uppercase tracking-widest font-bold">Topic ID (Optional)</p>
+                 <Popover>
+                   <PopoverTrigger asChild>
+                     <button
+                       type="button"
+                       className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                       aria-label="How to find Telegram topic ID"
+                     >
+                       <Info className="h-3.5 w-3.5" />
+                     </button>
+                   </PopoverTrigger>
+                   <PopoverContent align="start" className="w-[min(92vw,24rem)] p-3 space-y-2">
+                     <p className="text-xs font-bold uppercase tracking-wider">Find Topic ID</p>
+                     <ol className="list-decimal pl-4 space-y-1 text-xs text-muted-foreground">
+                       <li>Open the topic you want in your Telegram group.</li>
+                       <li>Right-click (or long-press on mobile) any message in that topic.</li>
+                       <li>Select <span className="font-semibold text-foreground">Copy Message Link</span>.</li>
+                       <li>In a link like <span className="font-mono text-[11px] text-foreground">https://t.me/c/1112223334/25/33</span>, the middle number (<span className="font-mono text-foreground">25</span>) is the Topic ID.</li>
+                     </ol>
+                     <p className="text-[11px] text-muted-foreground">
+                       Leave Topic ID empty if you want posts to go to the General topic.
+                     </p>
+                   </PopoverContent>
+                 </Popover>
+               </div>
+               <Input
+                 value={telegramTopicId}
+                 onChange={(e) => setTelegramTopicId(e.target.value)}
+                 placeholder="e.g. 25"
+                 className="font-mono text-sm"
+                 inputMode="numeric"
+               />
+             </div>
              <div className="flex justify-end">
                <Button size="sm" onClick={handleSaveTelegramGroupId} disabled={savingTelegramGroupId}>
                  {savingTelegramGroupId ? (
@@ -942,7 +1004,7 @@ function SettingsTab() {
                  ) : (
                    <>
                      <Save className="h-3 w-3" />
-                     Save Group ID
+                     Save Telegram Settings
                    </>
                  )}
                </Button>

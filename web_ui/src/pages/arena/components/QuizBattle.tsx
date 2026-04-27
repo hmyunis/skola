@@ -314,6 +314,7 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
 
   const progress = ((currentIdx + (answered ? 1 : 0)) / questions.length) * 100;
   const timerPct = (timeLeft / currentDuration) * 100;
+  const explanation = currentQ.explanation?.trim();
 
   return (
     <Card className="border-2 border-primary/30">
@@ -386,18 +387,26 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
         </div>
 
         {answered && (
-          <div className="flex justify-between items-center pt-2">
-            <p className="text-xs font-medium">
-              {selected === currentQ.correctIndex ? (
-                <span className="text-emerald-600">+{DIFFICULTY_XP[currentQ.difficulty]} XP</span>
-              ) : (
-                <span className="text-destructive">No XP</span>
-              )}
-            </p>
-            <Button size="sm" onClick={nextQuestion}>
-              {currentIdx + 1 >= questions.length ? "See Results" : "Next"}
-              <ArrowRight className="h-3 w-3" />
-            </Button>
+          <div className="space-y-3 pt-2">
+            {explanation && (
+              <div className="border border-primary/25 bg-primary/5 p-3 space-y-1.5">
+                <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Explanation</p>
+                <p className="text-xs text-foreground whitespace-pre-wrap break-words">{explanation}</p>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-medium">
+                {selected === currentQ.correctIndex ? (
+                  <span className="text-emerald-600">+{DIFFICULTY_XP[currentQ.difficulty]} XP</span>
+                ) : (
+                  <span className="text-destructive">No XP</span>
+                )}
+              </p>
+              <Button size="sm" onClick={nextQuestion}>
+                {currentIdx + 1 >= questions.length ? "See Results" : "Next"}
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

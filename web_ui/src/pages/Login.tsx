@@ -617,7 +617,7 @@ const Login = () => {
             </Link>
           </div>
           <p className="text-[10px] text-muted-foreground/30">
-            SKOLA v1.0 · {new Date().getFullYear()}
+            SKOLA v2.0 · {new Date().getFullYear()}
           </p>
         </div>
       </div>

@@ -260,10 +260,6 @@ export async function fetchTodaySchedule(semesterId?: string): Promise<ClassSlot
     .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 }
 
-export async function fetchClassroom(classroomId: string): Promise<any> {
-  return apiFetch(`/classrooms/${classroomId}`);
-}
-
 export async function fetchWeeklySchedule(semesterId?: string): Promise<WeeklySchedule> {
   const result: WeeklySchedule = {
     Monday: [],

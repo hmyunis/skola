@@ -2,6 +2,7 @@ export type QuizImportDifficulty = "easy" | "medium" | "hard";
 
 export interface ImportedQuizQuestion {
   question: string;
+  explanation?: string;
   options: string[];
   correctIndex: number;
   difficulty: QuizImportDifficulty;
@@ -28,6 +29,7 @@ export const QUIZ_IMPORT_PROMPT_TEMPLATE = [
   '  "questions": [',
   "    {",
   '      "questionText": "question text",',
+  '      "explanation": "optional explanation shown after answering",',
   '      "options": ["option A", "option B", "option C", "option D"],',
   '      "correctOptionIndex": 0,',
   '      "difficulty": "easy | medium | hard",',
@@ -40,6 +42,7 @@ export const QUIZ_IMPORT_PROMPT_TEMPLATE = [
   "- 2 to 6 options per question",
   "- correctOptionIndex must be 0-based",
   "- durationSeconds must be >= 5",
+  "- explanation is optional (max 3000 chars)",
 ].join("\n");
 
 type JsonRecord = Record<string, unknown>;
@@ -83,6 +86,13 @@ function normalizeDurationSeconds(input: unknown): number {
   const normalized = Math.floor(parsed);
   if (normalized < 5) return 15;
   return Math.min(normalized, 300);
+}
+
+function normalizeExplanation(input: unknown): string | undefined {
+  if (typeof input !== "string") return undefined;
+  const trimmed = input.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, 3000);
 }
 
 function pickFirstDefined(...values: unknown[]) {
@@ -349,8 +359,17 @@ export function parseQuizUpload(rawText: string, fileName: string): ImportedQuiz
         getRecordValue(entry, "timeLimitSeconds"),
       ),
     );
+    const explanation = normalizeExplanation(
+      pickFirstDefined(
+        getRecordValue(entry, "explanation"),
+        getRecordValue(entry, "explanationText"),
+        getRecordValue(entry, "solutionExplanation"),
+        getRecordValue(entry, "rationale"),
+        getRecordValue(entry, "reasoning"),
+      ),
+    );
 
-    return { question, options, correctIndex, difficulty, durationSeconds };
+    return { question, explanation, options, correctIndex, difficulty, durationSeconds };
   });
 
   const { title, course, maxAttempts } = extractMeta(parsed);

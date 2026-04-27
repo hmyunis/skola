@@ -556,10 +556,12 @@ function AssessmentCard({
 function AssignmentRow({
   assignment,
   onVote,
+  getCourseName,
   onClick,
 }: {
   assignment: Assignment;
   onVote: (assignment: Assignment, v: ConfidenceVote) => void;
+  getCourseName: (courseCode: string) => string;
   onClick: () => void;
 }) {
   const vote = assignment.userConfidence || undefined;
@@ -572,6 +574,8 @@ function AssignmentRow({
   const aggregated = getDistributionPercentages(assignment);
   const totalVotes = assignment.confidenceDistribution?.total || 0;
   const edited = isEdited(assignment);
+  const courseName = getCourseName(assignment.course);
+  const showCourseName = courseName !== assignment.course;
 
   return (
     <div className="border border-border bg-card p-3 sm:p-4 hover:bg-card transition-colors cursor-pointer" onClick={onClick}>
@@ -581,15 +585,24 @@ function AssignmentRow({
             {isOverdue && <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />}
             <div className="min-w-0">
               <p className="font-bold text-sm break-words">{assignment.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 break-words">
-                {assignment.course} ·{" "}
-                <span className={cn(
+              <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                <span className="font-mono shrink-0">{assignment.course}</span>
+                {showCourseName && (
+                  <>
+                    <span className="shrink-0 text-muted-foreground/70">·</span>
+                    <span className="truncate" title={courseName}>{courseName}</span>
+                  </>
+                )}
+              </p>
+              <p
+                className={cn(
+                  "mt-0.5 text-xs",
                   isOverdue && "text-destructive font-medium",
                   isDueSoon && "text-amber-600 font-medium",
                   daysUntilDue === null && "text-muted-foreground",
-                )}>
-                  {formatDaysUntilDue(daysUntilDue)}
-                </span>
+                )}
+              >
+                {formatDaysUntilDue(daysUntilDue)}
               </p>
             </div>
           </div>
@@ -990,6 +1003,8 @@ function AssessmentCalendarView({
                 const badge = getDeadlineBadge(daysUntilDue, assignment.status);
                 const source = sourceConfig[assignment.source];
                 const SourceIcon = source.icon;
+                const courseName = getCourseName(assignment.course);
+                const showCourseName = courseName !== assignment.course;
                 return (
                   <button
                     key={assignment.id}
@@ -999,8 +1014,14 @@ function AssessmentCalendarView({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-bold text-sm break-words">{assignment.title}</p>
-                        <p className="text-xs text-muted-foreground break-words">
-                          {assignment.course} · {getCourseName(assignment.course)}
+                        <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                          <span className="font-mono shrink-0">{assignment.course}</span>
+                          {showCourseName && (
+                            <>
+                              <span className="shrink-0 text-muted-foreground/70">·</span>
+                              <span className="truncate" title={courseName}>{courseName}</span>
+                            </>
+                          )}
                         </p>
                       </div>
                       <span className={cn("px-1.5 py-0.5 border text-[9px] font-bold uppercase tracking-wider", badge.className)}>
@@ -1037,6 +1058,8 @@ function AssessmentCalendarView({
                 const daysUntilDue = getDaysUntilDue(assignment.dueDate, today);
                 const badge = getDeadlineBadge(daysUntilDue, assignment.status);
                 const dueLabel = due ? due.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBA";
+                const courseName = getCourseName(assignment.course);
+                const showCourseName = courseName !== assignment.course;
                 return (
                   <button
                     key={assignment.id}
@@ -1044,8 +1067,17 @@ function AssessmentCalendarView({
                     className="w-full border border-border bg-card p-2.5 text-left hover:bg-card transition-colors"
                   >
                     <p className="text-sm font-semibold break-words">{assignment.title}</p>
-                    <p className="text-[11px] text-muted-foreground break-words">
-                      {assignment.course} · {dueLabel}
+                    <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
+                      <span className="font-mono shrink-0">{assignment.course}</span>
+                      {showCourseName && (
+                        <>
+                          <span className="shrink-0 text-muted-foreground/70">·</span>
+                          <span className="truncate" title={courseName}>{courseName}</span>
+                        </>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {dueLabel}
                     </p>
                     <span className={cn("mt-1 inline-flex px-1.5 py-0.5 border text-[9px] font-bold uppercase tracking-wider", badge.className)}>
                       {badge.label}
@@ -1515,6 +1547,7 @@ const Academics = () => {
               key={assignment.id}
               assignment={assignment}
               onVote={handleVote}
+              getCourseName={getCourseName}
               onClick={() => setDetailAssignment(assignment)}
             />
           ))}

@@ -72,6 +72,7 @@ export async function createArenaQuiz(data: {
   maxAttempts?: number;
   questions: Array<{
     questionText: string;
+    explanation?: string;
     options: string[];
     correctOptionIndex: number;
     difficulty: QuizDifficulty;

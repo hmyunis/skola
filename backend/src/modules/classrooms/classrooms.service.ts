@@ -23,6 +23,7 @@ import { InviteCode } from '../admin/entities/invite-code.entity';
 export class ClassroomsService {
   private readonly logger = new Logger(ClassroomsService.name);
   private static readonly DEFAULT_PATTERN_INTENSITY = 0.25;
+  private static readonly MAX_TELEGRAM_TOPIC_ID = 4_294_967_295;
 
   private toClassroomSafeUser(
     user: User,
@@ -235,6 +236,8 @@ export class ClassroomsService {
   async updateTelegramGroupId(
     id: string,
     telegramGroupId: string,
+    telegramTopicId: number | string | null | undefined,
+    hasTelegramTopicId: boolean,
     user: User,
   ): Promise<Classroom> {
     const trimmed = (telegramGroupId || '').trim();
@@ -266,7 +269,53 @@ export class ClassroomsService {
     }
 
     classroom.telegramGroupId = trimmed;
+    if (hasTelegramTopicId) {
+      classroom.telegramTopicId = this.parseTelegramTopicId(telegramTopicId);
+    }
     return this.classroomsRepository.save(classroom);
+  }
+
+  private parseTelegramTopicId(
+    value: number | string | null | undefined,
+  ): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+      if (!/^\d+$/.test(trimmed)) {
+        throw new BadRequestException(
+          'Invalid Telegram topic ID format. It must be a positive integer.',
+        );
+      }
+      const parsed = Number(trimmed);
+      if (
+        !Number.isSafeInteger(parsed) ||
+        parsed <= 0 ||
+        parsed > ClassroomsService.MAX_TELEGRAM_TOPIC_ID
+      ) {
+        throw new BadRequestException(
+          'Invalid Telegram topic ID. It must be a positive integer.',
+        );
+      }
+      return parsed;
+    }
+
+    if (
+      !Number.isSafeInteger(value) ||
+      value <= 0 ||
+      value > ClassroomsService.MAX_TELEGRAM_TOPIC_ID
+    ) {
+      throw new BadRequestException(
+        'Invalid Telegram topic ID. It must be a positive integer.',
+      );
+    }
+
+    return value;
   }
 
   async joinClassroom(

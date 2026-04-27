@@ -478,15 +478,27 @@ export class AdminService {
 
     const text = lines.join('\n');
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const rawTopicId = classroom.telegramTopicId;
+    const topicId =
+      typeof rawTopicId === 'number' &&
+      Number.isSafeInteger(rawTopicId) &&
+      rawTopicId > 0
+        ? rawTopicId
+        : null;
 
     try {
+      const payload: Record<string, string | number | boolean> = {
+        chat_id: classroom.telegramGroupId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      };
+      if (topicId) {
+        payload.message_thread_id = topicId;
+      }
+
       const response = await firstValueFrom(
-        this.httpService.post(url, {
-          chat_id: classroom.telegramGroupId,
-          text,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        }),
+        this.httpService.post(url, payload),
       );
       const messageIdRaw = response?.data?.result?.message_id;
       const messageId =

@@ -3,6 +3,7 @@ export type QuizDifficulty = "easy" | "medium" | "hard";
 export interface QuizQuestion {
   id: string;
   question: string;
+  explanation?: string | null;
   options: string[];
   correctIndex: number;
   course: string;

@@ -178,6 +178,7 @@ export class ArenaService {
 
     const questions = data.questions.map((question, index) => {
       const questionText = question.questionText?.trim();
+      const explanation = question.explanation?.trim() || null;
       const options = question.options.map((option) => option.trim());
       const correctOptionIndex = question.correctOptionIndex;
 
@@ -197,6 +198,7 @@ export class ArenaService {
 
       return this.questionRepo.create({
         questionText,
+        explanation,
         options,
         correctOptionIndex,
         difficulty: question.difficulty,
@@ -566,6 +568,7 @@ export class ArenaService {
     return {
       id: question.id,
       question: question.questionText,
+      explanation: question.explanation || null,
       options: question.options,
       correctIndex: question.correctOptionIndex,
       course: courseCode,

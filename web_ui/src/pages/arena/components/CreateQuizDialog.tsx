@@ -31,6 +31,7 @@ import { getArenaCourseLabel, getErrorMessage, toArenaCourseCode } from "../util
 
 interface DraftQuestion {
   question: string;
+  explanation: string;
   options: string[];
   correctIndex: number;
   difficulty: "easy" | "medium" | "hard";
@@ -39,6 +40,7 @@ interface DraftQuestion {
 
 const emptyDraftQuestion = (): DraftQuestion => ({
   question: "",
+  explanation: "",
   options: ["", "", "", ""],
   correctIndex: 0,
   difficulty: "medium",
@@ -172,6 +174,7 @@ export function CreateQuizDialog({
 
     return questions.every((question) => {
       if (!question.question.trim()) return false;
+      if (question.explanation.trim().length > 3000) return false;
       if (question.options.length < 2 || question.options.length > 6) return false;
       if (question.options.some((option) => !option.trim())) return false;
       if (question.correctIndex < 0 || question.correctIndex >= question.options.length) return false;
@@ -206,7 +209,13 @@ export function CreateQuizDialog({
     setIsImporting(true);
     try {
       const imported = parseQuizUpload(importJsonText, "Pasted Quiz");
-      setQuestions(imported.questions.map((question) => ({ ...question, options: [...question.options] })));
+      setQuestions(
+        imported.questions.map((question) => ({
+          ...question,
+          explanation: question.explanation || "",
+          options: [...question.options],
+        })),
+      );
       setCurrentQ(0);
       toast({
         title: "JSON Parsed",
@@ -240,6 +249,7 @@ export function CreateQuizDialog({
       maxAttempts: Math.floor(maxAttempts),
       questions: questions.map((question) => ({
         questionText: question.question.trim(),
+        explanation: question.explanation.trim() || undefined,
         options: question.options.map((option) => option.trim()),
         correctOptionIndex: question.correctIndex,
         difficulty: question.difficulty,
@@ -400,7 +410,7 @@ export function CreateQuizDialog({
                   <Textarea
                     value={importJsonText}
                     onChange={(event) => setImportJsonText(event.target.value)}
-                    placeholder='Paste JSON here. Example: {"questions":[{"questionText":"...","options":["A","B"],"correctOptionIndex":0,"difficulty":"medium","durationSeconds":15}]}'
+                    placeholder='Paste JSON here. Example: {"questions":[{"questionText":"...","explanation":"optional","options":["A","B"],"correctOptionIndex":0,"difficulty":"medium","durationSeconds":15}]}'
                     className="min-h-[140px] text-xs font-mono"
                   />
                   <Button
@@ -520,6 +530,22 @@ export function CreateQuizDialog({
                 className="min-h-[70px] text-sm resize-none"
                 rows={3}
               />
+
+              <div className="space-y-1.5">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                  Explanation (Optional)
+                </p>
+                <Textarea
+                  placeholder="Explain why the correct answer is correct. This is shown after the user answers."
+                  value={question.explanation}
+                  onChange={(event) => updateQuestion(currentQ, { explanation: event.target.value.slice(0, 3000) })}
+                  className="min-h-[72px] text-xs resize-none"
+                  rows={3}
+                />
+                <p className="text-[10px] text-muted-foreground text-right">
+                  {question.explanation.length}/3000
+                </p>
+              </div>
 
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">

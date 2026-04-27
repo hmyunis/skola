@@ -24,6 +24,9 @@ export class QuizQuestion {
   @Column({ type: 'text' })
   questionText: string;
 
+  @Column({ type: 'text', nullable: true })
+  explanation: string | null;
+
   @Column({ type: 'simple-json' })
   options: string[]; // e.g.,["Option A", "Option B", "Option C"]
 

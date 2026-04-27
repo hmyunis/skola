@@ -116,13 +116,20 @@ export class ClassroomsController {
   async updateClassroomTelegramGroup(
     @Param('id') id: string,
     @CurrentClassroom() classroomId: string,
-    @Body('telegramGroupId') telegramGroupId: string,
+    @Body()
+    dto: { telegramGroupId: string; telegramTopicId?: number | string | null },
     @CurrentUser() user: User,
   ) {
     this.assertClassroomScope(id, classroomId);
+    const hasTelegramTopicId = Object.prototype.hasOwnProperty.call(
+      dto,
+      'telegramTopicId',
+    );
     return this.classroomsService.updateTelegramGroupId(
       id,
-      telegramGroupId,
+      dto.telegramGroupId,
+      dto.telegramTopicId,
+      hasTelegramTopicId,
       user,
     );
   }

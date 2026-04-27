@@ -29,6 +29,9 @@ export class Classroom {
   @Column({ unique: true })
   telegramGroupId: string;
 
+  @Column({ type: 'int', unsigned: true, nullable: true })
+  telegramTopicId: number | null;
+
   @Column({ unique: true })
   inviteCode: string;
 

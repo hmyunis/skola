@@ -9,7 +9,6 @@ import { useTheme } from "@/stores/themeStore";
 import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useClassroomStore } from "@/stores/classroomStore";
-import { useSyncClassroom } from "@/hooks/use-classroom";
 import { apiFetch } from "@/services/api";
 import type { ClassroomMembershipContext, ClassroomRole } from "@/types/classroom";
 import {
@@ -260,7 +259,6 @@ export function AppLayout() {
   const memberships = useClassroomStore((s) => s.memberships);
   const setMemberships = useClassroomStore((s) => s.setMemberships);
   const setActiveClassroomById = useClassroomStore((s) => s.setActiveClassroomById);
-  useSyncClassroom(); // This will keep classroom data (features, etc.) in sync
 
   const { data: classroomContextData, isLoading: isClassroomContextLoading } = useQuery({
     queryKey: ["classroomsContext", user?.id],
@@ -287,7 +285,7 @@ export function AppLayout() {
 
   const { data: activeSemesterByClassroomId = {} } = useQuery({
     queryKey: ["classroomSwitcherSemesters", membershipIds],
-    enabled: membershipIds.length > 0 && !!user,
+    enabled: membershipIds.length > 1 && !!user,
     staleTime: 300_000,
     queryFn: async () => {
       const entries = await Promise.all(
@@ -362,22 +360,6 @@ export function AppLayout() {
     queryClient.clear();
     logout();
   };
-
-  useEffect(() => {
-    if (!activeClassroom?.id || !user) return;
-    let cancelled = false;
-    apiFetch("/users/me")
-      .then((profile) => {
-        if (!cancelled && profile) {
-          setUser(profile);
-          syncThemeWithStores();
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [activeClassroom?.id, user?.id, setUser, syncThemeWithStores]);
 
   const { data: inAppNotificationData } = useQuery({
     queryKey: ["inAppNotificationsUnread", activeClassroom?.id],

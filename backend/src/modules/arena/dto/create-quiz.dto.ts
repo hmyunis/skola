@@ -20,6 +20,11 @@ class CreateQuizQuestionDto {
   @MaxLength(1000)
   questionText: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(3000)
+  explanation?: string;
+
   @IsArray()
   @ArrayMinSize(2)
   @ArrayMaxSize(6)
