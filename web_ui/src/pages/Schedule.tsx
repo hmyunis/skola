@@ -1181,6 +1181,7 @@ const Schedule = () => {
       queryClient.invalidateQueries({ queryKey: ["weeklySchedule"] }),
       queryClient.invalidateQueries({ queryKey: ["todaySchedule"] }),
       queryClient.invalidateQueries({ queryKey: ["quickStats"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboardDeadlineFeed"] }),
     ]);
   }, [queryClient]);
 

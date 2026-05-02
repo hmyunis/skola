@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { fetchSemesterInfo, fetchQuickStats } from "@/services/api";
+import { fetchDashboardDeadlineFeed, fetchSemesterInfo } from "@/services/api";
 import { LiveStatusCard } from "@/components/LiveStatusCard";
 import { PanicButton } from "@/components/PanicButton";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
@@ -9,41 +10,62 @@ import { useAuth } from "@/stores/authStore";
 import { useSemesterStore } from "@/stores/semesterStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 import { useFeatureEnabled } from "@/services/features";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { BookOpen, FileText, ClipboardList } from "lucide-react";
+import { BookOpen, CalendarClock, ClipboardList, FileText } from "lucide-react";
 
 function parseSemesterDate(value: string): Date {
   const input = String(value || "").trim();
   if (!input) return new Date(Number.NaN);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
-    // Parse date-only strings in local time to avoid timezone day/year drift.
-    return new Date(`${input}T12:00:00`);
-  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return new Date(`${input}T12:00:00`);
   return new Date(input);
 }
 
 function getSemesterDisplayLabel(
   semester: { name?: string; semester: number } | null | undefined,
 ): string {
-  if (!semester) return "Sem —";
+  if (!semester) return "Sem -";
   const configuredName = String(semester.name || "").trim();
   if (configuredName) return configuredName;
   return `Sem ${semester.semester}`;
 }
 
+function formatRelativeDue(daysUntilDue: number): string {
+  if (daysUntilDue === 0) return "Today";
+  if (daysUntilDue === 1) return "Tomorrow";
+  return `In ${daysUntilDue}d`;
+}
+
+function formatDueDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Unknown date";
+  const hasTime = /T\d{2}:\d{2}:\d{2}/.test(iso) && !iso.includes("T12:00:00.000Z");
+  return date.toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(hasTime
+      ? {
+          hour: "numeric" as const,
+          minute: "2-digit" as const,
+        }
+      : {}),
+  });
+}
+
 function DaysRemaining({ endDate }: { endDate: string }) {
   const [dateTooltipOpen, setDateTooltipOpen] = useState(false);
-  if (!endDate) return <span className="tabular-nums font-black text-2xl">—</span>;
+  if (!endDate) return <span className="tabular-nums font-black text-2xl">-</span>;
   const end = parseSemesterDate(endDate);
   if (Number.isNaN(end.getTime())) {
-    return <span className="tabular-nums font-black text-2xl">—</span>;
+    return <span className="tabular-nums font-black text-2xl">-</span>;
   }
+
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  const diff = Math.max(0, Math.ceil((endDateOnly.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24)));
+  const diff = Math.max(0, Math.ceil((endDateOnly.getTime() - todayStart.getTime()) / 86_400_000));
   const exactDateLabel = endDateOnly.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -81,100 +103,71 @@ const Index = () => {
   const semId = useSemesterStore((s) => s.activeSemester?.id);
   const activeClassroomId = useClassroomStore((s) => s.activeClassroom?.id);
 
-  const {
-    data: semester,
-    isLoading: semLoading,
-    isError: semError,
-    error: semErrorObj,
-    refetch: refetchSemester,
-  } = useQuery({
+  const semesterQuery = useQuery({
     queryKey: ["semester", activeClassroomId],
     queryFn: fetchSemesterInfo,
     enabled: !!activeClassroomId,
     retry: 1,
   });
 
-  const {
-    data: stats,
-    isLoading: statsLoading,
-    isError: statsError,
-    error: statsErrorObj,
-    refetch: refetchStats,
-  } = useQuery({
-    queryKey: ["quickStats", activeClassroomId, semId],
-    queryFn: () => fetchQuickStats(semId),
+  const feedQuery = useQuery({
+    queryKey: ["dashboardDeadlineFeed", activeClassroomId, semId],
+    queryFn: () => fetchDashboardDeadlineFeed({ limit: 10 }),
     enabled: !!activeClassroomId,
     retry: 1,
   });
 
+  const thisWeekItems = useMemo(
+    () => (feedQuery.data?.items || []).filter((item) => item.weekBucket === "this_week"),
+    [feedQuery.data?.items],
+  );
+  const nextWeekItems = useMemo(
+    () => (feedQuery.data?.items || []).filter((item) => item.weekBucket === "next_week"),
+    [feedQuery.data?.items],
+  );
+
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-5xl">
-      {/* Semester header */}
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-4">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">
-            Command Center
-          </p>
-          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">
-            Dashboard
-          </h1>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Command Center</p>
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">Dashboard</h1>
         </div>
-        {semester && (
+        {semesterQuery.data ? (
           <div className="flex items-baseline gap-4">
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Semester
-              </p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Semester</p>
               <p className="text-sm font-bold uppercase tracking-wide">
-                {getSemesterDisplayLabel(semester)}
+                {getSemesterDisplayLabel(semesterQuery.data)}
               </p>
             </div>
             <div className="border-l border-border pl-4 text-right">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Days Left
-              </p>
-              <DaysRemaining endDate={semester.endDate} />
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Days Left</p>
+              <DaysRemaining endDate={semesterQuery.data.endDate} />
             </div>
           </div>
-        )}
-        {!semLoading && !semester && !semError && (
-          <div className="text-right">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Semester
-            </p>
-            <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-              No active semester
-            </p>
-          </div>
-        )}
-        {semLoading && (
-          <div className="space-y-1">
-            <div className="h-3 w-24 bg-muted animate-pulse" />
-            <div className="h-8 w-44 bg-muted animate-pulse" />
-          </div>
-        )}
-        {semError && (
-          <div className="text-right space-y-2">
-            <p className="text-xs text-destructive">
-              {semErrorObj instanceof Error ? semErrorObj.message : "Could not load semester info."}
-            </p>
-            <Button variant="outline" size="sm" onClick={() => refetchSemester()}>
-              Retry
-            </Button>
-          </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Live Status */}
+      {semesterQuery.isError && (
+        <div className="border border-destructive/30 bg-destructive/5 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs text-destructive">
+            {semesterQuery.error instanceof Error
+              ? semesterQuery.error.message
+              : "Could not load semester info."}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => semesterQuery.refetch()}>
+            Retry
+          </Button>
+        </div>
+      )}
+
       <LiveStatusCard />
 
-      {/* Surprise Assessment Alarm (Class-wide) */}
       <SurpriseAssessmentBanner />
 
-      {/* Announcements */}
       <AnnouncementsBanner />
 
-      {/* Admin Panic Button */}
       {isAdmin && panicEnabled && (
         <div className="border border-dashed border-destructive/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
@@ -189,17 +182,6 @@ const Index = () => {
         </div>
       )}
 
-      {/* Quick Stats */}
-      {statsError && (
-        <div className="border border-destructive/30 bg-destructive/5 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <p className="text-xs text-destructive">
-            {statsErrorObj instanceof Error ? statsErrorObj.message : "Could not load quick stats."}
-          </p>
-          <Button variant="outline" size="sm" onClick={() => refetchStats()}>
-            Retry
-          </Button>
-        </div>
-      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -209,11 +191,15 @@ const Index = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-black tabular-nums">
-              {statsLoading ? "..." : statsError ? "—" : (stats?.remainingClasses ?? 0)}
-            </p>
+            {feedQuery.isLoading ? (
+              <div className="h-9 w-20 bg-muted animate-pulse" />
+            ) : (
+              <p className="text-3xl font-black tabular-nums">
+                {feedQuery.isError ? "-" : (feedQuery.data?.quickStats.remainingClasses ?? 0)}
+              </p>
+            )}
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
-              {statsError ? "Unavailable" : "Today"}
+              {feedQuery.isError ? "Unavailable" : "Today"}
             </p>
           </CardContent>
         </Card>
@@ -226,11 +212,15 @@ const Index = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-black tabular-nums">
-              {statsLoading ? "..." : statsError ? "—" : (stats?.pendingAssignments ?? 0)}
-            </p>
+            {feedQuery.isLoading ? (
+              <div className="h-9 w-20 bg-muted animate-pulse" />
+            ) : (
+              <p className="text-3xl font-black tabular-nums">
+                {feedQuery.isError ? "-" : (feedQuery.data?.quickStats.pendingAssignments ?? 0)}
+              </p>
+            )}
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
-              {statsError ? "Unavailable" : "Assignments"}
+              {feedQuery.isError ? "Unavailable" : "Assignments"}
             </p>
           </CardContent>
         </Card>
@@ -243,15 +233,136 @@ const Index = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-black tabular-nums">
-              {statsLoading ? "..." : statsError ? "—" : (stats?.upcomingExams ?? 0)}
-            </p>
+            {feedQuery.isLoading ? (
+              <div className="h-9 w-20 bg-muted animate-pulse" />
+            ) : (
+              <p className="text-3xl font-black tabular-nums">
+                {feedQuery.isError ? "-" : (feedQuery.data?.quickStats.upcomingExams ?? 0)}
+              </p>
+            )}
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
-              {statsError ? "Unavailable" : "This month"}
+              {feedQuery.isError ? "Unavailable" : "This month"}
             </p>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-primary" />
+                <CardTitle className="text-sm">This Week + Next Week</CardTitle>
+              </div>
+              {!feedQuery.isLoading && !feedQuery.isError && (
+                <p className="text-xs text-muted-foreground">
+                  Showing {feedQuery.data?.meta.shownCount ?? 0} of {feedQuery.data?.meta.totalMatching ?? 0}
+                </p>
+              )}
+            </div>
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link to="/academics">All Deadlines</Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {feedQuery.isLoading && (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((idx) => (
+                <div key={idx} className="border border-border rounded-sm p-3 space-y-2">
+                  <div className="h-4 w-2/3 bg-muted animate-pulse" />
+                  <div className="h-3 w-1/3 bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {feedQuery.isError && !feedQuery.isLoading && (
+            <div className="border border-destructive/30 bg-destructive/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-xs text-destructive">
+                {feedQuery.error instanceof Error
+                  ? feedQuery.error.message
+                  : "Could not load deadline feed."}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => feedQuery.refetch()}>
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {!feedQuery.isLoading && !feedQuery.isError && (
+            <>
+              {feedQuery.data && feedQuery.data.meta.totalMatching === 0 ? (
+                <div className="border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  No upcoming deadlines in the next 2 weeks.
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">This Week</p>
+                    {thisWeekItems.length === 0 ? (
+                      <div className="border border-dashed border-border p-3 text-xs text-muted-foreground">
+                        No deadlines this week.
+                      </div>
+                    ) : (
+                      thisWeekItems.map((item) => (
+                        <div key={item.id} className="border border-border rounded-sm p-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-sm font-semibold break-words">{item.title}</p>
+                            <p className="text-xs text-muted-foreground break-words">
+                              {item.courseCode ? `${item.courseCode} · ` : ""}
+                              {formatDueDate(item.dueAt)}
+                            </p>
+                          </div>
+                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 border border-primary/40 bg-primary/10 text-primary shrink-0">
+                            {formatRelativeDue(item.daysUntilDue)}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Next Week</p>
+                    {nextWeekItems.length === 0 ? (
+                      <div className="border border-dashed border-border p-3 text-xs text-muted-foreground">
+                        No deadlines next week.
+                      </div>
+                    ) : (
+                      nextWeekItems.map((item) => (
+                        <div key={item.id} className="border border-border rounded-sm p-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-sm font-semibold break-words">{item.title}</p>
+                            <p className="text-xs text-muted-foreground break-words">
+                              {item.courseCode ? `${item.courseCode} · ` : ""}
+                              {formatDueDate(item.dueAt)}
+                            </p>
+                          </div>
+                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 border border-border bg-muted/30 text-muted-foreground shrink-0">
+                            {formatRelativeDue(item.daysUntilDue)}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {feedQuery.data && feedQuery.data.meta.remainingCount > 0 && (
+                    <div className="border-t border-border pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        +{feedQuery.data.meta.remainingCount} more deadlines available.
+                      </p>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/academics">View all in Academics</Link>
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

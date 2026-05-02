@@ -1,10 +1,10 @@
 import type { Course } from "@/services/courses";
 
 export function getTitle(xp: number): string {
-  if (xp >= 2000) return "Legend";
-  if (xp >= 1000) return "Champion";
-  if (xp >= 500) return "Strategist";
-  if (xp >= 200) return "Scholar";
+  if (xp >= 8000) return "Legend";
+  if (xp >= 4000) return "Champion";
+  if (xp >= 2000) return "Strategist";
+  if (xp >= 800) return "Scholar";
   return "Rookie";
 }
 

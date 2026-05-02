@@ -18,6 +18,7 @@ import {
 } from './entities/assessment-rating.entity';
 import {
   Assessment,
+  AssessmentType,
   AssessmentStatus,
   AssessmentSource,
 } from './entities/assessment.entity';
@@ -36,6 +37,7 @@ import {
   CreateAssessmentDto,
   UpdateAssessmentDto,
 } from './dto/assessment.dto';
+import { DashboardDeadlineFeedQueryDto } from './dto/dashboard-deadline-feed-query.dto';
 
 export interface CourseListResult {
   data: Course[];
@@ -56,6 +58,48 @@ export interface DashboardQuickStats {
   remainingClasses: number;
   pendingAssignments: number;
   upcomingExams: number;
+}
+
+type DashboardDeadlineFeedItemType =
+  | 'assignment'
+  | 'quiz'
+  | 'exam'
+  | 'project'
+  | 'other'
+  | 'exam_reminder'
+  | 'exam_countdown';
+
+type DashboardDeadlineFeedItemUrgency =
+  | 'overdue'
+  | 'today'
+  | 'soon'
+  | 'upcoming'
+  | 'later';
+
+interface DashboardDeadlineFeedItem {
+  id: string;
+  source: 'assessment' | 'schedule' | 'semester';
+  type: DashboardDeadlineFeedItemType;
+  title: string;
+  subtitle: string;
+  courseCode: string | null;
+  dueAt: string;
+  daysUntilDue: number;
+  urgency: DashboardDeadlineFeedItemUrgency;
+  weekBucket: 'this_week' | 'next_week';
+  status?: AssessmentStatus;
+}
+
+export interface DashboardDeadlineFeedResponse {
+  quickStats: DashboardQuickStats;
+  meta: {
+    totalMatching: number;
+    shownCount: number;
+    remainingCount: number;
+    thisWeekCount: number;
+    nextWeekCount: number;
+  };
+  items: DashboardDeadlineFeedItem[];
 }
 
 @Injectable()
@@ -469,32 +513,88 @@ export class AcademicsService {
   async getDashboardQuickStats(
     classroomId: string,
   ): Promise<DashboardQuickStats> {
+    const feed = await this.getDashboardDeadlineFeed(classroomId, {
+      limit: 12,
+      daysAhead: 30,
+    });
+    return feed.quickStats;
+  }
+
+  async getDashboardDeadlineFeed(
+    classroomId: string,
+    query: DashboardDeadlineFeedQueryDto,
+  ): Promise<DashboardDeadlineFeedResponse> {
+    const requestedLimit = query.limit ?? 10;
+    const limit = Math.max(1, Math.min(requestedLimit, 10));
+    const now = new Date();
+    const todayDate = now.toISOString().split('T')[0];
+    const daysLeftInThisWeek = 6 - now.getUTCDay();
+    const nextWeekMaxDays = daysLeftInThisWeek + 7;
+    const horizon = new Date(now);
+    horizon.setUTCDate(horizon.getUTCDate() + nextWeekMaxDays);
+    const horizonDate = horizon.toISOString().split('T')[0];
+
     const activeSemester = await this.semesterRepo.findOne({
       where: { classroomId, isActive: true },
-      select: ['id'],
+      select: ['id', 'examPeriod'],
     });
 
     if (!activeSemester) {
       return {
-        remainingClasses: 0,
-        pendingAssignments: 0,
-        upcomingExams: 0,
+        quickStats: {
+          remainingClasses: 0,
+          pendingAssignments: 0,
+          upcomingExams: 0,
+        },
+        meta: {
+          totalMatching: 0,
+          shownCount: 0,
+          remainingCount: 0,
+          thisWeekCount: 0,
+          nextWeekCount: 0,
+        },
+        items: [],
       };
     }
 
-    const scheduleItems = await this.scheduleRepo
-      .createQueryBuilder('schedule')
-      .innerJoin('schedule.course', 'course')
-      .where('course.classroomId = :classroomId', { classroomId })
-      .andWhere('course.semesterId = :semesterId', {
-        semesterId: activeSemester.id,
-      })
-      .andWhere('schedule.isDraft = :isDraft', { isDraft: false })
-      .orderBy('schedule.dayOfWeek', 'ASC')
-      .addOrderBy('schedule.startTime', 'ASC')
-      .getMany();
+    const [scheduleItems, pendingAssignments, pendingAssessments] =
+      await Promise.all([
+        this.scheduleRepo
+          .createQueryBuilder('schedule')
+          .innerJoinAndSelect('schedule.course', 'course')
+          .where('course.classroomId = :classroomId', { classroomId })
+          .andWhere('course.semesterId = :semesterId', {
+            semesterId: activeSemester.id,
+          })
+          .andWhere('schedule.isDraft = :isDraft', { isDraft: false })
+          .orderBy('schedule.dayOfWeek', 'ASC')
+          .addOrderBy('schedule.startTime', 'ASC')
+          .getMany(),
+        this.assessmentRepo.count({
+          where: {
+            classroomId,
+            semesterId: activeSemester.id,
+            status: AssessmentStatus.PENDING,
+          },
+        }),
+        this.assessmentRepo
+          .createQueryBuilder('assessment')
+          .where('assessment.classroomId = :classroomId', { classroomId })
+          .andWhere('assessment.semesterId = :semesterId', {
+            semesterId: activeSemester.id,
+          })
+          .andWhere('assessment.status = :status', {
+            status: AssessmentStatus.PENDING,
+          })
+          .andWhere('assessment.dueDate IS NOT NULL')
+          .andWhere('assessment.dueDate >= :todayDate', { todayDate })
+          .andWhere('assessment.dueDate <= :horizonDate', { horizonDate })
+          .orderBy('assessment.dueDate', 'ASC')
+          .addOrderBy('assessment.createdAt', 'DESC')
+          .take(64)
+          .getMany(),
+      ]);
 
-    const now = new Date();
     const today = now.getUTCDay();
     const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 
@@ -509,18 +609,133 @@ export class AcademicsService {
       now,
     );
 
-    const pendingAssignments = await this.assessmentRepo.count({
-      where: {
-        classroomId,
-        semesterId: activeSemester.id,
-        status: AssessmentStatus.PENDING,
-      },
-    });
-
-    return {
+    const quickStats: DashboardQuickStats = {
       remainingClasses,
       pendingAssignments,
       upcomingExams,
+    };
+
+    const allMatchingItems: DashboardDeadlineFeedItem[] = [];
+
+    for (const assessment of pendingAssessments) {
+      if (!assessment.dueDate) continue;
+      const daysUntilDue = this.getDaysUntilDate(assessment.dueDate, now);
+      const weekBucket = this.getWeekBucket(daysUntilDue, daysLeftInThisWeek);
+      if (!weekBucket) continue;
+      allMatchingItems.push({
+        id: `assessment:${assessment.id}`,
+        source: 'assessment',
+        type: this.mapAssessmentTypeToFeedType(assessment.type),
+        title: assessment.title,
+        subtitle: `${assessment.courseCode} · ${this.getUrgencyLabel(daysUntilDue)}`,
+        courseCode: assessment.courseCode,
+        dueAt: this.toNoonUtcIso(assessment.dueDate),
+        daysUntilDue,
+        urgency: this.getUrgency(daysUntilDue),
+        weekBucket,
+        status: assessment.status,
+      });
+    }
+
+    for (const exam of scheduleItems.filter(
+      (item) => item.type === ScheduleType.EXAM,
+    )) {
+      const nextOccurrence = this.getNextOccurrence(exam.dayOfWeek, exam.startTime, now);
+      if (!nextOccurrence || nextOccurrence > horizon) continue;
+      const daysUntilDue = this.getDaysUntilDateTime(nextOccurrence, now);
+      const weekBucket = this.getWeekBucket(daysUntilDue, daysLeftInThisWeek);
+      if (!weekBucket) continue;
+      const courseLabel = exam.course?.code || exam.course?.name || 'Course';
+      const sessionName = exam.sessionName?.trim();
+      allMatchingItems.push({
+        id: `schedule-exam:${exam.id}`,
+        source: 'schedule',
+        type: 'exam_reminder',
+        title: sessionName
+          ? `${sessionName} (${courseLabel})`
+          : `${courseLabel} Exam`,
+        subtitle: `Scheduled exam · ${this.getUrgencyLabel(daysUntilDue)}`,
+        courseCode: exam.course?.code || null,
+        dueAt: nextOccurrence.toISOString(),
+        daysUntilDue,
+        urgency: this.getUrgency(daysUntilDue),
+        weekBucket,
+      });
+    }
+
+    const examPeriod = activeSemester.examPeriod;
+    if (
+      examPeriod?.start &&
+      /^\d{4}-\d{2}-\d{2}$/.test(examPeriod.start)
+    ) {
+      const startDiff = this.getDaysUntilDate(examPeriod.start, now);
+      const weekBucket = this.getWeekBucket(startDiff, daysLeftInThisWeek);
+      if (weekBucket) {
+        allMatchingItems.push({
+          id: `semester-exam-start:${activeSemester.id}`,
+          source: 'semester',
+          type: 'exam_countdown',
+          title: 'Exam period starts',
+          subtitle: this.getUrgencyLabel(startDiff),
+          courseCode: null,
+          dueAt: this.toNoonUtcIso(examPeriod.start),
+          daysUntilDue: startDiff,
+          urgency: this.getUrgency(startDiff),
+          weekBucket,
+        });
+      }
+    }
+
+    if (
+      examPeriod?.end &&
+      /^\d{4}-\d{2}-\d{2}$/.test(examPeriod.end)
+    ) {
+      const endDiff = this.getDaysUntilDate(examPeriod.end, now);
+      const weekBucket = this.getWeekBucket(endDiff, daysLeftInThisWeek);
+      if (weekBucket) {
+        allMatchingItems.push({
+          id: `semester-exam-end:${activeSemester.id}`,
+          source: 'semester',
+          type: 'exam_countdown',
+          title: 'Exam period ends',
+          subtitle: this.getUrgencyLabel(endDiff),
+          courseCode: null,
+          dueAt: this.toNoonUtcIso(examPeriod.end),
+          daysUntilDue: endDiff,
+          urgency: this.getUrgency(endDiff),
+          weekBucket,
+        });
+      }
+    }
+
+    allMatchingItems.sort((a, b) => {
+      if (a.daysUntilDue !== b.daysUntilDue) {
+        return a.daysUntilDue - b.daysUntilDue;
+      }
+      return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+    });
+
+    const items = allMatchingItems.slice(0, limit);
+    const thisWeekCount = allMatchingItems.filter(
+      (item) => item.weekBucket === 'this_week',
+    ).length;
+    const nextWeekCount = allMatchingItems.filter(
+      (item) => item.weekBucket === 'next_week',
+    ).length;
+    const totalMatching = allMatchingItems.length;
+    const shownCount = items.length;
+    const remainingCount = Math.max(totalMatching - shownCount, 0);
+
+    return {
+      quickStats,
+      meta: {
+        totalMatching,
+        shownCount,
+        remainingCount,
+        thisWeekCount,
+        nextWeekCount,
+      },
+      items,
     };
   }
 
@@ -860,6 +1075,73 @@ export class AcademicsService {
   private normalizeTime(value: string) {
     const [hours, minutes] = value.split(':');
     return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+  }
+
+  private mapAssessmentTypeToFeedType(
+    type: AssessmentType,
+  ): DashboardDeadlineFeedItemType {
+    if (type === AssessmentType.EXAM) return 'exam';
+    if (type === AssessmentType.QUIZ) return 'quiz';
+    if (type === AssessmentType.PROJECT) return 'project';
+    if (type === AssessmentType.ASSIGNMENT) return 'assignment';
+    return 'other';
+  }
+
+  private getUrgency(daysUntilDue: number): DashboardDeadlineFeedItemUrgency {
+    if (daysUntilDue < 0) return 'overdue';
+    if (daysUntilDue === 0) return 'today';
+    if (daysUntilDue <= 3) return 'soon';
+    if (daysUntilDue <= 14) return 'upcoming';
+    return 'later';
+  }
+
+  private getUrgencyLabel(daysUntilDue: number): string {
+    if (daysUntilDue < 0) return `${Math.abs(daysUntilDue)}d overdue`;
+    if (daysUntilDue === 0) return 'Due today';
+    if (daysUntilDue === 1) return 'Due tomorrow';
+    return `Due in ${daysUntilDue}d`;
+  }
+
+  private getWeekBucket(
+    daysUntilDue: number,
+    daysLeftInThisWeek: number,
+  ): 'this_week' | 'next_week' | null {
+    if (daysUntilDue < 0) return null;
+    if (daysUntilDue <= daysLeftInThisWeek) return 'this_week';
+    if (daysUntilDue <= daysLeftInThisWeek + 7) return 'next_week';
+    return null;
+  }
+
+  private getDaysUntilDate(dateOnly: string, from: Date): number {
+    const [yearRaw = '0', monthRaw = '0', dayRaw = '0'] = dateOnly.split('-');
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    const target = Date.UTC(year, month - 1, day);
+    const base = Date.UTC(
+      from.getUTCFullYear(),
+      from.getUTCMonth(),
+      from.getUTCDate(),
+    );
+    return Math.floor((target - base) / 86_400_000);
+  }
+
+  private getDaysUntilDateTime(target: Date, from: Date): number {
+    const targetDay = Date.UTC(
+      target.getUTCFullYear(),
+      target.getUTCMonth(),
+      target.getUTCDate(),
+    );
+    const baseDay = Date.UTC(
+      from.getUTCFullYear(),
+      from.getUTCMonth(),
+      from.getUTCDate(),
+    );
+    return Math.floor((targetDay - baseDay) / 86_400_000);
+  }
+
+  private toNoonUtcIso(dateOnly: string): string {
+    return `${dateOnly}T12:00:00.000Z`;
   }
 
   private countExamOccurrencesForRestOfMonth(

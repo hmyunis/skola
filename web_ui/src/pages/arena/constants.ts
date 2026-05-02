@@ -20,8 +20,8 @@ export const DIFFICULTY_XP = {
 
 export const ARENA_TITLE_PROGRESSION = {
   Rookie: 0,
-  Scholar: 200,
-  Strategist: 500,
-  Champion: 1000,
-  Legend: 2000,
+  Scholar: 800,
+  Strategist: 2000,
+  Champion: 4000,
+  Legend: 8000,
 } as const;

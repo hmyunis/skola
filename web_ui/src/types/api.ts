@@ -54,6 +54,49 @@ export interface QuickStats {
   upcomingExams: number;
 }
 
+export type DashboardDeadlineFeedItemType =
+  | "assignment"
+  | "quiz"
+  | "exam"
+  | "project"
+  | "other"
+  | "exam_reminder"
+  | "exam_countdown"
+  | "quiz_reminder";
+
+export type DashboardDeadlineFeedItemUrgency =
+  | "overdue"
+  | "today"
+  | "soon"
+  | "upcoming"
+  | "later";
+
+export interface DashboardDeadlineFeedItem {
+  id: string;
+  source: "assessment" | "schedule" | "semester";
+  type: DashboardDeadlineFeedItemType;
+  title: string;
+  subtitle: string;
+  courseCode: string | null;
+  dueAt: string;
+  daysUntilDue: number;
+  urgency: DashboardDeadlineFeedItemUrgency;
+  weekBucket: "this_week" | "next_week";
+  status?: "pending" | "submitted" | "graded";
+}
+
+export interface DashboardDeadlineFeed {
+  quickStats: QuickStats;
+  meta: {
+    totalMatching: number;
+    shownCount: number;
+    remainingCount: number;
+    thisWeekCount: number;
+    nextWeekCount: number;
+  };
+  items: DashboardDeadlineFeedItem[];
+}
+
 export type DayOfWeek =
   | "Monday"
   | "Tuesday"

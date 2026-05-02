@@ -1205,6 +1205,7 @@ const Academics = () => {
         queryClient.invalidateQueries({ queryKey: ["assessments"] }),
         queryClient.invalidateQueries({ queryKey: ["assignments"] }),
         queryClient.invalidateQueries({ queryKey: ["assessment-stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboardDeadlineFeed"] }),
       ]);
     },
   });
@@ -1217,6 +1218,7 @@ const Academics = () => {
         queryClient.invalidateQueries({ queryKey: ["assessments"] }),
         queryClient.invalidateQueries({ queryKey: ["assignments"] }),
         queryClient.invalidateQueries({ queryKey: ["assessment-stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboardDeadlineFeed"] }),
       ]);
     },
   });
@@ -1332,6 +1334,7 @@ const Academics = () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["assignments"] }),
         queryClient.invalidateQueries({ queryKey: ["assessments"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboardDeadlineFeed"] }),
       ]);
     },
     onError: (error) => {

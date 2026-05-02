@@ -85,6 +85,8 @@ const ArenaPage = () => {
 
   const handleUpdateStats = useCallback((stats: ArenaPlayerStats) => {
     queryClient.setQueryData(["arenaStats"], stats);
+    void queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    void queryClient.refetchQueries({ queryKey: ["leaderboard"], type: "active" });
     setPlayingCustomQuiz(null);
   }, [queryClient]);
 

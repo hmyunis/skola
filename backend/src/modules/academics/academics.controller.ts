@@ -28,6 +28,7 @@ import {
   RateAssessmentDto,
   UpdateAssessmentDto,
 } from './dto/assessment.dto';
+import { DashboardDeadlineFeedQueryDto } from './dto/dashboard-deadline-feed-query.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RequireClassroomRole } from '../../core/decorators/roles.decorator';
 import { ClassroomRoleGuard } from '../../core/guards/classroom-role.guard';
@@ -87,6 +88,14 @@ export class AcademicsController {
   @Get('dashboard/quick-stats')
   async getDashboardQuickStats(@CurrentClassroom() classroomId: string) {
     return this.academicsService.getDashboardQuickStats(classroomId);
+  }
+
+  @Get('dashboard/deadline-feed')
+  async getDashboardDeadlineFeed(
+    @CurrentClassroom() classroomId: string,
+    @Query() query: DashboardDeadlineFeedQueryDto,
+  ) {
+    return this.academicsService.getDashboardDeadlineFeed(classroomId, query);
   }
 
   // ================= ASSESSMENTS =================

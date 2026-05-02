@@ -1,9 +1,29 @@
-import type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, Course } from "@/types/api";
+import type {
+  SemesterInfo,
+  ClassSlot,
+  QuickStats,
+  Assignment,
+  WeeklySchedule,
+  Course,
+  DashboardDeadlineFeed,
+} from "@/types/api";
 import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
 
 // Re-export types for backward compatibility
-export type { SemesterInfo, ClassSlot, QuickStats, Assignment, WeeklySchedule, Course, DayOfWeek } from "@/types/api";
+export type {
+  SemesterInfo,
+  ClassSlot,
+  QuickStats,
+  Assignment,
+  WeeklySchedule,
+  Course,
+  DayOfWeek,
+  DashboardDeadlineFeed,
+  DashboardDeadlineFeedItem,
+  DashboardDeadlineFeedItemType,
+  DashboardDeadlineFeedItemUrgency,
+} from "@/types/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -363,6 +383,35 @@ export async function fetchQuickStats(semesterId?: string): Promise<QuickStats> 
   } catch (error: any) {
     if (error?.status === 404) {
       return { remainingClasses: 0, pendingAssignments: 0, upcomingExams: 0 };
+    }
+    throw error;
+  }
+}
+
+export async function fetchDashboardDeadlineFeed(params?: {
+  limit?: number;
+  daysAhead?: number;
+}): Promise<DashboardDeadlineFeed> {
+  const search = new URLSearchParams();
+  if (params?.limit) search.set("limit", String(params.limit));
+  if (params?.daysAhead) search.set("daysAhead", String(params.daysAhead));
+  const qs = search.toString();
+
+  try {
+    return await apiFetch(`/academics/dashboard/deadline-feed${qs ? `?${qs}` : ""}`);
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return {
+        quickStats: { remainingClasses: 0, pendingAssignments: 0, upcomingExams: 0 },
+        meta: {
+          totalMatching: 0,
+          shownCount: 0,
+          remainingCount: 0,
+          thisWeekCount: 0,
+          nextWeekCount: 0,
+        },
+        items: [],
+      };
     }
     throw error;
   }

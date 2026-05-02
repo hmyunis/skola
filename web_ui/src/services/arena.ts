@@ -25,10 +25,10 @@ export type {
 
 export const ARENA_TITLES: Record<string, { label: string; minXp: number }> = {
   rookie: { label: "Rookie", minXp: 0 },
-  scholar: { label: "Scholar", minXp: 200 },
-  strategist: { label: "Strategist", minXp: 500 },
-  champion: { label: "Champion", minXp: 1000 },
-  legend: { label: "Legend", minXp: 2000 },
+  scholar: { label: "Scholar", minXp: 800 },
+  strategist: { label: "Strategist", minXp: 2000 },
+  champion: { label: "Champion", minXp: 4000 },
+  legend: { label: "Legend", minXp: 8000 },
 };
 
 function toQuery(params: Record<string, string | number | undefined>) {
