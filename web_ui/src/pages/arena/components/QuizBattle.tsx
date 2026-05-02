@@ -191,7 +191,9 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
       void finishQuiz();
       return;
     }
+    const nextIdx = currentIdx + 1;
     setCurrentIdx((previous) => previous + 1);
+    setTimeLeft(questions[nextIdx]?.durationSeconds || 15);
     setSelected(null);
     setAnswered(false);
   };
