@@ -9,6 +9,7 @@ import type {
 } from "@/types/api";
 import { useAuthStore } from "@/stores/authStore";
 import { useClassroomStore } from "@/stores/classroomStore";
+import { queryClient } from "@/lib/queryClient";
 
 // Re-export types for backward compatibility
 export type {
@@ -26,6 +27,7 @@ export type {
 } from "@/types/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+let lastHandledUnauthorizedToken: string | null = null;
 
 const ISO_TIMESTAMP_WITH_ZONE_RE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})$/i;
@@ -105,6 +107,26 @@ async function parseResponseBody(response: Response): Promise<any> {
   }
 }
 
+function handleUnauthorizedResponse(token: string) {
+  if (lastHandledUnauthorizedToken === token) {
+    return;
+  }
+
+  lastHandledUnauthorizedToken = token;
+
+  try {
+    queryClient.clear();
+  } catch {
+    // Query client cleanup should not block logout/redirect.
+  }
+
+  useAuthStore.getState().logout();
+
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.replace("/login");
+  }
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = useAuthStore.getState().accessToken;
   const activeClassroom = useClassroomStore.getState().activeClassroom;
@@ -125,6 +147,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers,
     cache: options.cache ?? "no-store",
   });
+
+  if (response.status === 401 && token) {
+    handleUnauthorizedResponse(token);
+  }
 
   if (!response.ok) {
     const errorData = await parseResponseBody(response);
