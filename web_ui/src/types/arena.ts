@@ -19,6 +19,7 @@ export interface CustomQuiz {
   anonymous_id: string;
   createdByUser: boolean;
   questionCount: number;
+  globalDurationSeconds?: number | null;
   maxAttempts: number;
   attemptsUsed: number;
   attemptsRemaining: number;
@@ -39,6 +40,7 @@ export interface ArenaQuizListResponse {
 export interface LeaderboardEntry {
   rank: number;
   anonymous_id: string;
+  isCurrentUser?: boolean;
   xp: number;
   wins: number;
   streak: number;
@@ -75,6 +77,7 @@ export interface QuizAttemptResult {
   correctAnswers: number;
   won: boolean;
   xpEarned: number;
+  answeredCount?: number;
   maxAttempts: number;
   attemptsUsed: number;
   attemptsRemaining: number;

@@ -78,7 +78,7 @@ const ArenaPage = () => {
   }, []);
 
   const playerStats = statsQuery.data || DEFAULT_PLAYER_STATS;
-  const title = playerStats.title || getTitle(playerStats.xp);
+  const title = getTitle(playerStats.xp);
   const accuracy = playerStats.totalAnswers > 0
     ? Math.round((playerStats.correctAnswers / playerStats.totalAnswers) * 100)
     : 0;

@@ -1155,7 +1155,6 @@ export class AdminService {
             year: member.user.year,
             semester: member.user.semester,
             batch: member.user.batch,
-            anonymousId: member.user.anonymousId,
             createdAt: member.user.createdAt,
             updatedAt: member.user.updatedAt,
           }
@@ -1176,7 +1175,6 @@ export class AdminService {
       parentId: post.parentId || null,
       authorId: post.authorId,
       authorName: post.author?.name || null,
-      authorAnonymousId: post.author?.anonymousId || null,
       content: post.content,
       tags: post.tags || [],
       course: post.course || null,
@@ -1209,10 +1207,9 @@ export class AdminService {
         : null,
       uploader: resource.uploader
         ? {
-            id: resource.uploader.id,
-            name: resource.uploader.name,
-            anonymousId: resource.uploader.anonymousId,
-          }
+          id: resource.uploader.id,
+          name: resource.uploader.name,
+        }
         : null,
       fileName: resource.fileName,
       fileSize: resource.fileSize,
@@ -1249,20 +1246,17 @@ export class AdminService {
         .innerJoin('attempt.user', 'user')
         .select('user.id', 'userId')
         .addSelect('user.name', 'name')
-        .addSelect('user.anonymousId', 'anonymousId')
         .addSelect('SUM(attempt.score)', 'xp')
         .addSelect('SUM(CASE WHEN attempt.won = 1 THEN 1 ELSE 0 END)', 'wins')
         .addSelect('COUNT(attempt.id)', 'attempts')
         .where('quiz.classroomId = :classroomId', { classroomId })
         .groupBy('user.id')
         .addGroupBy('user.name')
-        .addGroupBy('user.anonymousId')
         .orderBy('xp', 'DESC')
         .addOrderBy('wins', 'DESC')
         .getRawMany<{
           userId: string;
           name: string;
-          anonymousId: string;
           xp: string;
           wins: string;
           attempts: string;
@@ -1280,6 +1274,7 @@ export class AdminService {
         isAnonymous: quiz.isAnonymous,
         isPublished: quiz.isPublished,
         maxAttempts: quiz.maxAttempts,
+        globalDurationSeconds: quiz.globalDurationSeconds || null,
         createdAt: quiz.createdAt,
         questions: (quiz.questions || [])
           .sort((a, b) => a.orderIndex - b.orderIndex)
@@ -1299,7 +1294,6 @@ export class AdminService {
         quizTitle: attempt.quiz?.title || null,
         userId: attempt.userId,
         userName: attempt.user?.name || null,
-        userAnonymousId: attempt.user?.anonymousId || null,
         score: attempt.score,
         totalQuestions: attempt.totalQuestions,
         correctAnswers: attempt.correctAnswers,
@@ -1310,7 +1304,6 @@ export class AdminService {
         rank: index + 1,
         userId: row.userId,
         name: row.name,
-        anonymousId: row.anonymousId,
         xp: Number(row.xp || 0),
         wins: Number(row.wins || 0),
         attempts: Number(row.attempts || 0),

@@ -27,6 +27,7 @@ import { CreateLoungePostDto } from './dto/create-lounge-post.dto';
 import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { LoungeMentionUsersQueryDto } from './dto/lounge-mention-users-query.dto';
+import { generateAnonymousDisplayId } from '../../core/utils/anonymous-id';
 
 interface LoungeFeedQueryDto {
   page?: number;
@@ -54,6 +55,21 @@ interface MentionParseResult {
 }
 
 const DELETED_USER_NAME = 'Deleted User';
+const LOUNGE_REACTIONS = [
+  '🧠',
+  '💀',
+  '🔥',
+  '😂',
+  '❤️',
+  '🎉',
+  '👀',
+  '😮',
+  '👏',
+  '📚',
+  '😭',
+  '🤝',
+] as const;
+const ALLOWED_LOUNGE_REACTIONS = new Set<string>(LOUNGE_REACTIONS);
 
 @Injectable()
 export class LoungeService {
@@ -192,7 +208,7 @@ export class LoungeService {
       isAnonymous: data.isAnonymous ?? false,
       classroomId,
       authorId,
-      reactions: { '🧠': 0, '💀': 0, '🔥': 0, '📚': 0, '😭': 0, '🤝': 0 },
+      reactions: this.createEmptyReactionCounts(),
     });
     const saved = await this.postRepo.save(post);
 
@@ -384,7 +400,8 @@ export class LoungeService {
       where: { id: postId, classroomId },
     });
     if (!post) throw new NotFoundException('Post not found');
-    if (!post.reactions) post.reactions = {};
+    const normalizedEmoji = this.normalizeReactionEmoji(emoji);
+    post.reactions = this.normalizeReactionCounts(post.reactions);
 
     const existing = await this.reactionRepo.findOne({
       where: { postId, userId },
@@ -393,29 +410,34 @@ export class LoungeService {
     let userReaction: string | null = null;
 
     if (existing) {
-      if (existing.emoji === emoji) {
-        // Same emoji clicked again — toggle off
-        post.reactions[emoji] = Math.max((post.reactions[emoji] || 0) - 1, 0);
+      if (existing.emoji === normalizedEmoji) {
+        // Same emoji clicked again - toggle off
+        post.reactions[normalizedEmoji] = Math.max(
+          (post.reactions[normalizedEmoji] || 0) - 1,
+          0,
+        );
         await this.reactionRepo.remove(existing);
         userReaction = null;
       } else {
-        // Different emoji — remove old, apply new
+        // Different emoji - remove old, apply new
         post.reactions[existing.emoji] = Math.max(
           (post.reactions[existing.emoji] || 0) - 1,
           0,
         );
-        post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
-        existing.emoji = emoji;
+        post.reactions[normalizedEmoji] =
+          (post.reactions[normalizedEmoji] || 0) + 1;
+        existing.emoji = normalizedEmoji;
         await this.reactionRepo.save(existing);
-        userReaction = emoji;
+        userReaction = normalizedEmoji;
       }
     } else {
-      // No existing reaction — add new
-      post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
+      // No existing reaction - add new
+      post.reactions[normalizedEmoji] =
+        (post.reactions[normalizedEmoji] || 0) + 1;
       await this.reactionRepo.save(
-        this.reactionRepo.create({ postId, userId, emoji }),
+        this.reactionRepo.create({ postId, userId, emoji: normalizedEmoji }),
       );
-      userReaction = emoji;
+      userReaction = normalizedEmoji;
     }
 
     await this.postRepo.update(postId, { reactions: post.reactions });
@@ -481,7 +503,7 @@ export class LoungeService {
       classroomId: parentPost.classroomId,
       authorId,
       parentId,
-      reactions: { '🧠': 0, '💀': 0, '🔥': 0, '📚': 0, '😭': 0, '🤝': 0 },
+      reactions: this.createEmptyReactionCounts(),
     });
 
     const savedReply = await this.postRepo.save(reply);
@@ -677,7 +699,7 @@ export class LoungeService {
       ? {
           id: null,
           name: 'Anonymous',
-          anonymousId: post.author?.anonymousId ?? null,
+          anonymousId: generateAnonymousDisplayId(),
           photoUrl: null,
         }
       : {
@@ -698,7 +720,7 @@ export class LoungeService {
       tags: post.tags,
       course: post.course,
       isAnonymous: post.isAnonymous,
-      reactions: post.reactions ?? {},
+      reactions: this.normalizeReactionCounts(post.reactions),
       replyCount,
       author: sanitizedAuthor,
       authorId: post.authorId,
@@ -712,7 +734,7 @@ export class LoungeService {
       ? {
           id: null,
           name: 'Anonymous',
-          anonymousId: reply.author?.anonymousId ?? null,
+          anonymousId: generateAnonymousDisplayId(),
           photoUrl: null,
         }
       : {
@@ -730,7 +752,7 @@ export class LoungeService {
       id: reply.id,
       content: reply.content,
       isAnonymous: reply.isAnonymous,
-      reactions: reply.reactions ?? {},
+      reactions: this.normalizeReactionCounts(reply.reactions),
       author: sanitizedAuthor,
       authorId: reply.authorId,
       createdAt: reply.createdAt,
@@ -751,6 +773,37 @@ export class LoungeService {
       seen.add(value);
       normalized.push(value.slice(0, 32));
       if (normalized.length >= 6) break;
+    }
+    return normalized;
+  }
+
+  private createEmptyReactionCounts(): Record<string, number> {
+    return LOUNGE_REACTIONS.reduce<Record<string, number>>(
+      (counts, reaction) => {
+        counts[reaction] = 0;
+        return counts;
+      },
+      {},
+    );
+  }
+
+  private normalizeReactionCounts(
+    reactions?: Record<string, number> | null,
+  ): Record<string, number> {
+    const counts = this.createEmptyReactionCounts();
+    for (const [emoji, count] of Object.entries(reactions || {})) {
+      const safeCount = Number.isFinite(Number(count))
+        ? Math.max(0, Number(count))
+        : 0;
+      counts[emoji] = safeCount;
+    }
+    return counts;
+  }
+
+  private normalizeReactionEmoji(emoji: string): string {
+    const normalized = String(emoji || '').trim();
+    if (!ALLOWED_LOUNGE_REACTIONS.has(normalized)) {
+      throw new BadRequestException('Unsupported reaction emoji');
     }
     return normalized;
   }

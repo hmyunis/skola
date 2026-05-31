@@ -54,6 +54,9 @@ export class Quiz {
   @Column({ type: 'int', default: 0 })
   timeLimitMinutes: number; // 0 means no limit
 
+  @Column({ type: 'int', nullable: true })
+  globalDurationSeconds: number | null;
+
   @Column({ default: false })
   isAnonymous: boolean;
 

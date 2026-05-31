@@ -14,6 +14,7 @@ import {
   Megaphone,
   BarChart3,
   ToggleLeft,
+  Network,
 } from "lucide-react";
 import {
   Sheet,
@@ -37,6 +38,7 @@ const mainItems = [
 const moreItems = [
   { title: "Assessments", url: "/academics", icon: BookOpen, featureId: "ft-academics" },
   { title: "Resources", url: "/resources", icon: FolderOpen, featureId: "ft-resources" },
+  { title: "Groups", url: "/groups", icon: Network, featureId: "ft-course-groups" },
   { title: "Announcements", url: "/announcements", icon: Megaphone, featureId: "ft-announcements" },
   { title: "Members", url: "/members", icon: Users, featureId: "ft-members" },
   { title: "Settings", url: "/settings", icon: Settings, featureId: "ft-appearance" },

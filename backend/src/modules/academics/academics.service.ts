@@ -7,6 +7,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, DeepPartial } from 'typeorm';
 import { Semester } from './entities/semester.entity';
 import { Course } from './entities/course.entity';
+import { CourseGroupFormation } from './entities/course-group-formation.entity';
+import { CourseGroup } from './entities/course-group.entity';
+import {
+  CourseGroupMember,
+  CourseGroupMemberRole,
+  CourseGroupMemberStatus,
+} from './entities/course-group-member.entity';
 import {
   ScheduleFireMode,
   ScheduleItem,
@@ -38,6 +45,8 @@ import {
   UpdateAssessmentDto,
 } from './dto/assessment.dto';
 import { DashboardDeadlineFeedQueryDto } from './dto/dashboard-deadline-feed-query.dto';
+import { ClassroomMember } from '../classrooms/entities/classroom-member.entity';
+import { UserRole } from '../users/entities/user.entity';
 
 export interface CourseListResult {
   data: Course[];
@@ -113,6 +122,14 @@ export class AcademicsService {
     private assessmentRepo: Repository<Assessment>,
     @InjectRepository(AssessmentRating)
     private assessmentRatingRepo: Repository<AssessmentRating>,
+    @InjectRepository(CourseGroupFormation)
+    private groupFormationRepo: Repository<CourseGroupFormation>,
+    @InjectRepository(CourseGroup)
+    private groupRepo: Repository<CourseGroup>,
+    @InjectRepository(CourseGroupMember)
+    private groupMemberRepo: Repository<CourseGroupMember>,
+    @InjectRepository(ClassroomMember)
+    private classroomMemberRepo: Repository<ClassroomMember>,
   ) {}
 
   // ================= SEMESTERS =================
@@ -332,6 +349,301 @@ export class AcademicsService {
     const course = await this.getCourseById(classroomId, courseId);
     await this.courseRepo.remove(course);
     return { deleted: true };
+  }
+
+  async listGroupFormations(classroomId: string, userId: string) {
+    const formations = await this.groupFormationRepo.find({
+      where: { classroomId, isActive: true },
+      relations: [
+        'course',
+        'groups',
+        'groups.members',
+        'groups.members.user',
+      ],
+      order: { createdAt: 'DESC' },
+    });
+    return formations.map((formation) =>
+      this.toFormationResponse(formation, userId),
+    );
+  }
+
+  async getGroupFormation(
+    classroomId: string,
+    formationId: string,
+    userId: string,
+  ) {
+    const formation = await this.findFormationForResponse(
+      classroomId,
+      formationId,
+    );
+    return this.toFormationResponse(formation, userId);
+  }
+
+  async upsertGroupFormation(
+    classroomId: string,
+    courseId: string,
+    userId: string,
+    dto: { maxMembers?: number; isActive?: boolean },
+  ) {
+    await this.getCourseById(classroomId, courseId);
+    const maxMembers = this.normalizeMaxGroupMembers(dto.maxMembers);
+    let formation = await this.groupFormationRepo.findOne({
+      where: { classroomId, courseId },
+    });
+
+    if (formation) {
+      formation.maxMembers = maxMembers;
+      if (dto.isActive !== undefined) formation.isActive = Boolean(dto.isActive);
+    } else {
+      formation = this.groupFormationRepo.create({
+        classroomId,
+        courseId,
+        maxMembers,
+        isActive: dto.isActive ?? true,
+        createdById: userId,
+      });
+    }
+
+    const saved = await this.groupFormationRepo.save(formation);
+    return this.getGroupFormation(classroomId, saved.id, userId);
+  }
+
+  async updateGroupFormation(
+    classroomId: string,
+    formationId: string,
+    userId: string,
+    dto: { maxMembers?: number; isActive?: boolean },
+  ) {
+    const formation = await this.groupFormationRepo.findOne({
+      where: { id: formationId, classroomId },
+    });
+    if (!formation) throw new NotFoundException('Group formation not found');
+    if (dto.maxMembers !== undefined) {
+      formation.maxMembers = this.normalizeMaxGroupMembers(dto.maxMembers);
+    }
+    if (dto.isActive !== undefined) formation.isActive = Boolean(dto.isActive);
+    const saved = await this.groupFormationRepo.save(formation);
+    return this.getGroupFormation(classroomId, saved.id, userId);
+  }
+
+  async deleteGroupFormation(classroomId: string, formationId: string) {
+    const formation = await this.groupFormationRepo.findOne({
+      where: { id: formationId, classroomId },
+    });
+    if (!formation) throw new NotFoundException('Group formation not found');
+    await this.groupFormationRepo.remove(formation);
+    return { deleted: true };
+  }
+
+  async createGroup(
+    classroomId: string,
+    formationId: string,
+    userId: string,
+    dto: { name?: string; hideIdentity?: boolean },
+  ) {
+    const formation = await this.groupFormationRepo.findOne({
+      where: { id: formationId, classroomId, isActive: true },
+      relations: ['course'],
+    });
+    if (!formation) throw new NotFoundException('Group formation not found');
+    await this.assertUserInClassroom(classroomId, userId);
+    await this.assertNoJoinedGroupInFormation(formationId, userId);
+
+    const groupCount = await this.groupRepo.count({ where: { formationId } });
+    const fallbackName = `Group ${groupCount + 1}`;
+    const name = this.normalizeGroupName(dto.name, fallbackName);
+
+    const group = this.groupRepo.create({
+      classroomId,
+      formationId,
+      name,
+      createdById: userId,
+    });
+    const savedGroup = await this.groupRepo.save(group);
+    await this.groupMemberRepo.save(
+      this.groupMemberRepo.create({
+        classroomId,
+        groupId: savedGroup.id,
+        userId,
+        status: CourseGroupMemberStatus.JOINED,
+        role: CourseGroupMemberRole.LEADER,
+        hideIdentity: Boolean(dto.hideIdentity),
+        respondedAt: new Date(),
+      }),
+    );
+
+    return this.getGroupFormation(classroomId, formationId, userId);
+  }
+
+  async joinGroup(
+    classroomId: string,
+    groupId: string,
+    userId: string,
+    dto: { hideIdentity?: boolean },
+  ) {
+    const group = await this.findGroupWithFormation(classroomId, groupId);
+    await this.assertUserInClassroom(classroomId, userId);
+    await this.assertNoJoinedGroupInFormation(group.formationId, userId);
+    await this.assertGroupHasCapacity(group);
+
+    const joinedCount = this.countJoinedMembers(group);
+    await this.groupMemberRepo.save(
+      this.groupMemberRepo.create({
+        classroomId,
+        groupId,
+        userId,
+        status: CourseGroupMemberStatus.JOINED,
+        role:
+          joinedCount === 0
+            ? CourseGroupMemberRole.LEADER
+            : CourseGroupMemberRole.MEMBER,
+        hideIdentity: Boolean(dto.hideIdentity),
+        respondedAt: new Date(),
+      }),
+    );
+    await this.ensureGroupHasLeader(groupId);
+    return this.getGroupFormation(classroomId, group.formationId, userId);
+  }
+
+  async inviteToGroup(
+    classroomId: string,
+    groupId: string,
+    leaderId: string,
+    dto: { userId: string },
+  ) {
+    const inviteeId = String(dto.userId || '').trim();
+    if (!inviteeId) throw new BadRequestException('Invitee is required');
+    const group = await this.findGroupWithFormation(classroomId, groupId);
+    await this.assertGroupLeader(groupId, leaderId);
+    await this.assertUserInClassroom(classroomId, inviteeId);
+    await this.assertNoJoinedGroupInFormation(group.formationId, inviteeId);
+    await this.assertGroupHasCapacity(group);
+
+    const existing = group.members.find((member) => member.userId === inviteeId);
+    if (existing?.status === CourseGroupMemberStatus.INVITED) {
+      throw new BadRequestException('Invite already sent');
+    }
+    if (existing?.status === CourseGroupMemberStatus.JOINED) {
+      throw new BadRequestException('User is already in this group');
+    }
+
+    const invite = existing || this.groupMemberRepo.create({ groupId, userId: inviteeId, classroomId });
+    invite.status = CourseGroupMemberStatus.INVITED;
+    invite.role = CourseGroupMemberRole.MEMBER;
+    invite.hideIdentity = false;
+    invite.invitedById = leaderId;
+    invite.respondedAt = null;
+    await this.groupMemberRepo.save(invite);
+
+    return this.getGroupFormation(classroomId, group.formationId, leaderId);
+  }
+
+  async respondToGroupInvite(
+    classroomId: string,
+    membershipId: string,
+    userId: string,
+    action: 'accept' | 'reject',
+    dto?: { hideIdentity?: boolean },
+  ) {
+    const membership = await this.groupMemberRepo.findOne({
+      where: { id: membershipId, classroomId, userId },
+      relations: ['group', 'group.formation', 'group.members'],
+    });
+    if (!membership || membership.status !== CourseGroupMemberStatus.INVITED) {
+      throw new NotFoundException('Pending invite not found');
+    }
+
+    if (action === 'reject') {
+      membership.status = CourseGroupMemberStatus.REJECTED;
+      membership.respondedAt = new Date();
+      await this.groupMemberRepo.save(membership);
+      return this.getGroupFormation(classroomId, membership.group.formationId, userId);
+    }
+
+    await this.assertNoJoinedGroupInFormation(membership.group.formationId, userId);
+    await this.assertGroupHasCapacity(membership.group);
+    membership.status = CourseGroupMemberStatus.JOINED;
+    membership.role =
+      this.countJoinedMembers(membership.group) === 0
+        ? CourseGroupMemberRole.LEADER
+        : CourseGroupMemberRole.MEMBER;
+    membership.hideIdentity = Boolean(dto?.hideIdentity);
+    membership.respondedAt = new Date();
+    await this.groupMemberRepo.save(membership);
+    await this.ensureGroupHasLeader(membership.groupId);
+    return this.getGroupFormation(classroomId, membership.group.formationId, userId);
+  }
+
+  async transferGroupLeadership(
+    classroomId: string,
+    groupId: string,
+    leaderId: string,
+    dto: { userId: string },
+  ) {
+    const targetUserId = String(dto.userId || '').trim();
+    const group = await this.findGroupWithFormation(classroomId, groupId);
+    await this.assertGroupLeader(groupId, leaderId);
+    const target = group.members.find(
+      (member) =>
+        member.userId === targetUserId &&
+        member.status === CourseGroupMemberStatus.JOINED,
+    );
+    if (!target) {
+      throw new BadRequestException('Leadership can only transfer to a joined member');
+    }
+
+    const updates = group.members
+      .filter((member) => member.status === CourseGroupMemberStatus.JOINED)
+      .map((member) => {
+        member.role =
+          member.userId === targetUserId
+            ? CourseGroupMemberRole.LEADER
+            : CourseGroupMemberRole.MEMBER;
+        return member;
+      });
+    await this.groupMemberRepo.save(updates);
+    return this.getGroupFormation(classroomId, group.formationId, leaderId);
+  }
+
+  async updateMyGroupPrivacy(
+    classroomId: string,
+    groupId: string,
+    userId: string,
+    dto: { hideIdentity?: boolean },
+  ) {
+    const group = await this.findGroupWithFormation(classroomId, groupId);
+    const member = group.members.find(
+      (item) =>
+        item.userId === userId && item.status === CourseGroupMemberStatus.JOINED,
+    );
+    if (!member) throw new NotFoundException('Joined group membership not found');
+    member.hideIdentity = Boolean(dto.hideIdentity);
+    await this.groupMemberRepo.save(member);
+    return this.getGroupFormation(classroomId, group.formationId, userId);
+  }
+
+  async leaveGroup(classroomId: string, groupId: string, userId: string) {
+    const group = await this.findGroupWithFormation(classroomId, groupId);
+    const member = group.members.find(
+      (item) =>
+        item.userId === userId && item.status === CourseGroupMemberStatus.JOINED,
+    );
+    if (!member) throw new NotFoundException('Joined group membership not found');
+
+    const joined = group.members.filter(
+      (item) => item.status === CourseGroupMemberStatus.JOINED,
+    );
+    if (member.role === CourseGroupMemberRole.LEADER && joined.length > 1) {
+      throw new BadRequestException('Transfer leadership before leaving');
+    }
+
+    await this.groupMemberRepo.remove(member);
+    if (joined.length <= 1) {
+      await this.groupRepo.remove(group);
+    } else {
+      await this.ensureGroupHasLeader(groupId);
+    }
+    return this.getGroupFormation(classroomId, group.formationId, userId);
   }
 
   async createScheduleItem(classroomId: string, dto: CreateScheduleItemDto) {
@@ -1019,6 +1331,209 @@ export class AcademicsService {
       throw new NotFoundException('Schedule item not found');
     }
     return item;
+  }
+
+  private normalizeMaxGroupMembers(value?: number) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 4;
+    return Math.max(2, Math.min(20, Math.floor(parsed)));
+  }
+
+  private normalizeGroupName(value: unknown, fallback: string) {
+    const normalized = String(value || '').trim();
+    return (normalized || fallback).slice(0, 80);
+  }
+
+  private async assertUserInClassroom(classroomId: string, userId: string) {
+    const membership = await this.classroomMemberRepo.findOne({
+      where: { classroom: { id: classroomId }, user: { id: userId } },
+      relations: ['user'],
+    });
+    if (!membership?.user) {
+      throw new BadRequestException('User is not a member of this classroom');
+    }
+    return membership;
+  }
+
+  private async findFormationForResponse(
+    classroomId: string,
+    formationId: string,
+  ) {
+    const formation = await this.groupFormationRepo.findOne({
+      where: { id: formationId, classroomId },
+      relations: [
+        'course',
+        'groups',
+        'groups.members',
+        'groups.members.user',
+      ],
+      order: {
+        groups: {
+          createdAt: 'ASC',
+          members: {
+            createdAt: 'ASC',
+          },
+        },
+      },
+    });
+    if (!formation) throw new NotFoundException('Group formation not found');
+    return formation;
+  }
+
+  private async findGroupWithFormation(classroomId: string, groupId: string) {
+    const group = await this.groupRepo.findOne({
+      where: { id: groupId, classroomId },
+      relations: ['formation', 'formation.course', 'members', 'members.user'],
+    });
+    if (!group) throw new NotFoundException('Group not found');
+    return group;
+  }
+
+  private countJoinedMembers(group: CourseGroup) {
+    return (group.members || []).filter(
+      (member) => member.status === CourseGroupMemberStatus.JOINED,
+    ).length;
+  }
+
+  private async assertGroupHasCapacity(group: CourseGroup) {
+    const maxMembers = group.formation?.maxMembers || 4;
+    if (this.countJoinedMembers(group) >= maxMembers) {
+      throw new BadRequestException('Group is already full');
+    }
+  }
+
+  private async assertNoJoinedGroupInFormation(
+    formationId: string,
+    userId: string,
+  ) {
+    const existing = await this.groupMemberRepo
+      .createQueryBuilder('member')
+      .innerJoin('member.group', 'group')
+      .where('group.formationId = :formationId', { formationId })
+      .andWhere('member.userId = :userId', { userId })
+      .andWhere('member.status = :status', {
+        status: CourseGroupMemberStatus.JOINED,
+      })
+      .getOne();
+    if (existing) {
+      throw new BadRequestException('You are already in a group for this course');
+    }
+  }
+
+  private async assertGroupLeader(groupId: string, userId: string) {
+    const leader = await this.groupMemberRepo.findOne({
+      where: {
+        groupId,
+        userId,
+        status: CourseGroupMemberStatus.JOINED,
+        role: CourseGroupMemberRole.LEADER,
+      },
+    });
+    if (!leader) throw new BadRequestException('Only the group leader can do this');
+    return leader;
+  }
+
+  private async ensureGroupHasLeader(groupId: string) {
+    const members = await this.groupMemberRepo.find({
+      where: { groupId, status: CourseGroupMemberStatus.JOINED },
+      order: { createdAt: 'ASC' },
+    });
+    if (!members.length) return;
+    if (members.some((member) => member.role === CourseGroupMemberRole.LEADER)) {
+      return;
+    }
+    members[0].role = CourseGroupMemberRole.LEADER;
+    await this.groupMemberRepo.save(members[0]);
+  }
+
+  private toFormationResponse(formation: CourseGroupFormation, userId: string) {
+    const groups = (formation.groups || []).map((group) => {
+      const joinedMembers = (group.members || []).filter(
+        (member) => member.status === CourseGroupMemberStatus.JOINED,
+      );
+      const pendingInvites = (group.members || []).filter(
+        (member) => member.status === CourseGroupMemberStatus.INVITED,
+      );
+      const currentMember = (group.members || []).find(
+        (member) => member.userId === userId,
+      );
+      const leader = joinedMembers.find(
+        (member) => member.role === CourseGroupMemberRole.LEADER,
+      );
+
+      return {
+        id: group.id,
+        formationId: group.formationId,
+        name: group.name,
+        memberCount: joinedMembers.length,
+        pendingInviteCount: pendingInvites.length,
+        maxMembers: formation.maxMembers,
+        isFull: joinedMembers.length >= formation.maxMembers,
+        createdAt: group.createdAt,
+        isCurrentUserMember:
+          currentMember?.status === CourseGroupMemberStatus.JOINED,
+        isCurrentUserInvited:
+          currentMember?.status === CourseGroupMemberStatus.INVITED,
+        currentUserRole:
+          currentMember?.status === CourseGroupMemberStatus.JOINED
+            ? currentMember.role
+            : null,
+        currentUserMembershipId: currentMember?.id || null,
+        leaderName: leader ? this.toGroupMemberDisplay(leader, userId).name : null,
+        members: joinedMembers.map((member) =>
+          this.toGroupMemberDisplay(member, userId),
+        ),
+        invites: pendingInvites.map((member) =>
+          this.toGroupMemberDisplay(member, userId),
+        ),
+      };
+    });
+
+    const myGroup = groups.find((group) => group.isCurrentUserMember) || null;
+    const myInvites = groups
+      .filter((group) => group.isCurrentUserInvited)
+      .map((group) => ({
+        groupId: group.id,
+        groupName: group.name,
+        membershipId: group.currentUserMembershipId,
+      }));
+
+    return {
+      id: formation.id,
+      courseId: formation.courseId,
+      classroomId: formation.classroomId,
+      maxMembers: formation.maxMembers,
+      isActive: formation.isActive,
+      createdAt: formation.createdAt,
+      updatedAt: formation.updatedAt,
+      course: formation.course
+        ? {
+            id: formation.course.id,
+            name: formation.course.name,
+            code: formation.course.code,
+            instructor: formation.course.instructor,
+          }
+        : null,
+      groups,
+      myGroupId: myGroup?.id || null,
+      myInvites,
+    };
+  }
+
+  private toGroupMemberDisplay(member: CourseGroupMember, currentUserId: string) {
+    const isSelf = member.userId === currentUserId;
+    const hidden = member.hideIdentity && !isSelf;
+    return {
+      id: member.id,
+      userId: hidden ? null : member.userId,
+      name: hidden ? 'Anonymous member' : member.user?.name || 'Unknown',
+      initials: hidden ? 'AM' : member.user?.initials || '??',
+      role: member.role,
+      status: member.status,
+      hideIdentity: member.hideIdentity,
+      isSelf,
+      joinedAt: member.createdAt,
+    };
   }
 
   private validateTimeRange(startTime: string, endTime: string) {

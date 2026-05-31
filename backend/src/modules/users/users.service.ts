@@ -62,7 +62,6 @@ export class UsersService {
       role: member.role,
       telegramUsername: user.telegramUsername || null,
       photoUrl: user.photoUrl || null,
-      anonymousId: user.anonymousId || null,
       code: user.code || null,
       year: user.year,
       semester: user.semester,
@@ -95,8 +94,6 @@ export class UsersService {
   }
 
   async create(userData: Partial<User>): Promise<User> {
-    userData.anonymousId = userData.anonymousId || this.generateAnonymousId();
-
     // First user defaults to OWNER
     const count = await this.usersRepository.count();
     if (count === 0) {
@@ -128,9 +125,6 @@ export class UsersService {
     user.telegramUsername = profile.telegramUsername || null;
     user.photoUrl = profile.photoUrl || null;
     user.deletedAt = null;
-    if (!user.anonymousId) {
-      user.anonymousId = this.generateAnonymousId();
-    }
 
     return this.usersRepository.save(user);
   }
@@ -531,14 +525,6 @@ export class UsersService {
   private maskKeyHint(apiKey: string) {
     const suffix = apiKey.slice(-4);
     return `...${suffix}`;
-  }
-
-  private generateAnonymousId() {
-    const randomHex = Math.floor(Math.random() * 0xffff)
-      .toString(16)
-      .toUpperCase()
-      .padStart(4, '0');
-    return `Anon#${randomHex}`;
   }
 
   private deriveByokEncryptionKey(): Buffer {

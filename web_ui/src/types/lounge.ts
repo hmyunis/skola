@@ -1,7 +1,19 @@
 /** Shared lounge types — aligned with backend API response shapes */
 
 export type PostTag = "question" | "rant" | "tip" | "meme" | "confession" | "discussion";
-export type AcademicReaction = "🧠" | "💀" | "🔥" | "📚" | "😭" | "🤝";
+export type AcademicReaction =
+  | "🧠"
+  | "💀"
+  | "🔥"
+  | "📚"
+  | "😭"
+  | "🤝"
+  | "😂"
+  | "❤️"
+  | "🎉"
+  | "👀"
+  | "😮"
+  | "👏";
 
 export interface LoungeAuthor {
   id: string | null;

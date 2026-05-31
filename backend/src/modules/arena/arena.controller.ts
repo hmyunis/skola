@@ -89,9 +89,10 @@ export class ArenaController {
   @Get('leaderboard')
   async getLeaderboard(
     @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
     @Query() query: ArenaLeaderboardQueryDto,
   ) {
-    return this.arenaService.getLeaderboard(classroomId, query);
+    return this.arenaService.getLeaderboard(classroomId, user.id, query);
   }
 
   @Post('quizzes/:quizId/report')

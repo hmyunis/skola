@@ -65,6 +65,12 @@ export class CreateQuizDto {
   @Min(1)
   maxAttempts?: number = 2;
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  globalDurationSeconds?: number;
+
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(MAX_QUIZ_QUESTIONS)

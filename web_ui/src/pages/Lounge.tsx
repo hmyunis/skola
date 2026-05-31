@@ -255,13 +255,16 @@ function ReactionButton({
         <Tooltip>
             <TooltipTrigger asChild>
                 <button
+                    type="button"
                     onClick={(e) => {
                         e.stopPropagation();
                         onClick();
                     }}
                     disabled={disabled}
+                    aria-pressed={active}
+                    aria-label={`${active ? 'Remove' : 'Add'} ${label} reaction`}
                     className={cn(
-                        'flex items-center gap-1 px-2 py-1 border text-xs tabular-nums transition-all',
+                        'inline-flex min-h-8 min-w-11 items-center justify-center gap-1 border px-2 py-1 text-xs tabular-nums transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         active
                             ? 'bg-primary/10 border-primary/40 text-primary font-bold'
                             : 'border-border text-muted-foreground hover:bg-accent',
@@ -904,10 +907,10 @@ function PostCard({
         : post.author.name;
     const edited = isContentEdited(post.createdAt, post.editedAt);
 
-    const sortedReactions = REACTIONS.map((r) => ({
+    const reactionOptions = REACTIONS.map((r) => ({
         ...r,
         count: post.reactions[r.emoji] || 0,
-    })).sort((a, b) => b.count - a.count);
+    }));
 
     useEffect(() => {
         setIsImageBroken(false);
@@ -1090,8 +1093,8 @@ function PostCard({
             )}
 
             {/* Reactions row */}
-            <div className="flex flex-wrap items-center gap-1.5">
-                {sortedReactions.map((r) => (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Post reactions">
+                {reactionOptions.map((r) => (
                     <ReactionButton
                         key={r.emoji}
                         emoji={r.emoji}

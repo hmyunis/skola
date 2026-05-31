@@ -10,6 +10,7 @@ export const DEFAULT_FEATURES: FeatureToggle[] = [
   { id: "ft-schedule", name: "Schedule", description: "Timetable, daily classes and weekly academic planning", enabled: true, category: "core" },
   { id: "ft-academics", name: "Assessments", description: "Assignments, grades, and academic tracking overview", enabled: true, category: "core" },
   { id: "ft-resources", name: "Resources", description: "Shared study materials, file hub and academic links", enabled: true, category: "core" },
+  { id: "ft-course-groups", name: "Course Groups", description: "Course group formation tracking, invites, and leadership management", enabled: true, category: "core" },
   { id: "ft-lounge", name: "Lounge", description: "The community social feed for students and staff", enabled: true, category: "social" },
   { id: "ft-arena", name: "Arena", description: "Gamified quiz battles, XP levels and class leaderboards", enabled: true, category: "gamification" },
   { id: "ft-members", name: "Members", description: "Directory of all classroom students and administration", enabled: true, category: "social" },

@@ -241,6 +241,188 @@ export class AcademicsController {
     return this.academicsService.deleteCourse(classroomId, courseId);
   }
 
+  // ================= COURSE GROUP FORMATIONS =================
+
+  @Get('group-formations')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async getGroupFormations(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.academicsService.listGroupFormations(classroomId, user.id);
+  }
+
+  @Get('group-formations/:id')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async getGroupFormation(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.getGroupFormation(classroomId, id, user.id);
+  }
+
+  @Post('courses/:id/group-formation')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.OWNER)
+  async upsertGroupFormation(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') courseId: string,
+    @Body() dto: { maxMembers?: number; isActive?: boolean },
+  ) {
+    return this.academicsService.upsertGroupFormation(
+      classroomId,
+      courseId,
+      user.id,
+      dto,
+    );
+  }
+
+  @Patch('group-formations/:id')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.OWNER)
+  async updateGroupFormation(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: { maxMembers?: number; isActive?: boolean },
+  ) {
+    return this.academicsService.updateGroupFormation(
+      classroomId,
+      id,
+      user.id,
+      dto,
+    );
+  }
+
+  @Delete('group-formations/:id')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.OWNER)
+  async deleteGroupFormation(
+    @CurrentClassroom() classroomId: string,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.deleteGroupFormation(classroomId, id);
+  }
+
+  @Post('group-formations/:id/groups')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async createGroup(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: { name?: string; hideIdentity?: boolean },
+  ) {
+    return this.academicsService.createGroup(classroomId, id, user.id, dto);
+  }
+
+  @Post('groups/:id/join')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async joinGroup(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: { hideIdentity?: boolean },
+  ) {
+    return this.academicsService.joinGroup(classroomId, id, user.id, dto);
+  }
+
+  @Post('groups/:id/invites')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async inviteToGroup(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: { userId: string },
+  ) {
+    return this.academicsService.inviteToGroup(classroomId, id, user.id, dto);
+  }
+
+  @Post('group-invites/:id/accept')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async acceptGroupInvite(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: { hideIdentity?: boolean },
+  ) {
+    return this.academicsService.respondToGroupInvite(
+      classroomId,
+      id,
+      user.id,
+      'accept',
+      dto,
+    );
+  }
+
+  @Post('group-invites/:id/reject')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async rejectGroupInvite(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.respondToGroupInvite(
+      classroomId,
+      id,
+      user.id,
+      'reject',
+    );
+  }
+
+  @Post('groups/:id/transfer-leadership')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async transferGroupLeadership(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: { userId: string },
+  ) {
+    return this.academicsService.transferGroupLeadership(
+      classroomId,
+      id,
+      user.id,
+      dto,
+    );
+  }
+
+  @Patch('groups/:id/privacy')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async updateMyGroupPrivacy(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: { hideIdentity?: boolean },
+  ) {
+    return this.academicsService.updateMyGroupPrivacy(
+      classroomId,
+      id,
+      user.id,
+      dto,
+    );
+  }
+
+  @Delete('groups/:id/members/me')
+  @UseGuards(ClassroomRoleGuard)
+  @RequireClassroomRole(UserRole.STUDENT, UserRole.ADMIN, UserRole.OWNER)
+  async leaveGroup(
+    @CurrentClassroom() classroomId: string,
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ) {
+    return this.academicsService.leaveGroup(classroomId, id, user.id);
+  }
+
   // ================= SCHEDULE =================
 
   @Get('schedule')

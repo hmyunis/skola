@@ -65,6 +65,7 @@ export function CreateQuizDialog({
   const [course, setCourse] = useState("");
   const [courseName, setCourseName] = useState("");
   const [maxAttempts, setMaxAttempts] = useState(2);
+  const [globalDurationSeconds, setGlobalDurationSeconds] = useState<number | null>(null);
   const anonEnabled = useFeatureEnabled("ft-anon-posting");
   const [isAnonymous, setIsAnonymous] = useState(anonEnabled);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
@@ -107,6 +108,7 @@ export function CreateQuizDialog({
     setCourse("");
     setCourseName("");
     setMaxAttempts(2);
+    setGlobalDurationSeconds(null);
     setIsAnonymous(anonEnabled);
     setQuestions([emptyDraftQuestion()]);
     setCurrentQ(0);
@@ -170,6 +172,12 @@ export function CreateQuizDialog({
     if (!title.trim()) return false;
     if (!course.trim()) return false;
     if (!Number.isFinite(maxAttempts) || maxAttempts < 1) return false;
+    if (
+      globalDurationSeconds !== null &&
+      (!Number.isFinite(globalDurationSeconds) || globalDurationSeconds < 5)
+    ) {
+      return false;
+    }
     if (questions.length < 1 || questions.length > MAX_QUIZ_QUESTIONS) return false;
 
     return questions.every((question) => {
@@ -209,6 +217,13 @@ export function CreateQuizDialog({
     setIsImporting(true);
     try {
       const imported = parseQuizUpload(importJsonText, "Pasted Quiz");
+      if (imported.title) setTitle(imported.title);
+      if (imported.course) {
+        setCourse(imported.course);
+        setCourseName("");
+      }
+      setMaxAttempts(imported.maxAttempts);
+      setGlobalDurationSeconds(imported.globalDurationSeconds);
       setQuestions(
         imported.questions.map((question) => ({
           ...question,
@@ -247,6 +262,7 @@ export function CreateQuizDialog({
       course,
       isAnonymous,
       maxAttempts: Math.floor(maxAttempts),
+      globalDurationSeconds,
       questions: questions.map((question) => ({
         questionText: question.question.trim(),
         explanation: question.explanation.trim() || undefined,
@@ -330,6 +346,30 @@ export function CreateQuizDialog({
                 Default is 2 (first attempt + one retry).
               </p>
             </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                Global Quiz Timer (seconds)
+              </label>
+              <Input
+                type="number"
+                min={5}
+                placeholder="Off"
+                value={globalDurationSeconds ?? ""}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  if (!raw) {
+                    setGlobalDurationSeconds(null);
+                    return;
+                  }
+                  const parsed = Number(raw);
+                  setGlobalDurationSeconds(Number.isFinite(parsed) ? Math.max(5, Math.floor(parsed)) : null);
+                }}
+                className="h-9 text-sm"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Leave blank for per-question timers. When set, this overrides all individual question timers.
+              </p>
+            </div>
             {anonEnabled && (
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Post As</label>
@@ -410,7 +450,7 @@ export function CreateQuizDialog({
                   <Textarea
                     value={importJsonText}
                     onChange={(event) => setImportJsonText(event.target.value)}
-                    placeholder='Paste JSON here. Example: {"questions":[{"questionText":"...","explanation":"optional","options":["A","B"],"correctOptionIndex":0,"difficulty":"medium","durationSeconds":15}]}'
+                    placeholder='Paste JSON here. Example: {"globalDurationSeconds":120,"questions":[{"questionText":"...","explanation":"optional","options":["A","B"],"correctOptionIndex":0,"difficulty":"medium","durationSeconds":15}]}'
                     className="min-h-[140px] text-xs font-mono"
                   />
                   <Button
@@ -424,7 +464,7 @@ export function CreateQuizDialog({
                     {isImporting ? "Parsing..." : "Parse JSON"}
                   </Button>
                   <p className="text-[10px] text-muted-foreground break-words">
-                    Parsed JSON fills only the manual question fields below.
+                    Parsed JSON can fill title, course, attempts, global timer, and questions.
                   </p>
                 </div>
               )}
@@ -491,19 +531,31 @@ export function CreateQuizDialog({
                         <SelectItem value="hard">Hard</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Input
-                      type="number"
-                      min={5}
-                      max={300}
-                      value={question.durationSeconds}
-                      onChange={(event) => {
-                        const parsed = Number(event.target.value);
-                        updateQuestion(currentQ, {
-                          durationSeconds: Number.isFinite(parsed) && parsed >= 5 ? Math.floor(parsed) : 5,
-                        });
-                      }}
-                      className="w-full sm:w-[100px] h-7 text-[10px] px-2"
-                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="w-full sm:w-[100px]">
+                          <Input
+                            type="number"
+                            min={5}
+                            max={300}
+                            value={question.durationSeconds}
+                            disabled={globalDurationSeconds !== null}
+                            onChange={(event) => {
+                              const parsed = Number(event.target.value);
+                              updateQuestion(currentQ, {
+                                durationSeconds: Number.isFinite(parsed) && parsed >= 5 ? Math.floor(parsed) : 5,
+                              });
+                            }}
+                            className="h-7 text-[10px] px-2"
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      {globalDurationSeconds !== null && (
+                        <TooltipContent side="top">
+                          <span>Global timer is enabled</span>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
                   </div>
                   {questions.length > 1 && (
                     <Button
@@ -520,7 +572,9 @@ export function CreateQuizDialog({
               </div>
 
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-                Time per question (seconds)
+                {globalDurationSeconds !== null
+                  ? `Per-question timer ignored - global timer: ${globalDurationSeconds}s`
+                  : "Time per question (seconds)"}
               </p>
 
               <Textarea

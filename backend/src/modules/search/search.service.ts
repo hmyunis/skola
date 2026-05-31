@@ -8,6 +8,7 @@ import { ClassroomMember } from '../classrooms/entities/classroom-member.entity'
 import { LoungePost } from '../lounge/entities/lounge-post.entity';
 import { Resource, ResourceType } from '../resources/entities/resource.entity';
 import { UserRole } from '../users/entities/user.entity';
+import { generateAnonymousDisplayId } from '../../core/utils/anonymous-id';
 
 export interface CommandPaletteSearchItem {
   id: string;
@@ -61,7 +62,6 @@ interface PostRow {
   course: string | null;
   isAnonymous: boolean;
   authorName: string | null;
-  authorAnonymousId: string | null;
 }
 
 interface MemberRow {
@@ -359,11 +359,10 @@ export class SearchService {
       .addSelect('post.course', 'course')
       .addSelect('post.isAnonymous', 'isAnonymous')
       .addSelect('author.name', 'authorName')
-      .addSelect('author.anonymousId', 'authorAnonymousId')
       .where('post.classroomId = :classroomId', { classroomId })
       .andWhere('post.parentId IS NULL')
       .andWhere(
-        '(LOWER(post.content) LIKE :contains OR LOWER(post.course) LIKE :contains OR LOWER(author.name) LIKE :contains OR LOWER(author.anonymousId) LIKE :contains)',
+        '(LOWER(post.content) LIKE :contains OR LOWER(post.course) LIKE :contains OR LOWER(author.name) LIKE :contains)',
         { contains },
       )
       .orderBy(
@@ -383,7 +382,7 @@ export class SearchService {
 
     return rows.map((row) => {
       const authorName = row.isAnonymous
-        ? row.authorAnonymousId || 'Anonymous'
+        ? generateAnonymousDisplayId()
         : row.authorName || 'Unknown';
       const subtitleParts = [authorName, row.course].filter(Boolean);
       return {
@@ -412,7 +411,7 @@ export class SearchService {
       .addSelect('user.telegramUsername', 'telegramUsername')
       .where('classroom.id = :classroomId', { classroomId })
       .andWhere(
-        '(LOWER(user.name) LIKE :contains OR LOWER(user.telegramUsername) LIKE :contains OR LOWER(user.anonymousId) LIKE :contains)',
+        '(LOWER(user.name) LIKE :contains OR LOWER(user.telegramUsername) LIKE :contains)',
         { contains },
       )
       .orderBy(

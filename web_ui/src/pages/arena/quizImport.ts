@@ -13,6 +13,7 @@ export interface ImportedQuizPayload {
   title: string;
   course: string;
   maxAttempts: number;
+  globalDurationSeconds: number | null;
   questions: ImportedQuizQuestion[];
 }
 
@@ -26,6 +27,7 @@ export const QUIZ_IMPORT_PROMPT_TEMPLATE = [
   "Return ONLY valid JSON (no markdown, no comments).",
   "Required shape:",
   "{",
+  '  "globalDurationSeconds": null,',
   '  "questions": [',
   "    {",
   '      "questionText": "question text",',
@@ -42,6 +44,8 @@ export const QUIZ_IMPORT_PROMPT_TEMPLATE = [
   "- 2 to 6 options per question",
   "- correctOptionIndex must be 0-based",
   "- durationSeconds must be >= 5",
+  "- Use globalDurationSeconds for one timer covering the whole quiz, in seconds, or null for per-question timers",
+  "- If globalDurationSeconds is a number, per-question durationSeconds values are ignored during play",
   "- explanation is optional (max 3000 chars)",
 ].join("\n");
 
@@ -70,6 +74,14 @@ function normalizeMaxAttempts(input: unknown) {
   if (!Number.isFinite(parsed)) return 2;
   const normalized = Math.floor(parsed);
   return normalized >= 1 ? normalized : 2;
+}
+
+function normalizeGlobalDurationSeconds(input: unknown): number | null {
+  if (input === null || input === undefined || input === "" || input === false) return null;
+  const parsed = Number(input);
+  if (!Number.isFinite(parsed)) return null;
+  const normalized = Math.floor(parsed);
+  return normalized >= 5 ? Math.min(normalized, 24 * 60 * 60) : null;
 }
 
 function normalizeDifficulty(input: unknown): QuizImportDifficulty {
@@ -273,7 +285,14 @@ function extractQuestionsContainer(parsed: unknown): unknown[] | null {
 }
 
 function extractMeta(parsed: unknown) {
-  if (!isRecord(parsed)) return { title: undefined, course: undefined, maxAttempts: undefined };
+  if (!isRecord(parsed)) {
+    return {
+      title: undefined,
+      course: undefined,
+      maxAttempts: undefined,
+      globalDurationSeconds: undefined,
+    };
+  }
 
   const nestedQuiz = isRecord(getRecordValue(parsed, "quiz")) ? (getRecordValue(parsed, "quiz") as JsonRecord) : null;
   const nestedData = isRecord(getRecordValue(parsed, "data")) ? (getRecordValue(parsed, "data") as JsonRecord) : null;
@@ -298,7 +317,40 @@ function extractMeta(parsed: unknown) {
     nestedData ? getRecordValue(nestedData, "maxAttempts") : undefined,
   );
 
-  return { title, course, maxAttempts };
+  const globalDurationSeconds = pickFirstDefined(
+    getRecordValue(parsed, "globalDurationSeconds"),
+    getRecordValue(parsed, "globalTimerSeconds"),
+    getRecordValue(parsed, "quizDurationSeconds"),
+    getRecordValue(parsed, "timeLimitSeconds"),
+    getRecordValue(parsed, "globalTimeLimit"),
+    nestedQuiz ? getRecordValue(nestedQuiz, "globalDurationSeconds") : undefined,
+    nestedQuiz ? getRecordValue(nestedQuiz, "globalTimerSeconds") : undefined,
+    nestedQuiz ? getRecordValue(nestedQuiz, "timeLimitSeconds") : undefined,
+    nestedData ? getRecordValue(nestedData, "globalDurationSeconds") : undefined,
+    nestedData ? getRecordValue(nestedData, "globalTimerSeconds") : undefined,
+    nestedData ? getRecordValue(nestedData, "timeLimitSeconds") : undefined,
+  );
+  const globalDurationMinutes = pickFirstDefined(
+    getRecordValue(parsed, "globalDurationMinutes"),
+    getRecordValue(parsed, "globalTimerMinutes"),
+    getRecordValue(parsed, "quizDurationMinutes"),
+    getRecordValue(parsed, "timeLimitMinutes"),
+    nestedQuiz ? getRecordValue(nestedQuiz, "globalDurationMinutes") : undefined,
+    nestedQuiz ? getRecordValue(nestedQuiz, "globalTimerMinutes") : undefined,
+    nestedQuiz ? getRecordValue(nestedQuiz, "timeLimitMinutes") : undefined,
+    nestedData ? getRecordValue(nestedData, "globalDurationMinutes") : undefined,
+    nestedData ? getRecordValue(nestedData, "globalTimerMinutes") : undefined,
+    nestedData ? getRecordValue(nestedData, "timeLimitMinutes") : undefined,
+  );
+
+  return {
+    title,
+    course,
+    maxAttempts,
+    globalDurationSeconds:
+      globalDurationSeconds ??
+      (globalDurationMinutes !== undefined ? Number(globalDurationMinutes) * 60 : undefined),
+  };
 }
 
 function normalizeFallbackTitle(fileName: string) {
@@ -372,11 +424,12 @@ export function parseQuizUpload(rawText: string, fileName: string): ImportedQuiz
     return { question, explanation, options, correctIndex, difficulty, durationSeconds };
   });
 
-  const { title, course, maxAttempts } = extractMeta(parsed);
+  const { title, course, maxAttempts, globalDurationSeconds } = extractMeta(parsed);
   return {
     title: normalizeTitle(title, normalizeFallbackTitle(fileName)),
     course: normalizeCourse(course),
     maxAttempts: normalizeMaxAttempts(maxAttempts),
+    globalDurationSeconds: normalizeGlobalDurationSeconds(globalDurationSeconds),
     questions,
   };
 }

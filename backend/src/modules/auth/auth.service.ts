@@ -133,7 +133,6 @@ export class AuthService {
         role: 'student',
         telegramUsername: user.telegramUsername,
         photoUrl: user.photoUrl,
-        anonymousId: user.anonymousId,
         year: user.year,
         semester: user.semester,
         batch: user.batch,

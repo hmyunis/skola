@@ -1,11 +1,10 @@
 import type { Course } from "@/services/courses";
+import { ARENA_TITLE_PROGRESSION } from "./constants";
 
 export function getTitle(xp: number): string {
-  if (xp >= 8000) return "Legend";
-  if (xp >= 4000) return "Champion";
-  if (xp >= 2000) return "Strategist";
-  if (xp >= 800) return "Scholar";
-  return "Rookie";
+  const normalizedXp = Number.isFinite(Number(xp)) ? Number(xp) : 0;
+  const titles = Object.entries(ARENA_TITLE_PROGRESSION).sort(([, a], [, b]) => b - a);
+  return titles.find(([, minXp]) => normalizedXp >= minXp)?.[0] || "Rookie";
 }
 
 export function getErrorMessage(error: unknown, fallback: string) {

@@ -51,10 +51,6 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   batch: string | null;
 
-  // Social / Identity
-  @Column({ type: 'varchar', nullable: true, unique: true })
-  anonymousId: string | null; // e.g., "Anon#4A2B"
-
   // Status limits
   @Column({ default: false })
   isBanned: boolean;

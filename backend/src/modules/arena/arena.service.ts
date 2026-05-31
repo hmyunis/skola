@@ -20,8 +20,17 @@ import { ClassroomMember } from '../classrooms/entities/classroom-member.entity'
 import { UserRole } from '../users/entities/user.entity';
 import { Course } from '../academics/entities/course.entity';
 import { ClassroomsService } from '../classrooms/classrooms.service';
+import { generateAnonymousDisplayId } from '../../core/utils/anonymous-id';
 
 type ArenaTitle = 'Rookie' | 'Scholar' | 'Strategist' | 'Champion' | 'Legend';
+
+const ARENA_TITLE_PROGRESSION: Record<ArenaTitle, number> = {
+  Rookie: 0,
+  Scholar: 800,
+  Strategist: 2000,
+  Champion: 4000,
+  Legend: 8000,
+};
 const DELETED_USER_NAME = 'Deleted User';
 
 @Injectable()
@@ -63,7 +72,7 @@ export class ArenaService {
 
     if (search) {
       qb.andWhere(
-        '(quiz.title LIKE :search OR author.name LIKE :search OR author.anonymousId LIKE :search)',
+        '(quiz.title LIKE :search OR author.name LIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -95,6 +104,9 @@ export class ArenaService {
           anonymous_id: this.getAuthorDisplayName(quiz),
           createdByUser: quiz.authorId === userId,
           questionCount: Number((quiz as any).questionCount || 0),
+          globalDurationSeconds: this.normalizeGlobalDurationSeconds(
+            quiz.globalDurationSeconds,
+          ),
           maxAttempts,
           attemptsUsed,
           attemptsRemaining,
@@ -137,6 +149,9 @@ export class ArenaService {
       anonymous_id: this.getAuthorDisplayName(quiz),
       createdByUser: quiz.authorId === userId,
       questionCount: quiz.questions.length,
+      globalDurationSeconds: this.normalizeGlobalDurationSeconds(
+        quiz.globalDurationSeconds,
+      ),
       maxAttempts,
       attemptsUsed,
       attemptsRemaining,
@@ -151,6 +166,9 @@ export class ArenaService {
     const title = data.title?.trim();
     const courseCode = data.course?.trim().toUpperCase();
     const maxAttempts = this.resolveMaxAttempts(data.maxAttempts);
+    const globalDurationSeconds = this.normalizeGlobalDurationSeconds(
+      data.globalDurationSeconds,
+    );
 
     if (!title) throw new BadRequestException('Quiz title is required');
     if (!courseCode) throw new BadRequestException('Course is required');
@@ -216,6 +234,7 @@ export class ArenaService {
       isAnonymous: data.isAnonymous ?? false,
       maxAttempts,
       timeLimitMinutes: 0,
+      globalDurationSeconds,
       isPublished: true,
       questions,
     });
@@ -272,14 +291,28 @@ export class ArenaService {
     }
 
     const answers = data.answers || [];
-    if (answers.length !== quiz.questions.length) {
+    const globalDurationSeconds = this.normalizeGlobalDurationSeconds(
+      quiz.globalDurationSeconds,
+    );
+    if (answers.length > quiz.questions.length) {
+      throw new BadRequestException('Too many answers submitted');
+    }
+    if (!globalDurationSeconds && answers.length !== quiz.questions.length) {
       throw new BadRequestException('You must answer all questions');
     }
 
     let correctAnswers = 0;
     let score = 0;
+    const answeredCount = globalDurationSeconds
+      ? Math.min(
+          Math.max(Number(data.answeredCount ?? answers.length), 0),
+          quiz.questions.length,
+          answers.length,
+        )
+      : quiz.questions.length;
 
     quiz.questions.forEach((question, index) => {
+      if (index >= answeredCount) return;
       const selected = answers[index];
       if (selected === question.correctOptionIndex) {
         correctAnswers += 1;
@@ -288,8 +321,8 @@ export class ArenaService {
       }
     });
 
-    const totalQuestions = quiz.questions.length;
-    const won = correctAnswers >= Math.ceil(totalQuestions / 2);
+    const totalQuestions = answeredCount;
+    const won = correctAnswers >= Math.ceil(quiz.questions.length / 2);
 
     const attempt = this.attemptRepo.create({
       quizId,
@@ -311,6 +344,7 @@ export class ArenaService {
       correctAnswers,
       won,
       xpEarned: score,
+      answeredCount,
       maxAttempts,
       attemptsUsed: nextAttemptsUsed,
       attemptsRemaining,
@@ -372,7 +406,19 @@ export class ArenaService {
     };
   }
 
-  async getLeaderboard(classroomId: string, query: ArenaLeaderboardQueryDto) {
+  private normalizeGlobalDurationSeconds(value?: number | null): number | null {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return null;
+    const normalized = Math.floor(parsed);
+    if (normalized < 5) return null;
+    return normalized;
+  }
+
+  async getLeaderboard(
+    classroomId: string,
+    userId: string,
+    query: ArenaLeaderboardQueryDto,
+  ) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const search = query.search?.trim();
@@ -385,7 +431,7 @@ export class ArenaService {
 
     if (search) {
       aggregateQb.andWhere(
-        '(user.name LIKE :search OR user.anonymousId LIKE :search)',
+        'user.name LIKE :search',
         {
           search: `%${search}%`,
         },
@@ -400,10 +446,7 @@ export class ArenaService {
     const rows = await aggregateQb
       .select([
         'user.id AS userId',
-        `CASE
-          WHEN user.deletedAt IS NOT NULL THEN '${DELETED_USER_NAME}'
-          ELSE COALESCE(user.anonymousId, CONCAT("Anon#", UPPER(SUBSTRING(MD5(user.id), 1, 4))))
-        END AS anonymousId`,
+        'user.deletedAt AS deletedAt',
         'SUM(attempt.score) AS xp',
         'SUM(CASE WHEN attempt.won = 1 THEN 1 ELSE 0 END) AS wins',
         'SUM(attempt.correctAnswers) AS correctAnswers',
@@ -433,7 +476,10 @@ export class ArenaService {
 
       return {
         rank: (page - 1) * limit + index + 1,
-        anonymous_id: row.anonymousId,
+        anonymous_id: row.deletedAt
+          ? DELETED_USER_NAME
+          : generateAnonymousDisplayId(),
+        isCurrentUser: row.userId === userId,
         xp,
         wins,
         streak: streakMap.get(row.userId) || 0,
@@ -581,7 +627,6 @@ export class ArenaService {
     quiz: Partial<Quiz> & {
       author?: {
         name?: string | null;
-        anonymousId?: string | null;
         deletedAt?: Date | null;
       };
     },
@@ -590,17 +635,18 @@ export class ArenaService {
       return DELETED_USER_NAME;
     }
     if (quiz.isAnonymous) {
-      return quiz.author?.anonymousId || 'Anonymous';
+      return generateAnonymousDisplayId();
     }
     return quiz.author?.name || DELETED_USER_NAME;
   }
 
   private getArenaTitle(xp: number): ArenaTitle {
-    if (xp >= 2000) return 'Legend';
-    if (xp >= 1000) return 'Champion';
-    if (xp >= 500) return 'Strategist';
-    if (xp >= 200) return 'Scholar';
-    return 'Rookie';
+    const normalizedXp = Number.isFinite(Number(xp)) ? Number(xp) : 0;
+    const titles = Object.entries(ARENA_TITLE_PROGRESSION).sort(
+      ([, a], [, b]) => b - a,
+    ) as Array<[ArenaTitle, number]>;
+
+    return titles.find(([, minXp]) => normalizedXp >= minXp)?.[0] ?? 'Rookie';
   }
 
   private async getClassroomRole(

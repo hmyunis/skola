@@ -42,6 +42,7 @@ export async function fetchManagedUsers(classroomId: string): Promise<ManagedUse
   const members = await apiFetch(`/classrooms/${classroomId}/members`);
   return members.map((m: any) => ({
     id: m.id,
+    userId: m.user.id,
     name: m.user.name,
     role: m.role,
     status: m.status || "active",

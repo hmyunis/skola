@@ -60,6 +60,7 @@ export interface AdminCourse {
 
 export interface ManagedUser {
   id: string;
+  userId?: string;
   name: string;
   role: "student" | "admin" | "owner";
   status: "active" | "banned" | "suspended";

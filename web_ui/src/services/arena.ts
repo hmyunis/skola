@@ -70,6 +70,7 @@ export async function createArenaQuiz(data: {
   course: string;
   isAnonymous?: boolean;
   maxAttempts?: number;
+  globalDurationSeconds?: number | null;
   questions: Array<{
     questionText: string;
     explanation?: string;
@@ -96,10 +97,11 @@ export async function deleteArenaQuiz(quizId: string) {
 export async function submitArenaAttempt(
   quizId: string,
   answers: number[],
+  options?: { answeredCount?: number; timedOut?: boolean },
 ): Promise<QuizAttemptResult> {
   return apiFetch(`/arena/quizzes/${quizId}/attempt`, {
     method: "POST",
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify({ answers, ...options }),
   });
 }
 

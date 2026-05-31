@@ -1,7 +1,7 @@
 import { Crown, Flame, Medal } from "lucide-react";
 import type { LeaderboardEntry } from "@/services/arena";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/stores/authStore";
+import { getTitle } from "../utils";
 
 function RankIcon({ rank }: { rank: number }) {
   if (rank === 1) return <Crown className="h-4 w-4 text-amber-500" />;
@@ -16,9 +16,6 @@ interface LeaderboardProps {
 }
 
 export function Leaderboard({ data, lastItemRef }: LeaderboardProps) {
-  const { user } = useAuth();
-  const currentAnonId = user?.anonymousId || user?.anonymous_id;
-
   return (
     <div className="border border-border overflow-x-auto">
       <div className="min-w-[400px]">
@@ -34,8 +31,9 @@ export function Leaderboard({ data, lastItemRef }: LeaderboardProps) {
           <div className="p-6 text-center text-sm text-muted-foreground">No players match your search</div>
         ) : (
           data.map((entry, idx) => {
-            const isCurrentUser = currentAnonId === entry.anonymous_id;
+            const isCurrentUser = Boolean(entry.isCurrentUser);
             const isLast = idx === data.length - 1;
+            const title = getTitle(entry.xp);
             return (
               <div
                 key={`${entry.rank}-${entry.anonymous_id}`}
@@ -57,7 +55,7 @@ export function Leaderboard({ data, lastItemRef }: LeaderboardProps) {
                       <span className="ml-1.5 text-[10px] font-bold text-primary uppercase tracking-wider">(You)</span>
                     )}
                   </p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{entry.title}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{title}</p>
                 </div>
                 <p className="text-xs font-black tabular-nums text-right">{entry.xp.toLocaleString()}</p>
                 <p className="text-xs tabular-nums text-right text-muted-foreground">{entry.wins}</p>

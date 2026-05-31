@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import Schedule from "./pages/Schedule";
 import Academics from "./pages/Academics";
 import Resources from "./pages/Resources";
+import Groups from "./pages/Groups";
 import Lounge from "./pages/Lounge";
 import Arena from "./pages/Arena";
 import SettingsPage from "./pages/Settings";
@@ -91,6 +92,10 @@ const App = () => {
                   
                   <Route element={<FeatureGuard featureId="ft-resources" />}>
                     <Route path="/resources" element={<Resources />} />
+                  </Route>
+
+                  <Route element={<FeatureGuard featureId="ft-course-groups" />}>
+                    <Route path="/groups" element={<Groups />} />
                   </Route>
                   
                   <Route element={<FeatureGuard featureId="ft-lounge" />}>

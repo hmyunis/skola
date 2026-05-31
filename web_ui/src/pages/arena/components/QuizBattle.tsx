@@ -49,9 +49,12 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
   const [resultWon, setResultWon] = useState(false);
   const [maxAttempts, setMaxAttempts] = useState(2);
   const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const [globalDurationSeconds, setGlobalDurationSeconds] = useState<number | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   const currentQ = questions[currentIdx];
-  const currentDuration = currentQ?.durationSeconds || 15;
+  const hasGlobalTimer = globalDurationSeconds !== null;
+  const currentDuration = hasGlobalTimer ? globalDurationSeconds || 1 : currentQ?.durationSeconds || 15;
 
   useEffect(() => {
     if (!customQuiz?.questions?.length) return;
@@ -69,12 +72,14 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
     setCourseName("");
     setMaxAttempts(customQuiz.maxAttempts);
     setAttemptsRemaining(customQuiz.attemptsRemaining);
+    setGlobalDurationSeconds(customQuiz.globalDurationSeconds ?? null);
+    setTimedOut(false);
     setCurrentIdx(0);
     setSelected(null);
     setAnswered(false);
     setScore(0);
     setCorrectCount(0);
-    setTimeLeft(customQuiz.questions[0]?.durationSeconds || 15);
+    setTimeLeft(customQuiz.globalDurationSeconds ?? customQuiz.questions[0]?.durationSeconds ?? 15);
     setXpEarned(0);
     setAnswers([]);
     setResultWon(false);
@@ -82,9 +87,9 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
   }, [customQuiz]);
 
   useEffect(() => {
-    if (!currentQ || state !== "playing" || answered) return;
+    if (!currentQ || state !== "playing" || answered || hasGlobalTimer) return;
     setTimeLeft(currentQ.durationSeconds || 15);
-  }, [currentIdx, currentQ, state, answered]);
+  }, [currentIdx, currentQ, state, answered, hasGlobalTimer]);
 
   const startQuiz = useCallback(async () => {
     if (!course) {
@@ -101,12 +106,14 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
       setActiveQuizId(quiz.id);
       setMaxAttempts(quiz.maxAttempts);
       setAttemptsRemaining(quiz.attemptsRemaining);
+      setGlobalDurationSeconds(quiz.globalDurationSeconds ?? null);
+      setTimedOut(false);
       setCurrentIdx(0);
       setSelected(null);
       setAnswered(false);
       setScore(0);
       setCorrectCount(0);
-      setTimeLeft(quiz.questions[0]?.durationSeconds || 15);
+      setTimeLeft(quiz.globalDurationSeconds ?? quiz.questions[0]?.durationSeconds ?? 15);
       setXpEarned(0);
       setAnswers([]);
       setResultWon(false);
@@ -121,8 +128,13 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
   }, [course]);
 
   useEffect(() => {
-    if (state !== "playing" || answered || !currentQ) return;
+    if (state !== "playing" || !currentQ) return;
     if (timeLeft <= 0) {
+      if (hasGlobalTimer) {
+        void finishQuiz(true);
+        return;
+      }
+      if (answered) return;
       setAnswers((prev) => {
         const next = [...prev];
         next[currentIdx] = currentQ.options.length;
@@ -131,9 +143,10 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
       setAnswered(true);
       return;
     }
+    if (!hasGlobalTimer && answered) return;
     const timeout = setTimeout(() => setTimeLeft((previous) => previous - 1), 1000);
     return () => clearTimeout(timeout);
-  }, [state, timeLeft, answered, currentIdx, currentQ]);
+  }, [state, timeLeft, answered, currentIdx, currentQ, hasGlobalTimer]);
 
   const handleAnswer = (idx: number) => {
     if (answered || !currentQ) return;
@@ -152,20 +165,27 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
     }
   };
 
-  const finishQuiz = async () => {
+  const finishQuiz = async (didTimeOut = false) => {
     if (!activeQuizId || !questions.length) {
       setState("result");
       return;
     }
 
-    const normalizedAnswers = questions.map((question, index) => {
-      const answer = answers[index];
-      return answer === undefined ? question.options.length : answer;
-    });
+    const answeredCount = answers.filter((answer) => answer !== undefined).length;
+    const normalizedAnswers = hasGlobalTimer
+      ? answers.slice(0, answeredCount)
+      : questions.map((question, index) => {
+          const answer = answers[index];
+          return answer === undefined ? question.options.length : answer;
+        });
 
     setState("submitting");
+    setTimedOut(didTimeOut);
     try {
-      const result = await submitArenaAttempt(activeQuizId, normalizedAnswers);
+      const result = await submitArenaAttempt(activeQuizId, normalizedAnswers, {
+        answeredCount: hasGlobalTimer ? answeredCount : questions.length,
+        timedOut: didTimeOut,
+      });
       setCorrectCount(result.correctAnswers);
       setXpEarned(result.xpEarned);
       setScore(result.score);
@@ -193,7 +213,9 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
     }
     const nextIdx = currentIdx + 1;
     setCurrentIdx((previous) => previous + 1);
-    setTimeLeft(questions[nextIdx]?.durationSeconds || 15);
+    if (!hasGlobalTimer) {
+      setTimeLeft(questions[nextIdx]?.durationSeconds || 15);
+    }
     setSelected(null);
     setAnswered(false);
   };
@@ -210,7 +232,7 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
             <h3 className="font-bold uppercase tracking-wider text-sm">Start a Quiz Battle</h3>
           </div>
           <p className="text-xs text-muted-foreground">
-            Picks a random quiz from the selected course - timed per question - Earn XP based on difficulty
+            Picks a random quiz from the selected course - timed by quiz or question - Earn XP based on difficulty
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
@@ -258,7 +280,8 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
 
   if (state === "result") {
     const won = resultWon;
-    const accuracy = questions.length ? Math.round((correctCount / questions.length) * 100) : 0;
+    const answeredCount = hasGlobalTimer ? answers.filter((answer) => answer !== undefined).length : questions.length;
+    const accuracy = answeredCount ? Math.round((correctCount / answeredCount) * 100) : 0;
     return (
       <Card className={cn("border-2", won ? "border-emerald-500/50" : "border-destructive/50")}>
         <CardContent className="p-5 space-y-4 text-center">
@@ -272,12 +295,22 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
               {won ? "Victory!" : "Defeated"}
             </h3>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">{resultCourseName}</p>
+            {timedOut && (
+              <p className="text-xs font-bold uppercase tracking-wider text-destructive">Time expired</p>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Score</p>
-              <p className="text-2xl font-black tabular-nums">{correctCount}/{questions.length}</p>
+              <p className="text-2xl font-black tabular-nums">
+                {correctCount}/{hasGlobalTimer ? answeredCount : questions.length}
+              </p>
+              {hasGlobalTimer && (
+                <p className="text-[9px] text-muted-foreground mt-0.5">
+                  Answered {answeredCount}/{questions.length}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Accuracy</p>
@@ -315,7 +348,7 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
   if (!currentQ) return null;
 
   const progress = ((currentIdx + (answered ? 1 : 0)) / questions.length) * 100;
-  const timerPct = (timeLeft / currentDuration) * 100;
+  const timerPct = Math.max(0, Math.min(100, (timeLeft / currentDuration) * 100));
   const explanation = currentQ.explanation?.trim();
 
   return (
@@ -326,6 +359,11 @@ export function QuizBattle({ onUpdateStats, customQuiz }: QuizBattleProps) {
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
               Q{currentIdx + 1}/{questions.length}
             </span>
+            {hasGlobalTimer && (
+              <span className="px-1.5 py-0.5 border border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wider text-primary">
+                Global timer
+              </span>
+            )}
             <span className={cn(
               "px-1.5 py-0.5 border text-[10px] font-bold uppercase tracking-wider",
               currentQ.difficulty === "easy" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" :

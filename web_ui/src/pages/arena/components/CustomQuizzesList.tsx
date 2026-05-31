@@ -7,6 +7,7 @@ import {
   Play,
   Search,
   Shield,
+  Timer,
   Trash2,
   User,
   UserCheck,
@@ -201,6 +202,15 @@ export function CustomQuizzesList({ onPlay }: CustomQuizzesListProps) {
                       <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{quiz.course}</span>
                       <span className="text-[10px] text-muted-foreground">·</span>
                       <span className="text-[10px] text-muted-foreground tabular-nums">{quiz.questionCount} Q</span>
+                      {quiz.globalDurationSeconds && (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">·</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground tabular-nums">
+                            <Timer className="h-2.5 w-2.5" />
+                            {quiz.globalDurationSeconds}s global
+                          </span>
+                        </>
+                      )}
                       <span className="text-[10px] text-muted-foreground">·</span>
                       <span className={cn(
                         "text-[10px] tabular-nums",
